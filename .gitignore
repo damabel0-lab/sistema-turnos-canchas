@@ -15,3 +15,7 @@ __pycache__/
 # Archivos del sistema
 .DS_Store
 Thumbs.db
+
+# Node / TypeScript
+node_modules/
+dist/

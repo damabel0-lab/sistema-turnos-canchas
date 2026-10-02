@@ -56,6 +56,40 @@ TP0/
 * **`.gitignore`**: especifica los archivos y carpetas que no deben formar parte del repositorio.
 * **`README.md`**: contiene la descripción y documentación general del proyecto.
 
+## Módulo de cálculo de tarifas (patrón Strategy)
+
+El costo final de un turno depende del tipo de cliente (Socio / No Socio) o de condiciones
+operativas (Turno Nocturno con recargo por luz artificial). La decisión del cálculo **no**
+vive en el servicio de reservas, sino en estrategias intercambiables:
+
+```text
+backend/app/services/tarifas/
+│
+├── IEstrategiaCalculoTarifa.ts     # Contrato (interfaz) de toda estrategia
+├── ResumenReserva.ts               # Modelo de salida del cobro
+├── TarifaNoSocioStrategy.ts        # Precio base sin modificar
+├── TarifaSocioStrategy.ts          # 15% de descuento
+├── TarifaNocturnaStrategy.ts       # 20% de recargo por iluminación LED
+├── GestorReservaCanchaContext.ts   # Contexto: delega el cálculo en la estrategia activa
+├── TarifaStrategyFactory.ts        # Factory + enum TipoTarifaComplejo
+├── moneda.ts                       # Utilidades de formato monetario
+├── index.ts                        # Exportaciones públicas del módulo
+└── ejemplo-uso.ts                  # Ejemplo práctico de ejecución
+```
+
+* El contexto (`GestorReservaCanchaContext`) recibe la estrategia por constructor y permite
+  cambiarla en tiempo de ejecución con `setEstrategia()`.
+* Para sumar una tarifa nueva sólo hay que crear una clase que implemente
+  `IEstrategiaCalculoTarifa` y registrarla en `TarifaStrategyFactory` (abierto/extensible).
+
+### Comandos
+
+```bash
+npm install            # instala dependencias (TypeScript)
+npm run build          # compila en modo estricto
+npm run ejemplo:tarifas # compila y ejecuta el ejemplo del módulo de tarifas
+```
+
 ## Estado del proyecto
 
 Proyecto en etapa inicial de desarrollo.

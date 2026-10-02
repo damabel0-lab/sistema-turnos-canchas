@@ -1,0 +1,14 @@
+{
+  "name": "sistema-turnos-canchas",
+  "version": "0.1.0",
+  "description": "Sistema de gestión de turnos para canchas del Complejo Deportivo Cerro Alto",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "ejemplo:tarifas": "npm run build && node dist/app/services/tarifas/ejemplo-uso.js"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "typescript": "^5.6.0"
+  }
+}
