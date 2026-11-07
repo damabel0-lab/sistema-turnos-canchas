@@ -498,8 +498,10 @@ export async function disponibilidad(canchaId: number, fecha: string): Promise<E
  *
  * Valida solapamientos y bloqueos para cada fecha individualmente.
  */
-export async function proyectarTurnosFijos(entrada: {
-  usuario_id: string;
+export interface TurnoFijoEntrada {
+  usuario_id?: string | null;
+  cliente_nombre?: string | null;
+  cliente_telefono?: string | null;
   cancha_id: number;
   dia_semana: number; // 0 = domingo ... 6 = sábado
   hora: string; // HH:MM (debe ser múltiplo de 15)
@@ -508,8 +510,49 @@ export async function proyectarTurnosFijos(entrada: {
   monto_seña?: number;
   metodo_pago?: string | null;
   estado?: 'pendiente_seña' | 'confirmada';
-}) {
-  const { usuario_id, cancha_id, dia_semana, hora, semanas } = entrada;
+}
+
+/** Resuelve el usuario_id: si viene lo usa, si no, busca/crea por teléfono. */
+async function resolverUsuarioId(entrada: TurnoFijoEntrada): Promise<string> {
+  if (entrada.usuario_id) return entrada.usuario_id;
+  if (!entrada.cliente_telefono) {
+    throw new HttpError(400, 'usuario_id o cliente_telefono es obligatorio');
+  }
+
+  const telefono = entrada.cliente_telefono.trim();
+  const { data: existente } = await supabaseAdmin
+    .from('usuarios')
+    .select('id')
+    .eq('telefono', telefono)
+    .maybeSingle();
+
+  if (existente) return existente.id;
+
+  const email = `${telefono.replace(/\D/g, '')}@clientes.playcontrol.local`;
+  const { data: creado, error: eAuth } = await supabaseAdmin.auth.admin.createUser({
+    email,
+    password: crypto.randomUUID(),
+    email_confirm: true,
+  });
+  if (eAuth || !creado.user) {
+    throw new HttpError(500, 'No se pudo crear el cliente');
+  }
+
+  const { error: ePerfil } = await supabaseAdmin.from('usuarios').insert({
+    id: creado.user.id,
+    nombre: entrada.cliente_nombre ?? 'Cliente',
+    apellido: '',
+    telefono,
+    rol: 'cliente',
+    es_socio: false,
+  });
+  if (ePerfil) throw new HttpError(500, 'No se pudo crear el perfil');
+
+  return creado.user.id;
+}
+
+export async function proyectarTurnosFijos(entrada: TurnoFijoEntrada) {
+  const { cancha_id, dia_semana, hora, semanas } = entrada;
 
   if (!(dia_semana >= 0 && dia_semana <= 6)) {
     throw new HttpError(400, 'dia_semana debe estar entre 0 (domingo) y 6 (sábado)');
@@ -520,6 +563,8 @@ export async function proyectarTurnosFijos(entrada: {
   if (!/^\d{2}:\d{2}$/.test(hora)) {
     throw new HttpError(400, 'hora debe tener formato HH:MM');
   }
+
+  const usuario_id = await resolverUsuarioId(entrada);
 
   const inicioMin = aMinutos(hora);
   if (inicioMin % MINUTOS_BLOQUE !== 0) {

@@ -19,7 +19,16 @@ interface FilaGrilla {
 }
 
 const hoy = () => new Date().toISOString().slice(0, 10);
+const HORA_APERTURA = 8;
+const HORA_CIERRE = 23;
 const HORAS = Array.from({ length: 15 }, (_, i) => `${String(i + 8).padStart(2, '0')}:00`);
+
+interface TurnoFijoRespuesta {
+  creadas: Array<{ fecha: string; reserva_id: number }>;
+  errores: Array<{ fecha: string; error: string }>;
+  total_creadas: number;
+  total_solicitadas: number;
+}
 
 const colores: Record<string, string> = {
   pendiente_seña: '#fff3cd', // amarillo = espera seña
@@ -43,6 +52,34 @@ export function GrillaPage() {
 
   // form bloqueo
   const [bloqueo, setBloqueo] = useState({ cancha_id: '', desde: '08:00', hasta: '09:00', motivo: '' });
+
+  // form turno fijo
+  const DIAS_SEMANA = [
+    { valor: 0, texto: 'Domingo' },
+    { valor: 1, texto: 'Lunes' },
+    { valor: 2, texto: 'Martes' },
+    { valor: 3, texto: 'Miércoles' },
+    { valor: 4, texto: 'Jueves' },
+    { valor: 5, texto: 'Viernes' },
+    { valor: 6, texto: 'Sábado' },
+  ];
+  const HORAS_TURNO = Array.from({ length: 60 }, (_, i) => {
+    const min = i * 15;
+    return `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+  }).filter((h) => {
+    const [hh, mm] = h.split(':').map(Number);
+    const total = hh * 60 + mm;
+    return total >= HORA_APERTURA * 60 && total + 60 <= HORA_CIERRE * 60;
+  });
+
+  const [turnoFijo, setTurnoFijo] = useState({
+    nombre: '',
+    telefono: '',
+    cancha_id: '',
+    dia_semana: '',
+    hora: '',
+    semanas: '4',
+  });
 
   const cargar = useCallback(async () => {
     try {
@@ -123,6 +160,33 @@ export function GrillaPage() {
       await cargar();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo bloquear');
+    }
+  }
+
+  async function guardarTurnoFijo(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setMensaje(null);
+    try {
+      const semanas = Number(turnoFijo.semanas);
+      const semanasValidas = semanas >= 1 && semanas <= 52 ? semanas : 4;
+      const r = await api<TurnoFijoRespuesta>('/reservas/turno-fijo', {
+        method: 'POST',
+        body: JSON.stringify({
+          cliente_nombre: turnoFijo.nombre,
+          cliente_telefono: turnoFijo.telefono,
+          cancha_id: Number(turnoFijo.cancha_id),
+          dia_semana: Number(turnoFijo.dia_semana),
+          hora: turnoFijo.hora,
+          semanas: semanasValidas,
+          estado: 'pendiente_seña',
+        }),
+      });
+      setMensaje(`Turnos fijos creados: ${r.total_creadas} de ${r.total_solicitadas} ✅`);
+      setTurnoFijo({ ...turnoFijo, nombre: '', telefono: '' });
+      await cargar();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo crear el turno fijo');
     }
   }
 
@@ -255,6 +319,86 @@ export function GrillaPage() {
           <button type="submit">Bloquear</button>
         </form>
       </details>
+
+      {/* Turno fijo semanal */}
+      <section style={{ border: '1px solid #ccc', borderRadius: 8, padding: 12 }}>
+        <h3 style={{ marginTop: 0 }}>🔁 Turno fijo semanal</h3>
+        <form onSubmit={guardarTurnoFijo} style={{ display: 'grid', gap: 8, flexWrap: 'wrap', alignItems: 'end' }}>
+          <label>
+            Nombre del cliente
+            <br />
+            <input
+              required
+              value={turnoFijo.nombre}
+              onChange={(e) => setTurnoFijo({ ...turnoFijo, nombre: e.target.value })}
+            />
+          </label>
+          <label>
+            Teléfono
+            <br />
+            <input
+              required
+              value={turnoFijo.telefono}
+              onChange={(e) => setTurnoFijo({ ...turnoFijo, telefono: e.target.value })}
+            />
+          </label>
+          <label>
+            Cancha
+            <br />
+            <select
+              required
+              value={turnoFijo.cancha_id}
+              onChange={(e) => setTurnoFijo({ ...turnoFijo, cancha_id: e.target.value })}
+            >
+              <option value="">Elegir…</option>
+              {filas.map((f) => (
+                <option key={f.cancha_id} value={f.cancha_id}>{f.cancha}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Día de la semana
+            <br />
+            <select
+              required
+              value={turnoFijo.dia_semana}
+              onChange={(e) => setTurnoFijo({ ...turnoFijo, dia_semana: e.target.value })}
+            >
+              <option value="">Elegir…</option>
+              {DIAS_SEMANA.map((d) => (
+                <option key={d.valor} value={d.valor}>{d.texto}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Hora de inicio (1 h)
+            <br />
+            <select
+              required
+              value={turnoFijo.hora}
+              onChange={(e) => setTurnoFijo({ ...turnoFijo, hora: e.target.value })}
+            >
+              <option value="">Elegir…</option>
+              {HORAS_TURNO.map((h) => (
+                <option key={h} value={h}>{h}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Semanas
+            <br />
+            <input
+              required
+              type="number"
+              min={1}
+              max={52}
+              value={turnoFijo.semanas}
+              onChange={(e) => setTurnoFijo({ ...turnoFijo, semanas: e.target.value })}
+            />
+          </label>
+          <button type="submit">Crear turno fijo</button>
+        </form>
+      </section>
 
       <div style={{ overflowX: 'auto' }}>
         <table border={1} cellPadding={4} style={{ borderCollapse: 'collapse' }}>
