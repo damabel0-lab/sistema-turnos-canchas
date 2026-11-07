@@ -1,11 +1,26 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
-import { disponibilidad } from './reservas.service.js';
+import { AuthedRequest } from '../../middleware/auth.js';
+import { disponibilidad, crearReserva } from './reservas.service.js';
 
 export const reservasRouter = Router();
 
-const h = (fn: (req: Request, res: Response) => Promise<void>) =>
-  (req: Request, res: Response, next: NextFunction) => fn(req, res).catch(next);
+const h = (fn: (req: AuthedRequest, res: Response) => Promise<void>) =>
+  (req: AuthedRequest, res: Response, next: NextFunction) => fn(req, res).catch(next);
+
+// POST /reservas -> crear reserva (cliente logueado, o admin con usuario_id ajeno)
+reservasRouter.post(
+  '/',
+  h(async (req, res) => {
+    const body = req.body ?? {};
+    // Un cliente siempre reserva a su nombre; el staff puede asignarle a otro
+    // (carga manual por teléfono) pasando usuario_id en el body.
+    const esStaff = req.rol === 'super_admin' || req.rol === 'recepcionista';
+    const usuario_id = esStaff ? (body.usuario_id ?? null) : req.userId;
+
+    res.status(201).json(await crearReserva({ ...body, usuario_id }));
+  }),
+);
 
 // GET /reservas/disponibilidad?cancha_id=1&fecha=2026-11-13
 // -> [{ hora: "08:00", estado: "libre" | "ocupada" | "bloqueada" }, ...]

@@ -44,7 +44,7 @@ function aHoras(hora: string): number {
   return Number(h);
 }
 
-function aMinutos(hora: string): number {
+export function aMinutos(hora: string): number {
   const [h, m] = hora.split(':');
   return Number(h) * 60 + Number(m ?? 0);
 }

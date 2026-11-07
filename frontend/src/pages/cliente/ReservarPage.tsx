@@ -44,6 +44,8 @@ export function ReservarPage() {
   const [horaSel, setHoraSel] = useState<string | null>(null);
   const [cotizacion, setCotizacion] = useState<Cotizacion | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [creando, setCreando] = useState(false);
+  const [confirmada, setConfirmada] = useState<{ id: number } | null>(null);
 
   useEffect(() => {
     api<Deporte[]>('/deportes').then(setDeportes).catch((e) => setError(e.message));
@@ -87,10 +89,54 @@ export function ReservarPage() {
       .catch((e) => setError(e.message));
   }, [canchaId, horaSel, fecha, session?.user.id]);
 
+  async function confirmar() {
+    if (!canchaId || !horaSel || !cotizacion) return;
+    setCreando(true);
+    setError(null);
+    try {
+      const fin = `${String(Number(horaSel.slice(0, 2)) + 1).padStart(2, '0')}:00`;
+      const reserva = await api<{ id: number }>('/reservas', {
+        method: 'POST',
+        body: JSON.stringify({
+          cancha_id: canchaId,
+          fecha,
+          hora_inicio: horaSel,
+          hora_fin: fin,
+          precio_total: cotizacion.precio_total,
+          monto_seña: cotizacion.monto_seña,
+          metodo_pago: cotizacion.monto_seña > 0 ? null : 'efectivo',
+          estado: cotizacion.monto_seña > 0 ? 'pendiente_seña' : 'confirmada',
+        }),
+      });
+      setConfirmada(reserva);
+      setHoras((prev) =>
+        prev.map((h) => (h.hora === horaSel ? { ...h, estado: 'ocupada' as const } : h)),
+      );
+      setHoraSel(null);
+      setCotizacion(null);
+    } catch (e) {
+      // 409 = otro usuario reservó primero: refrescar la grilla
+      setError(e instanceof Error ? e.message : 'No se pudo crear la reserva');
+      if (canchaId) {
+        api<EstadoHora[]>(`/reservas/disponibilidad?cancha_id=${canchaId}&fecha=${fecha}`)
+          .then(setHoras)
+          .catch(() => {});
+      }
+    } finally {
+      setCreando(false);
+    }
+  }
+
   return (
     <main style={{ padding: 16, display: 'grid', gap: 20, maxWidth: 640 }}>
       <h1>Reservar</h1>
       {error && <p style={{ color: 'crimson' }}>{error}</p>}
+      {confirmada && (
+        <p style={{ color: 'green' }}>
+          ✅ Reserva #{confirmada.id} creada. Si tiene seña, abonala en el complejo para
+          confirmarla.
+        </p>
+      )}
 
       {/* Paso 1: disciplina */}
       <section>
@@ -195,8 +241,14 @@ export function ReservarPage() {
             Total: <strong>${cotizacion.precio_total}</strong>
           </p>
           {cotizacion.monto_seña > 0 && <p>Seña a pagar ahora: ${cotizacion.monto_seña}</p>}
-          <button type="button" disabled={!session}>
-            {session ? 'Confirmar reserva' : 'Iniciá sesión para reservar'}
+          <button type="button" disabled={!session || creando} onClick={confirmar}>
+            {creando
+              ? 'Creando…'
+              : session
+                ? cotizacion.monto_seña > 0
+                  ? `Reservar y señar $${cotizacion.monto_seña}`
+                  : 'Confirmar reserva'
+                : 'Iniciá sesión para reservar'}
           </button>
         </section>
       )}
