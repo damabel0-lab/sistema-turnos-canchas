@@ -1,4 +1,6 @@
 import { Route, Routes } from 'react-router-dom';
+import { RutaProtegida } from './components/RutaProtegida';
+import { BarraSesion } from './components/BarraSesion';
 
 // Páginas cliente (públicas)
 import { HomePage } from './pages/cliente/HomePage';
@@ -16,18 +18,50 @@ import { TorneosPage } from './pages/admin/TorneosPage';
 
 export function App() {
   return (
-    <Routes>
-      {/* Cliente */}
-      <Route path="/" element={<HomePage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/reservar" element={<ReservarPage />} />
-      <Route path="/mis-reservas" element={<MisReservasPage />} />
+    <>
+      <BarraSesion />
+      <Routes>
+        {/* Cliente */}
+        <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/reservar" element={<ReservarPage />} />
+        <Route path="/mis-reservas" element={<MisReservasPage />} />
 
-      {/* Admin */}
-      <Route path="/admin/grilla" element={<GrillaPage />} />
-      <Route path="/admin/canchas" element={<CanchasPage />} />
-      <Route path="/admin/caja" element={<CajaPage />} />
-      <Route path="/admin/torneos" element={<TorneosPage />} />
-    </Routes>
+        {/* Admin — requiere sesión + rol staff (super_admin o recepcionista).
+            Caja además es solo super_admin (verificar dentro de la página). */}
+        <Route
+          path="/admin/grilla"
+          element={
+            <RutaProtegida roles={['super_admin', 'recepcionista']}>
+              <GrillaPage />
+            </RutaProtegida>
+          }
+        />
+        <Route
+          path="/admin/canchas"
+          element={
+            <RutaProtegida roles={['super_admin', 'recepcionista']}>
+              <CanchasPage />
+            </RutaProtegida>
+          }
+        />
+        <Route
+          path="/admin/caja"
+          element={
+            <RutaProtegida roles={['super_admin']}>
+              <CajaPage />
+            </RutaProtegida>
+          }
+        />
+        <Route
+          path="/admin/torneos"
+          element={
+            <RutaProtegida roles={['super_admin', 'recepcionista']}>
+              <TorneosPage />
+            </RutaProtegida>
+          }
+        />
+      </Routes>
+    </>
   );
 }
