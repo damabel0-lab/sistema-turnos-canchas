@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
-import { Card, Button, Badge } from '../../components/ui';
-import { Link } from 'react-router-dom';
-import { Clock, Calendar } from 'lucide-react';
+import { Card, Badge } from '../../components/ui';
+import { Calendar } from 'lucide-react';
 
 interface Reserva {
   id: number;
@@ -19,11 +19,11 @@ interface Reserva {
   deporte: string | null;
 }
 
-const estados: Record<string, { texto: string; fondo: string; textoColor: string }> = {
-  pendiente_seña: { texto: '⏳ Pendiente seña', fondo: '#fffbeb', textoColor: '#92400e' },
-  confirmada: { texto: '✅ Confirmada', fondo: '#dcfce7', textoColor: '#166534' },
-  completada: { texto: '🏁 Jugada', fondo: '#e0f2fe', textoColor: '#0369a1' },
-  cancelada: { texto: '✕ Cancelada', fondo: '#f1f5f9', textoColor: '#475569' },
+const estados: Record<string, { texto: string; variante: 'neutral' | 'success' | 'warning' | 'danger' | 'info' }> = {
+  pendiente_seña: { texto: '⏳ Pendiente seña', variante: 'warning' },
+  confirmada: { texto: '✅ Confirmada', variante: 'success' },
+  completada: { texto: '🏁 Jugada', variante: 'info' },
+  cancelada: { texto: '✕ Cancelada', variante: 'neutral' },
 };
 
 export function MisReservasPage() {
@@ -59,115 +59,88 @@ export function MisReservasPage() {
     }
   }
 
+  const Tarjeta = ({ r, cancelarPropia }: { r: Reserva; cancelarPropia: boolean }) => (
+    <div className="tarjeta-plana" style={{ padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+      <div className="icono-circulo" style={{ width: '2.5rem', height: '2.5rem' }}>
+        <Calendar size={18} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 600 }}>{r.cancha}</div>
+        <div className="texto-sec" style={{ fontSize: '0.8rem' }}>
+          {r.deporte} · {r.fecha.slice(5).replace('-', '/')} · {r.hora_inicio.slice(0, 5)}–{r.hora_fin.slice(0, 5)}
+        </div>
+        <div className="texto-sec" style={{ fontSize: '0.8rem' }}>
+          ${r.precio_total}
+          {r.monto_seña > 0 && ` · seña $${r.monto_seña}`}
+        </div>
+      </div>
+      <Badge variant={estados[r.estado]?.variante ?? 'neutral'}>
+        {estados[r.estado]?.texto ?? r.estado}
+      </Badge>
+      {cancelarPropia && r.estado !== 'cancelada' && r.estado !== 'completada' && (
+        <button
+          type="button"
+          disabled={cancelando === r.id}
+          onClick={() => void cancelar(r.id)}
+          className="boton boton-ghost"
+          style={{ color: '#dc2626' }}
+        >
+          {cancelando === r.id ? 'Cancelando…' : 'Cancelar'}
+        </button>
+      )}
+    </div>
+  );
+
   if (!session) {
     return (
-      <main className="min-h-screen bg-gray-50 px-6 py-12">
-        <Card padded={false}>
-          <div className="p-8 text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Mis Reservas</h1>
-            <p className="text-gray-600 mb-6">Iniciá sesión para ver tus reservas.</p>
-            <Button variant="primary" asChild className="px-6 py-2">
-              <a href="/login">Iniciar sesión</a>
-            </Button>
-          </div>
-        </Card>
+      <main className="pantalla">
+        <div className="contenedor">
+          <Card className="caja-vacia">
+            <h1 className="titulo">Mis Reservas</h1>
+            <p className="texto-sec">Iniciá sesión para ver tus reservas.</p>
+            <Link to="/login" className="boton boton-primario" style={{ marginTop: '0.75rem' }}>
+              Iniciar sesión
+            </Link>
+          </Card>
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 px-6 py-12">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 mb-8">Mis Reservas</h1>
-        {error && (
-          <Card padded={false}>
-            <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
-          </Card>
-        )}
+    <main className="pantalla">
+      <div className="contenedor">
+        <h1 className="titulo">Mis Reservas</h1>
+        {error && <p style={{ color: '#dc2626' }}>{error}</p>}
 
-        <section className="mb-8">
-          <h2 className="font-bold text-gray-900 mb-4">Próximos turnos</h2>
+        <section style={{ marginBottom: '1.5rem' }}>
+          <h2 className="titulo" style={{ fontSize: '1.1rem' }}>Próximos turnos</h2>
           {!datos || datos.proximas.length === 0 ? (
-            <Card padded={false}>
-              <div className="p-8 text-center text-gray-600">
-                No tenés turnos próximos. <Button variant="ghost" asChild className="mt-4 inline-block">
-                  <Link to="/reservar">Reservar uno</Link>
-                </Button>
-              </div>
+            <Card className="caja-vacia">
+              <p className="texto-sec">No tenés turnos próximos.</p>
+              <Link to="/reservar" className="boton boton-primario" style={{ marginTop: '0.75rem' }}>
+                Reservar uno
+              </Link>
             </Card>
           ) : (
-            <div className="space-y-3">
+            <div className="stack">
               {datos.proximas.map((r) => (
-                <Card key={r.id} padded={false}>
-                  <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
-                        <Calendar size={20} />
-                      </div>
-                      <div>
-                        <div className="font-semibold text-gray-900">{r.cancha}</div>
-                        <div className="text-sm text-gray-500">
-                          {r.deporte} · {r.fecha.slice(5).replace('-', '/')}
-                        </div>
-                        <div className="text-sm text-gray-500">{r.hora_inicio.slice(0, 5)}–{r.hora_fin.slice(0, 5)}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={r.estado === 'confirmada' ? 'success' : r.estado === 'cancelada' ? 'danger' : 'warning'} className="text-xs">
-                        {estados[r.estado]?.texto ?? r.estado}
-                      </Badge>
-                      <span className="text-sm font-medium text-gray-900">${r.precio_total}</span>
-                      {r.estado === 'pendiente_seña' || r.estado === 'confirmada' ? (
-                        <button
-                          type="button"
-                          disabled={cancelando === r.id}
-                          onClick={() => void cancelar(r.id)}
-                          className="text-sm text-red-600 hover:text-red-800 font-medium"
-                        >
-                          {cancelando === r.id ? 'Cancelando…' : 'Cancelar'}
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                </Card>
+                <Tarjeta key={r.id} r={r} cancelarPropia />
               ))}
             </div>
           )}
         </section>
 
         <section>
-          <h2 className="font-bold text-gray-900 mb-4">Historial</h2>
+          <h2 className="titulo" style={{ fontSize: '1.1rem' }}>Historial</h2>
           {!datos || datos.historial.length === 0 ? (
-            <Card padded={false}>
-              <div className="p-8 text-center text-gray-600">Todavía no jugaste nada.</div>
+            <Card className="caja-vacia">
+              <p className="texto-sec">Todavía no jugaste nada.</p>
             </Card>
           ) : (
-            <div className="space-y-3">
+            <div className="stack">
               {datos.historial.map((r) => (
-                <Card key={r.id} padded={false}>
-                  <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-gray-100 text-gray-600 flex items-center justify-center">
-                        <Clock size={20} />
-                      </div>
-                      <div>
-                        <div className="font-semibold text-gray-900">{r.cancha}</div>
-                        <div className="text-sm text-gray-500">
-                          {r.deporte} · {r.fecha.slice(5).replace('-', '/')}
-                        </div>
-                        <div className="text-sm text-gray-500">{r.hora_inicio.slice(0, 5)}–{r.hora_fin.slice(0, 5)}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="danger" className="text-xs">
-                        {estados[r.estado]?.texto ?? r.estado}
-                      </Badge>
-                      <span className="text-sm font-medium text-gray-900">${r.precio_total}</span>
-                    </div>
-                  </div>
-                </Card>
+                <Tarjeta key={r.id} r={r} cancelarPropia={false} />
               ))}
             </div>
           )}

@@ -3,20 +3,12 @@ import type { ReactNode } from 'react';
 interface CardProps {
   children: ReactNode;
   className?: string;
-  padded?: boolean;
+  /** Si es true, la tarjeta no agrega contenedor interno (usás tu propio div con padding) */
+  plano?: boolean;
 }
 
-/** Tarjeta base estilo moderno (uiverse.io): fondo blanco, sombra suave, bordes redondeados */
-export function Card({ children, className, padded = true }: CardProps) {
-  return (
-    <div
-      className={[
-        'relative rounded-2xl bg-white border border-gray-100 shadow-sm',
-        padded ? 'p-6' : 'p-0',
-        className,
-      ].filter(Boolean).join(' ')}
-    >
-      {children}
-    </div>
-  );
+/** Tarjeta estilo moderno (uiverse.io): fondo blanco, bordes redondeados, sombra sutil */
+export function Card({ children, className, plano = false }: CardProps) {
+  const clase = `${plano ? 'tarjeta-plana' : 'tarjeta'}${className ? ' ' + className : ''}`;
+  return <div className={clase}>{children}</div>;
 }

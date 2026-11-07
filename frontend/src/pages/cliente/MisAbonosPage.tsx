@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
-import { Card, Button, Badge } from '../../components/ui';
+import { Card, Badge } from '../../components/ui';
 import { CreditCard, RefreshCw } from 'lucide-react';
 
 interface Abono {
@@ -43,70 +43,62 @@ export function MisAbonosPage() {
 
   if (!session) {
     return (
-      <main className="min-h-screen bg-gray-50 px-6 py-12">
-        <Card padded={false}>
-          <div className="p-8 text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Mis Abonos</h1>
-            <p className="text-gray-600 mb-6">Iniciá sesión para ver tus abonos.</p>
-          </div>
-        </Card>
+      <main className="pantalla">
+        <div className="contenedor">
+          <Card className="caja-vacia">
+            <h1 className="titulo">Mis Abonos</h1>
+            <p className="texto-sec">Iniciá sesión para ver tus abonos.</p>
+          </Card>
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 px-6 py-12">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Mis Abonos / Pases</h1>
-          <Button variant="outline" onClick={() => void cargar()} className="px-4 py-2">
-            <RefreshCw className="w-4 h-4 mr-2" />
+    <main className="pantalla">
+      <div className="contenedor">
+        <div className="fila-entre" style={{ marginBottom: '1rem' }}>
+          <h1 className="titulo">Mis Abonos / Pases</h1>
+          <button className="boton boton-outline" onClick={() => void cargar()}>
+            <RefreshCw size={16} />
             Actualizar
-          </Button>
+          </button>
         </div>
-        {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
+        {error && <p style={{ color: '#dc2626' }}>{error}</p>}
+
         {abonos.length === 0 ? (
-          <Card padded={false}>
-            <div className="p-8 text-center">
-              <div className="w-16 h-16 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-4">
-                <CreditCard size={32} />
-              </div>
-              <h3 className="font-bold text-gray-900 mb-2">No tenés abonos activos</h3>
-              <p className="text-gray-600 mb-4">
-                Comprá un abono de gimnasio o pileta en el complejo.
-              </p>
+          <Card className="caja-vacia">
+            <div className="icono-circulo" style={{ margin: '0 auto 0.75rem' }}>
+              <CreditCard size={28} />
             </div>
+            <h3 style={{ margin: '0 0 0.25rem' }}>No tenés abonos activos</h3>
+            <p className="texto-sec">Comprá un abono de gimnasio o pileta en el complejo.</p>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grilla-tarjetas">
             {abonos.map((a) => {
               const v = vencido(a.fecha_vencimiento);
               const estado = !a.activo || v ? 'Vencido' : a.clases_disponibles > 0 ? 'Activo' : 'Sin clases';
+              const variante = estado === 'Activo' ? 'success' : estado === 'Sin clases' ? 'warning' : 'danger';
               return (
-                <Card key={a.id} padded={false}>
-                  <div className="p-5">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="font-bold text-gray-900">{nombresDisciplina[a.disciplina_id ?? 0] ?? '—'}</h3>
-                        <p className="text-sm text-gray-500">{a.disciplina_id ? nombresDisciplina[a.disciplina_id] : '—'}</p>
+                <Card key={a.id}>
+                  <div className="fila-entre" style={{ marginBottom: '0.5rem' }}>
+                    <div>
+                      <div style={{ fontWeight: 700 }}>{nombresDisciplina[a.disciplina_id ?? 0] ?? '—'}</div>
+                      <div className="texto-sec" style={{ fontSize: '0.8rem' }}>
+                        Vence: {a.fecha_vencimiento}
                       </div>
-                      <Badge variant={estado === 'Activo' ? 'success' : estado === 'Sin clases' ? 'warning' : 'danger'} className="text-xs">
-                        {estado}
-                      </Badge>
                     </div>
-                    <div className="mt-4 grid grid-cols-3 gap-3">
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase">Clases totales</p>
-                        <p className="font-bold text-gray-900">{a.clases_totales}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase">Disponibles</p>
-                        <p className="font-bold text-gray-900">{a.clases_disponibles}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase">Vencimiento</p>
-                        <p className="font-bold text-gray-900 text-sm">{a.fecha_vencimiento}</p>
-                      </div>
+                    <Badge variant={variante}>{estado}</Badge>
+                  </div>
+                  <div className="fila" style={{ gap: '1.5rem', marginTop: '0.5rem' }}>
+                    <div>
+                      <div className="texto-sec" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Clases totales</div>
+                      <div style={{ fontWeight: 700 }}>{a.clases_totales}</div>
+                    </div>
+                    <div>
+                      <div className="texto-sec" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Disponibles</div>
+                      <div style={{ fontWeight: 700 }}>{a.clases_disponibles}</div>
                     </div>
                   </div>
                 </Card>

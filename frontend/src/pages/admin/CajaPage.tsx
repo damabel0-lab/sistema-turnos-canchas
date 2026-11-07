@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api } from '../../lib/api';
-import { Card, Button, Input } from '../../components/ui';
-import { RefreshCw, List, DollarSign } from 'lucide-react';
+import { Card } from '../../components/ui';
+import { DollarSign, List, RefreshCw } from 'lucide-react';
 
 interface Movimiento {
   id: number;
@@ -21,17 +21,15 @@ interface Resumen {
   movimientos: Movimiento[];
 }
 
-type Periodo = 'dia' | 'semana' | 'mes';
-
 const hoy = () => new Date().toISOString().slice(0, 10);
-const etiquetas: Record<Periodo, string> = { dia: 'Día', semana: 'Semana', mes: 'Mes' };
+const etiquetasPeriodo: Record<string, string> = { dia: 'Día', semana: 'Semana', mes: 'Mes' };
 
 export function CajaPage() {
   const [fecha] = useState(hoy());
+  const [periodo] = useState<'dia' | 'semana' | 'mes'>('dia');
   const [datos, setDatos] = useState<Resumen | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
-  const periodo: Periodo = 'dia';
 
   const cargar = useCallback(async () => {
     try {
@@ -40,7 +38,7 @@ export function CajaPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error cargando caja');
     }
-  }, [fecha]);
+  }, [fecha, periodo]);
 
   useEffect(() => {
     void cargar();
@@ -68,166 +66,119 @@ export function CajaPage() {
     }
   }
 
+  const etiquetasOrigenOrdenadas = datos?.por_origen.slice().sort((a, b) => b.total - a.total) ?? [];
+
   return (
-    <main className="min-h-screen bg-gray-50 px-6 py-12">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <DollarSign className="w-5 h-5" />
-            Caja y finanzas
-          </h1>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => void cargar()} className="px-4 py-2">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Actualizar
-            </Button>
-          </div>
+    <main className="pantalla">
+      <div className="contenedor-ancho">
+        <div className="fila-entre" style={{ marginBottom: '0.75rem' }}>
+          <h1 className="titulo"><span className="fila"><DollarSign size={20} /> Caja y finanzas</span></h1>
+          <button className="boton boton-outline" onClick={() => void cargar()}>
+            <RefreshCw size={16} /> Actualizar
+          </button>
         </div>
-        {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
-        {mensaje && <p className="text-emerald-600 text-sm mb-4">{mensaje}</p>}
+        {error && <p style={{ color: '#dc2626' }}>{error}</p>}
+        {mensaje && <p style={{ color: '#10b981' }}>{mensaje}</p>}
 
         {datos && (
           <>
             {/* Tarjetas de totales */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              <Card padded={false}>
-                <div className="p-6">
-                  <div className="text-xs font-semibold text-gray-500 uppercase mb-1">Ingresos ({etiquetas[periodo].toLowerCase()})</div>
-                  <div className="text-2xl font-bold text-emerald-600">${datos.ingresos}</div>
-                </div>
+            <div className="grilla-tarjetas" style={{ marginBottom: '1rem' }}>
+              <Card>
+                <div className="texto-sec" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Ingresos ({etiquetasPeriodo[periodo].toLowerCase()})</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#10b981' }}>${datos.ingresos}</div>
               </Card>
-              <Card padded={false}>
-                <div className="p-6">
-                  <div className="text-xs font-semibold text-gray-500 uppercase mb-1">Egresos</div>
-                  <div className="text-2xl font-bold text-red-600">${datos.egresos}</div>
-                </div>
+              <Card>
+                <div className="texto-sec" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Egresos</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ef4444' }}>${datos.egresos}</div>
               </Card>
-              <Card padded={false}>
-                <div className="p-6">
-                  <div className="text-xs font-semibold text-gray-500 uppercase mb-1">Saldo</div>
-                  <div className="text-2xl font-bold text-gray-900">${datos.saldo}</div>
-                </div>
+              <Card>
+                <div className="texto-sec" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Saldo</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>${datos.saldo}</div>
               </Card>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <Card padded={false}>
-                <div className="p-6">
-                  <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                    <List className="w-4 h-4" />
-                    Por método de pago
-                  </h3>
-                  {Object.keys(datos.por_metodo_pago).length === 0 ? (
-                    <p className="text-gray-500 text-sm">Sin movimientos.</p>
-                  ) : (
-                    <div className="space-y-2">
+            <div className="grilla-tarjetas" style={{ marginBottom: '1rem' }}>
+              <Card>
+                <h3 className="titulo" style={{ fontSize: '0.95rem' }}><span className="fila"><List size={16} /> Por método de pago</span></h3>
+                {Object.keys(datos.por_metodo_pago).length === 0 ? (
+                  <p className="texto-sec">Sin movimientos.</p>
+                ) : (
+                  <table className="tabla">
+                    <tbody>
                       {Object.entries(datos.por_metodo_pago).map(([metodo, total]) => (
-                        <div key={metodo} className="flex justify-between text-sm">
-                          <span className="text-gray-600">{metodo}</span>
-                          <span className="font-medium">${total}</span>
-                        </div>
+                        <tr key={metodo}>
+                          <td>{metodo}</td>
+                          <td style={{ textAlign: 'right' }}>${total}</td>
+                        </tr>
                       ))}
-                    </div>
-                  )}
-                </div>
+                    </tbody>
+                  </table>
+                )}
               </Card>
-              <Card padded={false}>
-                <div className="p-6">
-                  <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                    <List className="w-4 h-4" />
-                    Por origen
-                  </h3>
-                  {datos.por_origen.length === 0 ? (
-                    <p className="text-gray-500 text-sm">Sin movimientos.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {datos.por_origen.map((o) => (
-                        <div key={o.origen} className="flex justify-between text-sm">
-                          <span className="text-gray-600">{o.origen}</span>
-                          <span className="font-medium">${o.total}</span>
-                        </div>
+              <Card>
+                <h3 className="titulo" style={{ fontSize: '0.95rem' }}><span className="fila"><List size={16} /> Por origen</span></h3>
+                {etiquetasOrigenOrdenadas.length === 0 ? (
+                  <p className="texto-sec">Sin movimientos.</p>
+                ) : (
+                  <table className="tabla">
+                    <tbody>
+                      {etiquetasOrigenOrdenadas.map((o) => (
+                        <tr key={o.origen}>
+                          <td>{o.origen} ({o.movimientos})</td>
+                          <td style={{ textAlign: 'right' }}>${o.total}</td>
+                        </tr>
                       ))}
-                    </div>
-                  )}
-                </div>
+                    </tbody>
+                  </table>
+                )}
               </Card>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              <Card padded={false}>
-                <div className="p-6">
-                  <h3 className="font-bold text-gray-900 mb-3">Movimientos</h3>
-                  {datos.movimientos.length === 0 ? (
-                    <p className="text-gray-500 text-sm">Sin movimientos en este período.</p>
-                  ) : (
-                    <div className="space-y-2 max-h-96 overflow-y-auto">
-                      {datos.movimientos.map((m) => (
-                        <div key={m.id} className="flex justify-between items-center py-2 border-b border-gray-50/50">
-                          <div>
-                            <div className="text-sm text-gray-900">{m.descripcion}</div>
-                            <div className="text-xs text-gray-500">
-                              {new Date(m.fecha_hora).toLocaleString('es-AR', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-500">{m.metodo_pago}</span>
-                            <span
-                              className={`text-sm font-medium ${
-                                m.tipo_movimiento === 'ingreso' ? 'text-emerald-600' : 'text-red-600'
-                              }`}
-                            >
-                              {m.tipo_movimiento === 'ingreso' ? '+' : '−'}${m.monto}
-                            </span>
-                          </div>
+            <Card>
+              <h3 className="titulo" style={{ fontSize: '0.95rem' }}>Movimientos</h3>
+              {datos.movimientos.length === 0 ? (
+                <p className="texto-sec">Sin movimientos en este período.</p>
+              ) : (
+                <div className="stack" style={{ maxHeight: '22rem', overflowY: 'auto' }}>
+                  {datos.movimientos.map((m) => (
+                    <div key={m.id} className="fila-entre" style={{ padding: '0.4rem 0', borderBottom: '1px solid #f3f4f6' }}>
+                      <div>
+                        <div style={{ fontSize: '0.85rem' }}>{m.descripcion}</div>
+                        <div className="texto-sec" style={{ fontSize: '0.75rem' }}>
+                          {new Date(m.fecha_hora).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                         </div>
-                      ))}
+                      </div>
+                      <div className="fila" style={{ gap: '0.5rem' }}>
+                        <span className="texto-sec" style={{ fontSize: '0.75rem' }}>{m.metodo_pago}</span>
+                        <span style={{ fontWeight: 600, color: m.tipo_movimiento === 'ingreso' ? '#10b981' : '#ef4444' }}>
+                          {m.tipo_movimiento === 'ingreso' ? '+' : '−'}${m.monto}
+                        </span>
+                      </div>
                     </div>
-                  )}
+                  ))}
                 </div>
-              </Card>
+              )}
+            </Card>
 
-              <Card padded={false}>
-                <div className="p-6">
-                  <h3 className="font-bold text-gray-900 mb-3">Registrar egreso</h3>
-                  <form onSubmit={registrarEgreso} className="space-y-3">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex flex-col">
-                        <label className="text-xs font-medium text-gray-700 mb-1">Monto ($)</label>
-                        <Input name="monto" type="number" min={1} required />
-                      </div>
-                      <div className="flex flex-col">
-                        <label className="text-xs font-medium text-gray-700 mb-1">Método</label>
-                        <select
-                          name="metodo"
-                          className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        >
-                          <option value="efectivo">Efectivo</option>
-                          <option value="transferencia">Transferencia</option>
-                          <option value="mercado_pago">Mercado Pago</option>
-                          <option value="tarjeta">Tarjeta</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="flex flex-col">
-                      <label className="text-xs font-medium text-gray-700 mb-1">Descripción</label>
-                      <Input
-                        name="descripcion"
-                        required
-                        placeholder="Ej: Pago al encargado"
-                      />
-                    </div>
-                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors">
-                      Registrar egreso
-                    </button>
-                  </form>
+            <Card>
+              <h3 className="titulo" style={{ fontSize: '0.95rem' }}>Registrar egreso</h3>
+              <form onSubmit={registrarEgreso} className="stack">
+                <label className="label">Monto ($)<input name="monto" type="number" min={1} required className="input" /></label>
+                <label className="label">Método
+                  <select name="metodo" className="input">
+                    <option value="efectivo">Efectivo</option>
+                    <option value="transferencia">Transferencia</option>
+                    <option value="mercado_pago">Mercado Pago</option>
+                    <option value="tarjeta">Tarjeta</option>
+                  </select>
+                </label>
+                <label className="label">Descripción<input name="descripcion" required placeholder="Ej: Pago al encargado" className="input" /></label>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button type="submit" className="boton boton-primario">Registrar egreso</button>
                 </div>
-              </Card>
-            </div>
+              </form>
+            </Card>
           </>
         )}
       </div>

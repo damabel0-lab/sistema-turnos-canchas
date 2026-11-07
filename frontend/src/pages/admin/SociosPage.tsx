@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api } from '../../lib/api';
-import { Card, Button } from '../../components/ui';
-import { Users } from 'lucide-react';
+import { Card } from '../../components/ui';
+import { Users, RefreshCw } from 'lucide-react';
 
 interface Socio {
   id: string;
@@ -53,7 +53,7 @@ export function SociosPage() {
   }
 
   async function darDeBaja(id: string) {
-    if (!confirm('¿Quedar sin el beneficio de socio?')) return;
+    if (!confirm('¿Dar de baja este socio?')) return;
     try {
       await api(`/socios/${id}`, { method: 'DELETE' });
       setMensaje('Socio dado de baja ✅');
@@ -64,100 +64,52 @@ export function SociosPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 px-6 py-12">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Users className="w-5 h-5" />
-            Socios
-          </h1>
-          <Button variant="outline" onClick={() => void cargar()} className="px-4 py-2">
-            Actualizar
-          </Button>
+    <main className="pantalla">
+      <div className="contenedor">
+        <div className="fila-entre" style={{ marginBottom: '1rem' }}>
+          <h1 className="titulo"><span className="fila"><Users size={20} /> Socios</span></h1>
+          <button className="boton boton-outline" onClick={() => void cargar()}>
+            <RefreshCw size={16} /> Actualizar
+          </button>
         </div>
-        {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
-        {mensaje && <p className="text-emerald-600 text-sm mb-4">{mensaje}</p>}
+        {error && <p style={{ color: '#dc2626' }}>{error}</p>}
+        {mensaje && <p style={{ color: '#10b981' }}>{mensaje}</p>}
 
-        <section className="mb-8">
-          <h2 className="font-bold text-gray-900 mb-4">Dar de alta socio</h2>
-          <Card padded={false}>
-            <div className="p-6">
-              <form onSubmit={darDeAlta} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="flex flex-col">
-                  <label className="text-xs font-medium text-gray-700 mb-1">Nombre</label>
-                  <input
-                    required
-                    value={nuevo.nombre}
-                    onChange={(e) => setNuevo({ ...nuevo, nombre: e.target.value })}
-                    className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <label className="text-xs font-medium text-gray-700 mb-1">Apellido</label>
-                  <input
-                    required
-                    value={nuevo.apellido}
-                    onChange={(e) => setNuevo({ ...nuevo, apellido: e.target.value })}
-                    className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <label className="text-xs font-medium text-gray-700 mb-1">Teléfono</label>
-                  <input
-                    required
-                    value={nuevo.telefono}
-                    onChange={(e) => setNuevo({ ...nuevo, telefono: e.target.value })}
-                    className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-                <div className="flex flex-col items-end">
-                  <button type="submit" className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors">
-                    Dar de alta
-                  </button>
-                </div>
-              </form>
+        <h2 className="titulo" style={{ fontSize: '1.1rem' }}>Dar de alta socio</h2>
+        <Card>
+          <form onSubmit={darDeAlta} className="stack">
+            <label className="label">Nombre<input required value={nuevo.nombre} onChange={(e) => setNuevo({ ...nuevo, nombre: e.target.value })} className="input" /></label>
+            <label className="label">Apellido<input required value={nuevo.apellido} onChange={(e) => setNuevo({ ...nuevo, apellido: e.target.value })} className="input" /></label>
+            <label className="label">Teléfono<input required value={nuevo.telefono} onChange={(e) => setNuevo({ ...nuevo, telefono: e.target.value })} className="input" /></label>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="submit" className="boton boton-primario">Dar de alta</button>
             </div>
-          </Card>
-        </section>
+          </form>
+        </Card>
 
-        <section>
-          <h2 className="font-bold text-gray-900 mb-4">Directorio de socios</h2>
-          {socios.length === 0 ? (
-            <Card padded={false}>
-              <div className="p-8 text-center text-gray-600">
-                No hay socios todavía.
-              </div>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {socios.map((s) => (
-                <Card key={s.id} padded={false}>
-                  <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
-                        <Users className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="font-semibold text-gray-900">{s.nombre} {s.apellido}</div>
-                        <div className="text-sm text-gray-500">{s.telefono ?? '—'}</div>
-                        <div className="text-xs text-gray-400">{s.creado_en?.slice(0, 10) ?? '—'}</div>
-                      </div>
-                    </div>
-                    <div>
-                      <button
-                        type="button"
-                        onClick={() => void darDeBaja(s.id)}
-                        className="text-sm text-red-600 hover:text-red-800 font-medium"
-                      >
-                        Baja
-                      </button>
-                    </div>
+        <h2 className="titulo" style={{ fontSize: '1.1rem', marginTop: '1.5rem' }}>Directorio de socios</h2>
+        {socios.length === 0 ? (
+          <Card className="caja-vacia"><p className="texto-sec">No hay socios todavía.</p></Card>
+        ) : (
+          <div className="stack">
+            {socios.map((s) => (
+              <Card key={s.id} className="fila-entre">
+                <div className="fila" style={{ gap: '0.75rem' }}>
+                  <div className="icono-circulo" style={{ width: '2.5rem', height: '2.5rem' }}>
+                    <Users size={18} />
                   </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </section>
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{s.nombre} {s.apellido}</div>
+                    <div className="texto-sec" style={{ fontSize: '0.85rem' }}>{s.telefono ?? '—'}</div>
+                  </div>
+                </div>
+                <button type="button" onClick={() => void darDeBaja(s.id)} className="boton boton-ghost" style={{ color: '#dc2626' }}>
+                  Baja
+                </button>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </main>
   );

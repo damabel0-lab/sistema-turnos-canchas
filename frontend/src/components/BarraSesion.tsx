@@ -1,29 +1,34 @@
 import { useAuth } from '../hooks/useAuth';
+import { Link } from 'react-router-dom';
 
-/** Barra simple con sesión activa y cierre. Mejorar con estilos después. */
+/** Barra de navegación superior */
 export function BarraSesion() {
   const { session, perfil, salir } = useAuth();
 
   if (!session) {
     return (
-      <nav style={{ display: 'flex', gap: 12, padding: 12, borderBottom: '1px solid #ddd' }}>
-        <a href="/">Inicio</a>
-        <a href="/login">Iniciar sesión</a>
+      <nav className="nav-barra">
+        <Link to="/">Inicio</Link>
+        <Link to="/login">Iniciar sesión</Link>
       </nav>
     );
   }
 
   return (
-    <nav style={{ display: 'flex', gap: 12, padding: 12, borderBottom: '1px solid #ddd', alignItems: 'center' }}>
-      <a href="/">Inicio</a>
-      <a href="/mis-reservas">Mis reservas</a>
+    <nav className="nav-barra">
+      <Link to="/">Inicio</Link>
+      <Link to="/mis-reservas">Mis reservas</Link>
       {perfil && (perfil.rol === 'super_admin' || perfil.rol === 'recepcionista') && (
-        <a href="/admin/grilla">Panel</a>
+        <Link to="/admin/grilla">Panel</Link>
       )}
-      <span style={{ marginLeft: 'auto' }}>
-        {perfil ? `${perfil.nombre} ${perfil.apellido} (${perfil.rol})` : session.user.email}
-      </span>
-      <button type="button" onClick={() => salir()}>Salir</button>
+      <div className="nav-derecha">
+        <span className="texto-sec">
+          {perfil ? `${perfil.nombre} ${perfil.apellido}` : session.user.email}
+        </span>
+        <button className="boton boton-ghost" onClick={() => salir()}>
+          Salir
+        </button>
+      </div>
     </nav>
   );
 }

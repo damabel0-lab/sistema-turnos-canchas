@@ -1,9 +1,300 @@
-@import 'tailwindcss';
-
 :root {
   font-family: system-ui, -apple-system, sans-serif;
+  --color-fondo: #f9fafb;
+  --color-tarjeta: #ffffff;
+  --color-borde: #e5e7eb;
+  --color-texto: #111827;
+  --color-texto-sec: #6b7280;
+  --color-primario: #4f46e5;
+  --color-primario-hover: #4338ca;
+  --color-exito: #10b981;
+  --color-advertencia: #f59e0b;
+  --color-peligro: #ef4444;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
+  background: var(--color-fondo);
+  color: var(--color-texto);
+}
+
+/* ===== LAYOUT ===== */
+.pantalla {
+  min-height: 100vh;
+  padding: 3rem 1.5rem;
+}
+
+.contenedor {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.contenedor-estrecho {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.contenedor-ancho {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* ===== TARJETA (estilo uiverse.io) ===== */
+.tarjeta {
+  background: var(--color-tarjeta);
+  border: 1px solid var(--color-borde);
+  border-radius: 1.25rem;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.04);
+  padding: 1.5rem;
+}
+
+.tarjeta-plana {
+  background: var(--color-tarjeta);
+  border: 1px solid var(--color-borde);
+  border-radius: 1.25rem;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+}
+
+/* ===== TEXTO ===== */
+.titulo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  color: var(--color-texto);
+}
+
+.subtitulo {
+  font-size: 1rem;
+  color: var(--color-texto-sec);
+  margin: 0 0 1.25rem;
+}
+
+.texto-sec {
+  color: var(--color-texto-sec);
+  font-size: 0.9rem;
+}
+
+/* ===== BOTONES ===== */
+.boton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  border-radius: 0.75rem;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
+}
+
+.boton:active {
+  transform: scale(0.97);
+}
+
+.boton-primario {
+  background: var(--color-primario);
+  color: #ffffff;
+}
+
+.boton-primario:hover {
+  background: var(--color-primario-hover);
+}
+
+.boton-secundario {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.boton-secundario:hover {
+  background: #e5e7eb;
+}
+
+.boton-ghost {
+  background: transparent;
+  color: var(--color-primario);
+}
+
+.boton-ghost:hover {
+  background: #eef2ff;
+}
+
+.boton-outline {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  color: #374151;
+}
+
+.boton-outline:hover {
+  background: #f9fafb;
+}
+
+.boton-danger {
+  background: var(--color-peligro);
+  color: #ffffff;
+}
+
+.boton-danger:hover {
+  background: #dc2626;
+}
+
+.boton-block {
+  width: 100%;
+  justify-content: center;
+}
+
+/* ===== BADGES ===== */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-exito {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.badge-advertencia {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge-peligro {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.badge-info {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.badge-neutro {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+/* ===== INPUTS ===== */
+.input {
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  border-radius: 0.75rem;
+  padding: 0.55rem 0.8rem;
+  font-size: 0.9rem;
+  width: 100%;
+}
+
+.input:focus {
+  outline: 2px solid var(--color-primario);
+  border-color: transparent;
+  background: #ffffff;
+}
+
+.label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.35rem;
+}
+
+/* ===== GRILLA ===== */
+.grilla-tarjetas {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.fila {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.fila-entre {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.stack {
+  display: grid;
+  gap: 0.75rem;
+}
+
+/* ===== NAVEGACIÓN ===== */
+.nav-barra {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: #ffffff;
+  border-bottom: 1px solid var(--color-borde);
+}
+
+.nav-barra a {
+  color: #374151;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.nav-barra a:hover {
+  color: var(--color-primario);
+}
+
+.nav-derecha {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* ===== OTROS ===== */
+.caja-vacia {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--color-texto-sec);
+}
+
+.icono-circulo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 9999px;
+  background: #eef2ff;
+  color: var(--color-primario);
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.tabla th,
+.tabla td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.tabla th {
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  color: var(--color-texto-sec);
 }

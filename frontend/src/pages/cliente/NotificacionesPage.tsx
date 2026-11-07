@@ -43,13 +43,13 @@ export function NotificacionesPage() {
 
   if (!session) {
     return (
-      <main className="min-h-screen bg-gray-50 px-6 py-12">
-        <Card padded={false}>
-          <div className="p-8 text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Notificaciones</h1>
-            <p className="text-gray-600 mb-6">Iniciá sesión para ver tus notificaciones.</p>
-          </div>
-        </Card>
+      <main className="pantalla">
+        <div className="contenedor">
+          <Card className="caja-vacia">
+            <h1 className="titulo">Notificaciones</h1>
+            <p className="texto-sec">Iniciá sesión para ver tus notificaciones.</p>
+          </Card>
+        </div>
       </main>
     );
   }
@@ -57,63 +57,49 @@ export function NotificacionesPage() {
   const noLeidas = notificaciones.filter((n) => !n.leida);
 
   return (
-    <main className="min-h-screen bg-gray-50 px-6 py-12">
-      <div className="max-w-2xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">
-            <Bell className="w-5 h-5 mr-2" />
-            Notificaciones
+    <main className="pantalla">
+      <div className="contenedor-estrecho">
+        <div className="fila-entre" style={{ marginBottom: '1rem' }}>
+          <h1 className="titulo" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <Bell size={22} /> Notificaciones
           </h1>
           {noLeidas.length > 0 && (
-            <span className="px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold">
-              {noLeidas.length} nueva{noLeidas.length > 1 ? 's' : ''}
-            </span>
+            <span className="badge badge-peligro">{noLeidas.length} nueva{noLeidas.length > 1 ? 's' : ''}</span>
           )}
         </div>
-        {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
+        {error && <p style={{ color: '#dc2626' }}>{error}</p>}
 
         {notificaciones.length === 0 ? (
-          <Card padded={false}>
-            <div className="p-8 text-center">
-              <div className="w-16 h-16 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center mx-auto mb-4">
-                <Clock size={32} />
-              </div>
-              <h3 className="font-bold text-gray-900 mb-2">No tenés notificaciones todavía</h3>
-              <p className="text-gray-600">
-                Te avisaremos cuando tengas turnos próximos o suspensiones.
-              </p>
+          <Card className="caja-vacia">
+            <div className="icono-circulo" style={{ margin: '0 auto 0.75rem' }}>
+              <Clock size={28} />
             </div>
+            <h3 style={{ margin: '0 0 0.25rem' }}>No tenés notificaciones todavía</h3>
+            <p className="texto-sec">Te avisaremos cuando tengas turnos próximos o suspensiones.</p>
           </Card>
         ) : (
-          <div className="space-y-3">
+          <div className="stack">
             {notificaciones.map((n) => (
-              <Card
+              <div
                 key={n.id}
-                padded={false}
-                className={!n.leida ? 'border-indigo-200 bg-indigo-50' : undefined}
+                onClick={() => void leer(n.id)}
+                className="tarjeta-plana"
+                style={{
+                  cursor: 'pointer',
+                  padding: '0.75rem 1rem',
+                  background: n.leida ? '#ffffff' : '#eef2ff',
+                  border: n.leida ? '1px solid var(--color-borde)' : '1px solid #c7d2fe',
+                }}
               >
-                <div
-                  className="p-4 cursor-pointer"
-                  onClick={() => void leer(n.id)}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-bold text-gray-900">{n.titulo}</h3>
-                        {!n.leida && (
-                          <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 text-xs">
-                            Nueva
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-sm text-gray-600">{n.cuerpo}</div>
-                    </div>
-                    <div className="text-xs text-gray-400">
-                      {new Date(n.creada_en).toLocaleString('es-AR')}
-                    </div>
-                  </div>
+                <div className="fila-entre">
+                  <div style={{ fontWeight: 700 }}>{n.titulo}</div>
+                  {!n.leida && <span className="badge badge-info">Nueva</span>}
                 </div>
-              </Card>
+                <div className="texto-sec" style={{ marginTop: '0.25rem' }}>{n.cuerpo}</div>
+                <div className="texto-sec" style={{ fontSize: '0.75rem', marginTop: '0.4rem' }}>
+                  {new Date(n.creada_en).toLocaleString('es-AR')}
+                </div>
+              </div>
             ))}
           </div>
         )}
