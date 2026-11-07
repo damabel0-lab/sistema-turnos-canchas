@@ -9,12 +9,21 @@ import {
   listarCanchas,
   listarTarifas,
 } from './canchas.service.js';
+import { cotizar } from '../../services/tarifas/cotizador.js';
 
 export const canchasRouter = Router();
 
 /** Envuelve los handlers async para mandar las excepciones al errorHandler */
 const h = (fn: (req: Request, res: Response) => Promise<void>) =>
   (req: Request, res: Response, next: NextFunction) => fn(req, res).catch(next);
+
+// POST /canchas/cotizar -> precio final de un turno (cualquier rol logueado)
+canchasRouter.post(
+  '/cotizar',
+  h(async (req, res) => {
+    res.json(await cotizar(req.body));
+  }),
+);
 
 // GET /canchas -> listado (con deporte y activa)
 canchasRouter.get(
