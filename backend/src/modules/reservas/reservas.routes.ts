@@ -8,6 +8,7 @@ import {
   cambiarEstadoReserva,
   reservasDelUsuario,
   cancelarPropia,
+  proyectarTurnosFijos,
 } from './reservas.service.js';
 import { cargaManual } from './carga-manual.service.js';
 
@@ -71,6 +72,20 @@ reservasRouter.delete(
   '/:id/mia',
   h(async (req, res) => {
     res.json(await cancelarPropia(req.userId!, Number(req.params.id)));
+  }),
+);
+
+// POST /reservas/turno-fijo -> proyectar reservas semanales recurrentes (solo staff)
+reservasRouter.post(
+  '/turno-fijo',
+  (req: AuthedRequest, res, next) => {
+    if (req.rol !== 'super_admin' && req.rol !== 'recepcionista') {
+      return res.status(403).json({ error: 'Requiere rol de staff' });
+    }
+    next();
+  },
+  h(async (req, res) => {
+    res.status(201).json(await proyectarTurnosFijos(req.body));
   }),
 );
 

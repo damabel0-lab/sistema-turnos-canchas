@@ -9,11 +9,30 @@ import { cotizar, aMinutos } from '../../services/tarifas/cotizador.js';
  */
 export const HORA_APERTURA = 8;
 export const HORA_CIERRE = 23;
+export const DURACION_TURNO_MINUTOS = 60;
+export const MINUTOS_BLOQUE = 15; // los turnos arrancan en cuartos de hora (00, 15, 30, 45)
 
 /** '2026-11-13T15:00:00+00:00' -> '2026-11-13T15:00:00' */
 function quitarOffset(iso: string): string {
   return iso.replace(/([+-]\d{2}:\d{2}|Z)$/, '');
 }
+
+/** Calcula las próximas N fechas que caigan en un día de la semana dado.
+ * 0 = domingo, 1 = lunes, ..., 6 = sábado. Empieza a buscar desde mañana. */
+export function proximasNFechasDiaSemana(diaSemana: number, cantidad: number, desde: Date = new Date()): Date[] {
+  const fechas: Date[] = [];
+  let fecha = new Date(desde);
+  fecha.setDate(fecha.getDate() + 1); // empezar desde mañana para no incluir hoy
+
+  while (fechas.length < cantidad) {
+    if (fecha.getDay() === diaSemana) {
+      fechas.push(new Date(fecha));
+    }
+    fecha.setDate(fecha.getDate() + 1);
+  }
+  return fechas;
+}
+
 
 /**
  * Reservas de un usuario: próximas (futuras, no canceladas) e historial.
@@ -323,10 +342,18 @@ export async function crearReserva(entrada: NuevaReserva) {
   const { cancha_id, fecha, hora_inicio, hora_fin } = entrada;
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) throw new HttpError(400, 'fecha inválida (YYYY-MM-DD)');
-  if (aMinutos(hora_fin) <= aMinutos(hora_inicio)) {
-    throw new HttpError(400, 'hora_fin debe ser posterior a hora_inicio');
+
+  const inicioMin = aMinutos(hora_inicio);
+  const finMin = aMinutos(hora_fin);
+
+  // Los turnos duran exactamente 1 hora y arrancan en cuartos de hora (00, 15, 30, 45)
+  if (finMin - inicioMin !== DURACION_TURNO_MINUTOS) {
+    throw new HttpError(400, `El turno debe durar exactamente ${DURACION_TURNO_MINUTOS} minutos`);
   }
-  if (aMinutos(hora_inicio) < HORA_APERTURA * 60 || aMinutos(hora_fin) > HORA_CIERRE * 60) {
+  if (inicioMin % MINUTOS_BLOQUE !== 0) {
+    throw new HttpError(400, `La hora de inicio debe ser en cuartos de hora (${MINUTOS_BLOQUE} min)`);
+  }
+  if (inicioMin < HORA_APERTURA * 60 || finMin > HORA_CIERRE * 60) {
     throw new HttpError(400, `El horario debe estar entre ${HORA_APERTURA}:00 y ${HORA_CIERRE}:00`);
   }
 
@@ -439,17 +466,17 @@ export async function disponibilidad(canchaId: number, fecha: string): Promise<E
 
   const horas: EstadoHora[] = [];
 
-  for (let h = HORA_APERTURA; h < HORA_CIERRE; h++) {
-    const hora = `${String(h).padStart(2, '0')}:00`;
-    const finHora = `${String(h + 1).padStart(2, '0')}:00`;
+  const minutosApertura = HORA_APERTURA * 60; // 480 = 08:00
+  const minutosCierre = HORA_CIERRE * 60; // 1380 = 23:00
+
+  // Los turnos duran 1 hora y arrancan en cuartos de hora (00, 15, 30, 45)
+  for (let inicioMin = minutosApertura; inicioMin + DURACION_TURNO_MINUTOS <= minutosCierre; inicioMin += MINUTOS_BLOQUE) {
+    const finMin = inicioMin + DURACION_TURNO_MINUTOS;
+    const hora = `${String(Math.floor(inicioMin / 60)).padStart(2, '0')}:${String(inicioMin % 60).padStart(2, '0')}`;
+    const finHora = `${String(Math.floor(finMin / 60)).padStart(2, '0')}:${String(finMin % 60).padStart(2, '0')}`;
 
     const ocupada = (reservas ?? []).some((r) => r.hora_inicio.slice(0, 5) < finHora && r.hora_fin.slice(0, 5) > hora);
     const bloqueada = (bloqueos ?? []).some((b) => {
-      // Comparación "wall time": los timestamps se guardan como hora local
-      // sin offset (el frontend envía 'YYYY-MM-DDTHH:MM:SS' sin zona), pero
-      // Postgres los devuelve con '+00:00'. Normalizamos quitando el offset
-      // y parseando ambos lados igual (UTC) para que la comparación sea
-      // manzana con manzana.
       const bInicio = new Date(`${quitarOffset(b.fecha_inicio)}Z`);
       const bFin = new Date(`${quitarOffset(b.fecha_fin)}Z`);
       const hInicio = new Date(`${fecha}T${hora}:00Z`);
@@ -462,3 +489,81 @@ export async function disponibilidad(canchaId: number, fecha: string): Promise<E
 
   return horas;
 }
+
+/**
+ * Proyecta turnos fijos recurrentes.
+ *
+ * Crea una reserva por cada fecha que caiga en el día de la semana indicado,
+ * durante la cantidad de semanas pedida, siempre a la misma hora y cancha.
+ *
+ * Valida solapamientos y bloqueos para cada fecha individualmente.
+ */
+export async function proyectarTurnosFijos(entrada: {
+  usuario_id: string;
+  cancha_id: number;
+  dia_semana: number; // 0 = domingo ... 6 = sábado
+  hora: string; // HH:MM (debe ser múltiplo de 15)
+  semanas: number; // cuántas semanas proyectar
+  precio_total?: number;
+  monto_seña?: number;
+  metodo_pago?: string | null;
+  estado?: 'pendiente_seña' | 'confirmada';
+}) {
+  const { usuario_id, cancha_id, dia_semana, hora, semanas } = entrada;
+
+  if (!(dia_semana >= 0 && dia_semana <= 6)) {
+    throw new HttpError(400, 'dia_semana debe estar entre 0 (domingo) y 6 (sábado)');
+  }
+  if (!(semanas >= 1 && semanas <= 52)) {
+    throw new HttpError(400, 'semanas debe estar entre 1 y 52');
+  }
+  if (!/^\d{2}:\d{2}$/.test(hora)) {
+    throw new HttpError(400, 'hora debe tener formato HH:MM');
+  }
+
+  const inicioMin = aMinutos(hora);
+  if (inicioMin % MINUTOS_BLOQUE !== 0) {
+    throw new HttpError(400, `La hora debe ser en cuartos de hora (${MINUTOS_BLOQUE} min)`);
+  }
+  if (inicioMin < HORA_APERTURA * 60 || inicioMin + DURACION_TURNO_MINUTOS > HORA_CIERRE * 60) {
+    throw new HttpError(400, `El horario debe estar entre ${HORA_APERTURA}:00 y ${HORA_CIERRE}:00`);
+  }
+
+  const horaFin = `${String(Math.floor((inicioMin + DURACION_TURNO_MINUTOS) / 60)).padStart(2, '0')}:${String((inicioMin + DURACION_TURNO_MINUTOS) % 60).padStart(2, '0')}`;
+
+  const fechas = proximasNFechasDiaSemana(dia_semana, semanas);
+
+  const creadas: Array<{ fecha: string; reserva_id: number }> = [];
+  const errores: Array<{ fecha: string; error: string }> = [];
+
+  for (const fecha of fechas) {
+    const fechaStr = fecha.toISOString().slice(0, 10);
+    try {
+      const reserva = await crearReserva({
+        usuario_id,
+        cancha_id,
+        fecha: fechaStr,
+        hora_inicio: hora,
+        hora_fin: horaFin,
+        precio_total: entrada.precio_total,
+        monto_seña: entrada.monto_seña,
+        metodo_pago: entrada.metodo_pago,
+        estado: entrada.estado,
+      });
+      creadas.push({ fecha: fechaStr, reserva_id: reserva.id });
+    } catch (err) {
+      errores.push({
+        fecha: fechaStr,
+        error: err instanceof Error ? err.message : 'Error desconocido',
+      });
+    }
+  }
+
+  return {
+    creadas,
+    errores,
+    total_creadas: creadas.length,
+    total_solicitadas: semanas,
+  };
+}
+
