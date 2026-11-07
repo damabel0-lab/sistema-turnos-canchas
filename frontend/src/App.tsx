@@ -7,6 +7,7 @@ import { HomePage } from './pages/cliente/HomePage';
 import { ReservarPage } from './pages/cliente/ReservarPage';
 import { MisReservasPage } from './pages/cliente/MisReservasPage';
 import { MisAbonosPage } from './pages/cliente/MisAbonosPage';
+import { TorneosClientePage } from './pages/cliente/TorneosClientePage';
 
 // Auth
 import { LoginPage } from './pages/auth/LoginPage';
@@ -31,6 +32,7 @@ export function App() {
         <Route path="/reservar" element={<ReservarPage />} />
         <Route path="/mis-reservas" element={<MisReservasPage />} />
         <Route path="/mis-abonos" element={<MisAbonosPage />} />
+        <Route path="/torneos" element={<TorneosClientePage />} />
 
         {/* Admin — requiere sesión + rol staff (super_admin o recepcionista).
             Caja además es solo super_admin (verificar dentro de la página). */}
