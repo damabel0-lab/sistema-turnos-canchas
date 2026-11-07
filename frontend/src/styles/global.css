@@ -1,4 +1,7 @@
-/* PlayControl - estilos globales (reemplazar por design system después) */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   font-family: system-ui, -apple-system, sans-serif;
 }
