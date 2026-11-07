@@ -5,6 +5,9 @@ import { HomePage } from './pages/cliente/HomePage';
 import { ReservarPage } from './pages/cliente/ReservarPage';
 import { MisReservasPage } from './pages/cliente/MisReservasPage';
 
+// Auth
+import { LoginPage } from './pages/auth/LoginPage';
+
 // Páginas admin (protegidas por rol)
 import { GrillaPage } from './pages/admin/GrillaPage';
 import { CanchasPage } from './pages/admin/CanchasPage';
@@ -16,6 +19,7 @@ export function App() {
     <Routes>
       {/* Cliente */}
       <Route path="/" element={<HomePage />} />
+      <Route path="/login" element={<LoginPage />} />
       <Route path="/reservar" element={<ReservarPage />} />
       <Route path="/mis-reservas" element={<MisReservasPage />} />
 
