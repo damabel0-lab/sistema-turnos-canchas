@@ -49,17 +49,17 @@
 - [x] Cálculo de precio final (cotizador hora por hora + seña + descuentos) — probado con 5 casos
 
 ## Fase 3 — Reservas y grilla (el núcleo)
-- [ ] Grilla/calendario visual por cancha del día (admin)
-- [ ] Estados: pendiente_seña → confirmada → completada / cancelada
-- [ ] Carga manual rápida (nombre + teléfono, sin login)
-- [ ] Bloqueo de horarios — la disponibilidad los contempla (alta de bloqueos pendiente)
+- [x] Grilla/calendario visual por cancha del día (admin) — colores por estado + resumen de cobro
+- [x] Estados: pendiente_seña → confirmada → completada / cancelada (con registro en caja)
+- [x] Carga manual rápida (nombre + teléfono, crea cliente si no existe)
+- [x] Bloqueo de horarios (mantenimiento, eventos, lluvia) — alta desde la grilla
 - [ ] Colchón de 20 min automático en canchas multideporte
 - [x] Reserva del cliente en 3 clicks (deporte → cancha → horario → resumen con precio)
 - [x] Grilla de horarios solo con turnos libres (libre/ocupada/bloqueada)
-- [ ] Evitar doble reserva (falta el POST de creación con validación)
-- [ ] Cancelación con política configurable
+- [x] Evitar doble reserva (409 server-side + refresco de grilla en el front)
+- [x] Cancelación — política simple: cliente cancela sus futuras; staff cancela cualquiera
 - [ ] Turnos fijos: flag + generación automática de reservas semanales
-- [ ] Descuento opcional para clientes con turno fijo
+- [ ] Descuento opcional para clientes con turno fijo (parámetro listo en el cotizador)
 
 ## Fase 4 — Socios y beneficios
 - [ ] Alta/baja de socios (admin)
@@ -76,22 +76,23 @@
 - [ ] Cliente: ver "mis abonos / accesos restantes"
 
 ## Fase 6 — Caja, cobros y finanzas
-- [ ] Registrar pago de seña (efectivo / transferencia / MP / tarjeta)
-- [ ] Confirmación manual de comprobante por admin
-- [ ] Registro de movimientos de caja (ingreso/egreso) ligado a reservas
-- [ ] Detalle de ingresos por origen (cancha X, mensual gym, clase pileta...)
-- [ ] Resumen día / semana / mes
-- [ ] Arqueo / cierre de caja del día
-- [ ] Filtro por método de pago
-- [ ] Historial de precios inmutable en reservas (ya garantizado por diseño)
+- [x] Registrar pago de seña (efectivo / transferencia / MP / tarjeta) — al confirmar reserva
+- [x] Confirmación manual de comprobante por admin (botón "Confirmar pago" en la grilla)
+- [x] Registro de movimientos de caja (ingreso/egreso) ligado a reservas — automático
+- [x] Detalle de ingresos por origen (señas, turnos, abonos, egresos...)
+- [x] Resumen día / semana / mes (totales + por método de pago)
+- [x] Arqueo / cierre de caja del día — ver resumen "Día" + detalle (falta exportar/imprimir)
+- [x] Filtro por método de pago
+- [x] Historial de precios inmutable en reservas (ya garantizado por diseño)
+- [ ] Reportes por disciplina (Fase 8)
 
 ## Fase 7 — Panel del cliente
-- [ ] Registro/login simple
-- [ ] "Mis Reservas": próximos turnos + botón recordar/cancelar
-- [ ] Historial de actividad (veces jugadas, gasto, disciplinas)
-- [ ] Mis abonos/pases
+- [x] Registro/login simple
+- [x] "Mis Reservas": próximos turnos + botón cancelar (historial aparte)
+- [ ] Historial de actividad (veces jugadas, gasto, disciplinas) — parcial: hay historial de reservas
+- [ ] Mis abonos/pases (Fase 5)
 - [ ] Turnos fijos desde el lado del cliente
-- [ ] Perfil (nombre, apellido, teléfono)
+- [ ] Perfil (nombre, apellido, teléfono) — datos se cargan al registrarse
 
 ## Fase 8 — Reportes y estadísticas
 - [ ] Ocupación por cancha y horario
