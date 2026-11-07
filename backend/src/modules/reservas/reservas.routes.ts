@@ -2,11 +2,26 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { AuthedRequest } from '../../middleware/auth.js';
 import { disponibilidad, crearReserva, grillaDelDia } from './reservas.service.js';
+import { cargaManual } from './carga-manual.service.js';
 
 export const reservasRouter = Router();
 
 const h = (fn: (req: AuthedRequest, res: Response) => Promise<void>) =>
   (req: AuthedRequest, res: Response, next: NextFunction) => fn(req, res).catch(next);
+
+// POST /reservas/manual -> carga rápida del admin (nombre + teléfono, sin cuenta)
+reservasRouter.post(
+  '/manual',
+  (req: AuthedRequest, res, next) => {
+    if (req.rol !== 'super_admin' && req.rol !== 'recepcionista') {
+      return res.status(403).json({ error: 'Requiere rol de staff' });
+    }
+    next();
+  },
+  h(async (req, res) => {
+    res.status(201).json(await cargaManual(req.body));
+  }),
+);
 
 // GET /reservas/grilla?fecha=YYYY-MM-DD -> tablero del día (solo staff)
 reservasRouter.get(

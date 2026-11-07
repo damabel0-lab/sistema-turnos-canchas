@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api } from '../../lib/api';
 
 interface ItemGrilla {
@@ -32,6 +32,13 @@ export function GrillaPage() {
   const [fecha, setFecha] = useState(hoy());
   const [filas, setFilas] = useState<FilaGrilla[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [mensaje, setMensaje] = useState<string | null>(null);
+
+  // form carga manual
+  const [carga, setCarga] = useState({ nombre: '', telefono: '', cancha_id: '', hora: '10:00' });
+
+  // form bloqueo
+  const [bloqueo, setBloqueo] = useState({ cancha_id: '', desde: '08:00', hasta: '09:00', motivo: '' });
 
   const cargar = useCallback(async () => {
     try {
@@ -45,6 +52,53 @@ export function GrillaPage() {
   useEffect(() => {
     void cargar();
   }, [cargar]);
+
+  async function guardarManual(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setMensaje(null);
+    try {
+      const fin = `${String(Number(carga.hora.slice(0, 2)) + 1).padStart(2, '0')}:00`;
+      const r = await api<{ id: number }>('/reservas/manual', {
+        method: 'POST',
+        body: JSON.stringify({
+          cliente_nombre: carga.nombre,
+          cliente_telefono: carga.telefono,
+          cancha_id: Number(carga.cancha_id),
+          fecha,
+          hora_inicio: carga.hora,
+          hora_fin: fin,
+        }),
+      });
+      setMensaje(`Turno #${r.id} anotado para ${carga.nombre} ✅`);
+      setCarga({ ...carga, nombre: '', telefono: '' });
+      await cargar();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo anotar el turno');
+    }
+  }
+
+  async function guardarBloqueo(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setMensaje(null);
+    try {
+      await api('/bloqueos', {
+        method: 'POST',
+        body: JSON.stringify({
+          cancha_id: Number(bloqueo.cancha_id),
+          fecha_inicio: `${fecha}T${bloqueo.desde}:00`,
+          fecha_fin: `${fecha}T${bloqueo.hasta}:00`,
+          motivo: bloqueo.motivo,
+        }),
+      });
+      setMensaje('Horario bloqueado ✅');
+      setBloqueo({ ...bloqueo, motivo: '' });
+      await cargar();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo bloquear');
+    }
+  }
 
   // leyenda
   const totalReservas = filas.reduce((n, f) => n + f.items.filter((i) => i.tipo === 'reserva').length, 0);
@@ -80,6 +134,101 @@ export function GrillaPage() {
       </div>
 
       {error && <p style={{ color: 'crimson' }}>{error}</p>}
+      {mensaje && <p style={{ color: 'green' }}>{mensaje}</p>}
+
+      {/* Carga manual rápida */}
+      <section style={{ border: '1px solid #ccc', borderRadius: 8, padding: 12 }}>
+        <h3 style={{ marginTop: 0 }}>⚡ Carga rápida (teléfono o presencial)</h3>
+        <form onSubmit={guardarManual} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'end' }}>
+          <label>
+            Nombre
+            <br />
+            <input
+              required
+              value={carga.nombre}
+              onChange={(e) => setCarga({ ...carga, nombre: e.target.value })}
+            />
+          </label>
+          <label>
+            Teléfono
+            <br />
+            <input
+              required
+              value={carga.telefono}
+              onChange={(e) => setCarga({ ...carga, telefono: e.target.value })}
+            />
+          </label>
+          <label>
+            Cancha
+            <br />
+            <select
+              required
+              value={carga.cancha_id}
+              onChange={(e) => setCarga({ ...carga, cancha_id: e.target.value })}
+            >
+              <option value="">Elegir…</option>
+              {filas.map((f) => (
+                <option key={f.cancha_id} value={f.cancha_id}>{f.cancha}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Hora (1 h)
+            <br />
+            <select value={carga.hora} onChange={(e) => setCarga({ ...carga, hora: e.target.value })}>
+              {HORAS.slice(0, -1).map((h) => (
+                <option key={h} value={h}>{h}</option>
+              ))}
+            </select>
+          </label>
+          <button type="submit">Anotar turno</button>
+        </form>
+      </section>
+
+      {/* Bloqueo de horarios */}
+      <details style={{ border: '1px solid #ccc', borderRadius: 8, padding: 12 }}>
+        <summary style={{ cursor: 'pointer' }}>🚫 Bloquear horario (mantenimiento, lluvia, evento)</summary>
+        <form
+          onSubmit={guardarBloqueo}
+          style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'end', marginTop: 10 }}
+        >
+          <label>
+            Cancha
+            <br />
+            <select
+              required
+              value={bloqueo.cancha_id}
+              onChange={(e) => setBloqueo({ ...bloqueo, cancha_id: e.target.value })}
+            >
+              <option value="">Elegir…</option>
+              {filas.map((f) => (
+                <option key={f.cancha_id} value={f.cancha_id}>{f.cancha}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Desde
+            <br />
+            <input type="time" value={bloqueo.desde} onChange={(e) => setBloqueo({ ...bloqueo, desde: e.target.value })} />
+          </label>
+          <label>
+            Hasta
+            <br />
+            <input type="time" value={bloqueo.hasta} onChange={(e) => setBloqueo({ ...bloqueo, hasta: e.target.value })} />
+          </label>
+          <label>
+            Motivo
+            <br />
+            <input
+              required
+              value={bloqueo.motivo}
+              placeholder="Ej: Lluvia"
+              onChange={(e) => setBloqueo({ ...bloqueo, motivo: e.target.value })}
+            />
+          </label>
+          <button type="submit">Bloquear</button>
+        </form>
+      </details>
 
       <div style={{ overflowX: 'auto' }}>
         <table border={1} cellPadding={4} style={{ borderCollapse: 'collapse' }}>

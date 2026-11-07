@@ -8,6 +8,7 @@ import { deportesRouter } from './modules/deportes/deportes.routes.js';
 import { cajaRouter } from './modules/caja/caja.routes.js';
 import { torneosRouter } from './modules/torneos/torneos.routes.js';
 import { abonosRouter } from './modules/abonos/abonos.routes.js';
+import { bloqueosRouter } from './modules/bloqueos/bloqueos.routes.js';
 import { notificacionesRouter } from './modules/notifications/notifications.routes.js';
 
 export const app = express();
@@ -26,6 +27,7 @@ app.use('/deportes', authMiddleware, deportesRouter);
 app.use('/caja', authMiddleware, cajaRouter);
 app.use('/torneos', authMiddleware, torneosRouter);
 app.use('/abonos', authMiddleware, abonosRouter);
+app.use('/bloqueos', authMiddleware, bloqueosRouter);
 app.use('/notificaciones', authMiddleware, notificacionesRouter);
 
 app.use(errorHandler);
