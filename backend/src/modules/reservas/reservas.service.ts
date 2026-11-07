@@ -16,6 +16,92 @@ function quitarOffset(iso: string): string {
 }
 
 /**
+ * Cambia el estado de una reserva y registra el cobro en caja.
+ *
+ * Transiciones permitidas:
+ *   pendiente_seña -> confirmada | cancelada
+ *   confirmada     -> completada | cancelada
+ *   completada     -> (final)
+ *   cancelada      -> (final)
+ *
+ * Al confirmar se registra el ingreso de la seña (o del total si no tiene).
+ * Al completar se registra el saldo restante.
+ */
+export async function cambiarEstadoReserva(
+  id: number,
+  nuevoEstado: 'confirmada' | 'cancelada' | 'completada',
+  metodoPago?: string | null,
+) {
+  const { data: reserva, error } = await supabaseAdmin
+    .from('reservas')
+    .select('*, canchas(nombre), usuarios(nombre, apellido)')
+    .eq('id', id)
+    .single();
+  if (error || !reserva) throw new HttpError(404, 'Reserva no encontrada');
+
+  const actual = reserva.estado as string;
+  const transiciones: Record<string, string[]> = {
+    pendiente_seña: ['confirmada', 'cancelada'],
+    confirmada: ['completada', 'cancelada'],
+  };
+  if (!(transiciones[actual] ?? []).includes(nuevoEstado)) {
+    throw new HttpError(409, `No se puede pasar de "${actual}" a "${nuevoEstado}"`);
+  }
+  if (nuevoEstado === 'confirmada' && !metodoPago) {
+    throw new HttpError(400, 'Para confirmar hay que indicar el método de pago');
+  }
+
+  const { data: actualizada, error: eUpd } = await supabaseAdmin
+    .from('reservas')
+    .update({
+      estado: nuevoEstado,
+      ...(metodoPago ? { metodo_pago: metodoPago } : {}),
+    })
+    .eq('id', id)
+    .select()
+    .single();
+  if (eUpd) throw new HttpError(500, eUpd.message);
+
+  // Movimiento de caja según el cobro correspondiente
+  const cancha = (reserva.canchas as unknown as { nombre: string } | null)?.nombre ?? 'cancha';
+  const cliente = (reserva.usuarios as unknown as { nombre: string; apellido: string } | null)
+    ? `${reserva.usuarios.nombre} ${reserva.usuarios.apellido}`
+    : 'Cliente';
+
+  let monto = 0;
+  let descripcion = '';
+  if (nuevoEstado === 'confirmada') {
+    monto = Number(reserva.monto_seña) > 0 ? Number(reserva.monto_seña) : Number(reserva.precio_total);
+    descripcion = `${Number(reserva.monto_seña) > 0 ? 'Seña' : 'Pago total'} reserva #${id} · ${cancha} · ${cliente}`;
+  } else if (nuevoEstado === 'completada') {
+    // Si la seña fue 0, al confirmar ya se cobró el total → no hay saldo.
+    // Si tenía seña, falta cobrar total - seña.
+    const saldo =
+      Number(reserva.monto_seña) > 0
+        ? Number(reserva.precio_total) - Number(reserva.monto_seña)
+        : 0;
+    if (saldo > 0 && reserva.metodo_pago) {
+      monto = saldo;
+      descripcion = `Saldo reserva #${id} · ${cancha} · ${cliente}`;
+    }
+  }
+
+  if (monto > 0) {
+    const { error: eCaja } = await supabaseAdmin.from('movimientos_caja').insert({
+      reserva_id: id,
+      usuario_id: reserva.usuario_id,
+      monto,
+      tipo_movimiento: 'ingreso',
+      metodo_pago: (metodoPago ?? reserva.metodo_pago ?? 'efectivo') as never,
+      descripcion,
+    });
+    if (eCaja) throw new HttpError(500, `Reserva actualizada pero falló el registro en caja: ${eCaja.message}`);
+  }
+
+  return { reserva: actualizada, caja_registrada: monto > 0 ? monto : 0 };
+}
+
+/**
  * Grilla del día para el admin: todas las canchas activas con sus reservas
  * y bloqueos en la fecha pedida.
  */

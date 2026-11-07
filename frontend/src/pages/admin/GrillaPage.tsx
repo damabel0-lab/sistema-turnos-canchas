@@ -37,6 +37,10 @@ export function GrillaPage() {
   // form carga manual
   const [carga, setCarga] = useState({ nombre: '', telefono: '', cancha_id: '', hora: '10:00' });
 
+  // reserva seleccionada para cambiar estado
+  const [sel, setSel] = useState<{ reserva_id: number; cliente?: string; estado?: string; monto?: number } | null>(null);
+  const [metodo, setMetodo] = useState('efectivo');
+
   // form bloqueo
   const [bloqueo, setBloqueo] = useState({ cancha_id: '', desde: '08:00', hasta: '09:00', motivo: '' });
 
@@ -52,6 +56,28 @@ export function GrillaPage() {
   useEffect(() => {
     void cargar();
   }, [cargar]);
+
+  async function cambiarEstado(estado: 'confirmada' | 'completada' | 'cancelada') {
+    if (!sel) return;
+    setError(null);
+    setMensaje(null);
+    try {
+      await api(`/reservas/${sel.reserva_id}/estado`, {
+        method: 'PATCH',
+        body: JSON.stringify({ estado, metodo_pago: estado === 'confirmada' ? metodo : undefined }),
+      });
+      const textos: Record<string, string> = {
+        confirmada: 'Cobro registrado y reserva confirmada ✅',
+        completada: 'Reserva marcada como completada ✅',
+        cancelada: 'Reserva cancelada',
+      };
+      setMensaje(`${textos[estado]} (#${sel.reserva_id})`);
+      setSel(null);
+      await cargar();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo actualizar');
+    }
+  }
 
   async function guardarManual(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -263,11 +289,21 @@ export function GrillaPage() {
                     <td
                       key={h}
                       title={titulo}
+                      onClick={() => {
+                        if (item?.tipo === 'reserva' && item.reserva_id) {
+                          setSel({
+                            reserva_id: item.reserva_id,
+                            cliente: item.cliente,
+                            estado: item.estado,
+                            monto: item.monto,
+                          });
+                        }
+                      }}
                       style={{
                         background: fondo,
                         minWidth: 70,
                         fontSize: 11,
-                        cursor: item ? 'pointer' : 'default',
+                        cursor: item?.tipo === 'reserva' ? 'pointer' : 'default',
                         verticalAlign: 'top',
                       }}
                     >
@@ -280,6 +316,66 @@ export function GrillaPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Panel de acciones de la reserva seleccionada */}
+      {sel && (
+        <section style={{ border: '2px solid #1a73e8', borderRadius: 8, padding: 12 }}>
+          <h3 style={{ marginTop: 0 }}>
+            Reserva #{sel.reserva_id} · {sel.cliente} ·{' '}
+            <span
+              style={{
+                background:
+                  sel.estado === 'confirmada'
+                    ? colores.confirmada
+                    : sel.estado === 'completada'
+                      ? '#cce5ff'
+                      : colores.pendiente_seña,
+                padding: '2px 8px',
+                borderRadius: 4,
+              }}
+            >
+              {sel.estado}
+            </span>
+          </h3>
+
+          {sel.estado === 'pendiente_seña' && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <label>
+                Método de pago{' '}
+                <select value={metodo} onChange={(e) => setMetodo(e.target.value)}>
+                  <option value="efectivo">Efectivo</option>
+                  <option value="transferencia">Transferencia</option>
+                  <option value="mercado_pago">Mercado Pago</option>
+                  <option value="tarjeta">Tarjeta</option>
+                </select>
+              </label>
+              <button type="button" onClick={() => void cambiarEstado('confirmada')}>
+                💵 Confirmar pago (registra en caja)
+              </button>
+            </div>
+          )}
+
+          {sel.estado === 'confirmada' && (
+            <button type="button" onClick={() => void cambiarEstado('completada')}>
+              ✅ Marcar completada (cobra saldo restante)
+            </button>
+          )}
+
+          {(sel.estado === 'pendiente_seña' || sel.estado === 'confirmada') && (
+            <button
+              type="button"
+              onClick={() => void cambiarEstado('cancelada')}
+              style={{ marginLeft: 8, color: 'crimson' }}
+            >
+              ✕ Cancelar reserva
+            </button>
+          )}
+
+          <button type="button" onClick={() => setSel(null)} style={{ marginLeft: 8 }}>
+            Cerrar
+          </button>
+        </section>
+      )}
 
       {filas.length > 0 && (
         <p style={{ color: '#666', fontSize: 13 }}>

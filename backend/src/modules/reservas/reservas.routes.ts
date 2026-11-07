@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { AuthedRequest } from '../../middleware/auth.js';
-import { disponibilidad, crearReserva, grillaDelDia } from './reservas.service.js';
+import { disponibilidad, crearReserva, grillaDelDia, cambiarEstadoReserva } from './reservas.service.js';
 import { cargaManual } from './carga-manual.service.js';
 
 export const reservasRouter = Router();
@@ -48,6 +48,25 @@ reservasRouter.post(
     const usuario_id = esStaff ? (body.usuario_id ?? null) : req.userId;
 
     res.status(201).json(await crearReserva({ ...body, usuario_id }));
+  }),
+);
+
+// PATCH /reservas/:id/estado -> confirmar seña / completar / cancelar (solo staff)
+reservasRouter.patch(
+  '/:id/estado',
+  (req: AuthedRequest, res, next) => {
+    if (req.rol !== 'super_admin' && req.rol !== 'recepcionista') {
+      return res.status(403).json({ error: 'Requiere rol de staff' });
+    }
+    next();
+  },
+  h(async (req, res) => {
+    const { estado, metodo_pago } = req.body ?? {};
+    if (!['confirmada', 'cancelada', 'completada'].includes(estado)) {
+      res.status(400).json({ error: 'estado debe ser confirmada, cancelada o completada' });
+      return;
+    }
+    res.json(await cambiarEstadoReserva(Number(req.params.id), estado, metodo_pago));
   }),
 );
 
