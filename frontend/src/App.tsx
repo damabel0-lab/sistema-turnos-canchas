@@ -6,6 +6,7 @@ import { BarraSesion } from './components/BarraSesion';
 import { HomePage } from './pages/cliente/HomePage';
 import { ReservarPage } from './pages/cliente/ReservarPage';
 import { MisReservasPage } from './pages/cliente/MisReservasPage';
+import { MisAbonosPage } from './pages/cliente/MisAbonosPage';
 
 // Auth
 import { LoginPage } from './pages/auth/LoginPage';
@@ -15,6 +16,7 @@ import { GrillaPage } from './pages/admin/GrillaPage';
 import { CanchasPage } from './pages/admin/CanchasPage';
 import { SociosPage } from './pages/admin/SociosPage';
 import { BeneficiosPage } from './pages/admin/BeneficiosPage';
+import { VenderAbonoPage } from './pages/admin/VenderAbonoPage';
 import { CajaPage } from './pages/admin/CajaPage';
 import { TorneosPage } from './pages/admin/TorneosPage';
 
@@ -28,6 +30,7 @@ export function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/reservar" element={<ReservarPage />} />
         <Route path="/mis-reservas" element={<MisReservasPage />} />
+        <Route path="/mis-abonos" element={<MisAbonosPage />} />
 
         {/* Admin — requiere sesión + rol staff (super_admin o recepcionista).
             Caja además es solo super_admin (verificar dentro de la página). */}
@@ -60,6 +63,14 @@ export function App() {
           element={
             <RutaProtegida roles={['super_admin', 'recepcionista']}>
               <BeneficiosPage />
+            </RutaProtegida>
+          }
+        />
+        <Route
+          path="/admin/vender-abono"
+          element={
+            <RutaProtegida roles={['super_admin', 'recepcionista']}>
+              <VenderAbonoPage />
             </RutaProtegida>
           }
         />
