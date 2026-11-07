@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes } from 'react';
 
 interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'asChild'> {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'success' | 'outline';
   className?: string;
   asChild?: boolean;
 }
@@ -12,6 +12,7 @@ const variantStyles: Record<string, string> = {
   ghost: 'bg-transparent text-indigo-600 hover:bg-indigo-50',
   danger: 'bg-red-600 text-white hover:bg-red-700',
   success: 'bg-emerald-600 text-white hover:bg-emerald-700',
+  outline: 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50',
 };
 
 /** Botón moderno con variantes y efecto hover sutil */

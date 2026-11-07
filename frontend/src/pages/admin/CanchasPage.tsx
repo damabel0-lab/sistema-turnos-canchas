@@ -1,13 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api } from '../../lib/api';
-import { useAuth } from '../../hooks/useAuth';
-
-interface Deporte {
-  id: number;
-  nombre: string;
-  tipo: string;
-  requiere_cancha: boolean;
-}
+import { Card, Button, Badge } from '../../components/ui';
+import { Clock, Search } from 'lucide-react';
 
 interface Cancha {
   id: number;
@@ -19,20 +13,28 @@ interface Cancha {
   deportes?: { nombre: string; tipo: string } | null;
 }
 
-export function CanchasPage() {
-  const { perfil } = useAuth();
-  const esAdmin = perfil?.rol === 'super_admin';
+interface Deporte {
+  id: number;
+  nombre: string;
+  tipo: string;
+  requiere_cancha: boolean;
+}
 
+export function CanchasPage() {
   const [canchas, setCanchas] = useState<Cancha[]>([]);
   const [deportes, setDeportes] = useState<Deporte[]>([]);
-  const [mensaje, setMensaje] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [mensaje, setMensaje] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
     try {
-      const [c, d] = await Promise.all([api<Cancha[]>('/canchas'), api<Deporte[]>('/deportes')]);
+      const [c, d] = await Promise.all([
+        api<Cancha[]>('/canchas'),
+        api<Deporte[]>('/deportes'),
+      ]);
       setCanchas(c);
       setDeportes(d);
+      setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error cargando datos');
     }
@@ -44,8 +46,8 @@ export function CanchasPage() {
 
   async function crearCancha(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setMensaje(null);
     setError(null);
+    setMensaje(null);
     const form = new FormData(e.currentTarget);
     try {
       await api('/canchas', {
@@ -65,28 +67,6 @@ export function CanchasPage() {
     }
   }
 
-  async function crearDeporte(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setMensaje(null);
-    setError(null);
-    const form = new FormData(e.currentTarget);
-    try {
-      await api('/deportes', {
-        method: 'POST',
-        body: JSON.stringify({
-          nombre: String(form.get('nombre_deporte')),
-          tipo: String(form.get('tipo')),
-          requiere_cancha: form.get('tipo') !== 'gimnasio' && form.get('tipo') !== 'pileta',
-        }),
-      });
-      e.currentTarget.reset();
-      setMensaje('Deporte creado ✅');
-      await cargar();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al crear deporte');
-    }
-  }
-
   async function alternarActiva(cancha: Cancha) {
     try {
       await api(`/canchas/${cancha.id}`, {
@@ -100,107 +80,120 @@ export function CanchasPage() {
   }
 
   return (
-    <main style={{ padding: 16, display: 'grid', gap: 24, maxWidth: 800 }}>
-      <h1>Canchas y deportes</h1>
+    <main className="min-h-screen bg-gray-50 px-6 py-12">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Clock className="w-5 h-5" />
+            Canchas y tarifas
+          </h1>
+          <Button variant="outline" onClick={() => void cargar()} className="px-4 py-2">
+            Actualizar
+          </Button>
+        </div>
+        {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
+        {mensaje && <p className="text-emerald-600 text-sm mb-4">{mensaje}</p>}
 
-      {mensaje && <p style={{ color: 'green' }}>{mensaje}</p>}
-      {error && <p style={{ color: 'crimson' }}>{error}</p>}
-
-      <section>
-        <h2>Listado</h2>
-        {canchas.length === 0 ? (
-          <p>No hay canchas cargadas todavía.</p>
-        ) : (
-          <table border={1} cellPadding={6} style={{ borderCollapse: 'collapse', width: '100%' }}>
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Deporte</th>
-                <th>Precio base</th>
-                <th>Activa</th>
-                {esAdmin && <th></th>}
-              </tr>
-            </thead>
-            <tbody>
+        <section>
+          <h2 className="font-bold text-gray-900 mb-4">Listado</h2>
+          {canchas.length === 0 ? (
+            <Card padded={false}>
+              <div className="p-8 text-center text-gray-600">
+                No hay canchas cargadas todavía.
+              </div>
+            </Card>
+          ) : (
+            <div className="space-y-3">
               {canchas.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.nombre}</td>
-                  <td>{c.deportes?.nombre ?? '—'}</td>
-                  <td>${c.precio_base}</td>
-                  <td>{c.activa ? 'Sí' : 'No'}</td>
-                  {esAdmin && (
-                    <td>
-                      <button type="button" onClick={() => alternarActiva(c)}>
+                <Card key={c.id} padded={false}>
+                  <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                        <Search className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-gray-900">{c.nombre}</div>
+                        <div className="text-sm text-gray-500">
+                          {c.deportes?.nombre ?? 'Sin deporte'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-gray-500">${c.precio_base}/h</span>
+                      <Badge variant={c.activa ? 'success' : 'danger'} className="text-xs">
+                        {c.activa ? 'Activa' : 'Inactiva'}
+                      </Badge>
+                      <button
+                        type="button"
+                        onClick={() => void alternarActiva(c)}
+                        className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                      >
                         {c.activa ? 'Desactivar' : 'Activar'}
                       </button>
-                    </td>
-                  )}
-                </tr>
+                    </div>
+                  </div>
+                </Card>
               ))}
-            </tbody>
-          </table>
-        )}
-      </section>
+            </div>
+          )}
+        </section>
 
-      {esAdmin && (
-        <>
-          <section>
-            <h2>Agregar cancha</h2>
-            <form onSubmit={crearCancha} style={{ display: 'grid', gap: 8, maxWidth: 400 }}>
-              <label>
-                Nombre
-                <input name="nombre" required style={{ width: '100%' }} />
-              </label>
-              <label>
-                Deporte
-                <select name="deporte_id" style={{ width: '100%' }}>
-                  <option value="">— sin deporte —</option>
-                  {deportes.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.nombre}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Precio base ($)
-                <input name="precio_base" type="number" min={0} step="0.01" required style={{ width: '100%' }} />
-              </label>
-              <label>
-                Características
-                <input name="caracteristicas" style={{ width: '100%' }} />
-              </label>
-              <button type="submit">Crear cancha</button>
-            </form>
-          </section>
-
-          <section>
-            <h2>Agregar deporte</h2>
-            <form onSubmit={crearDeporte} style={{ display: 'grid', gap: 8, maxWidth: 400 }}>
-              <label>
-                Nombre
-                <input name="nombre_deporte" required style={{ width: '100%' }} />
-              </label>
-              <label>
-                Tipo
-                <select name="tipo" style={{ width: '100%' }}>
-                  <option value="cancha">Cancha</option>
-                  <option value="gimnasio">Gimnasio</option>
-                  <option value="pileta">Pileta</option>
-                  <option value="otro">Otro</option>
-                </select>
-              </label>
-              <button type="submit">Crear deporte</button>
-            </form>
-          </section>
-        </>
-      )}
-
-      {!esAdmin && (
-        <p style={{ color: '#666' }}>
-          Solo el super_admin puede modificar canchas y deportes.
-        </p>
-      )}
+        <section className="mt-8">
+          <h2 className="font-bold text-gray-900 mb-4">Agregar cancha</h2>
+          <Card padded={false}>
+            <div className="p-6">
+              <form onSubmit={crearCancha} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="flex flex-col">
+                  <label className="text-xs font-medium text-gray-700 mb-1">Nombre</label>
+                  <input
+                    name="nombre"
+                    required
+                    className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs font-medium text-gray-700 mb-1">Deporte</label>
+                  <select
+                    name="deporte_id"
+                    className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Sin deporte</option>
+                    {deportes.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs font-medium text-gray-700 mb-1">Precio base ($/h)</label>
+                  <input
+                    name="precio_base"
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    required
+                    className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs font-medium text-gray-700 mb-1">Características</label>
+                  <input
+                    name="caracteristicas"
+                    placeholder="Ej: Iluminada, techada"
+                    className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="flex flex-col items-end">
+                  <button type="submit" className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors">
+                    Crear cancha
+                  </button>
+                </div>
+              </form>
+            </div>
+          </Card>
+        </section>
+      </div>
     </main>
   );
 }

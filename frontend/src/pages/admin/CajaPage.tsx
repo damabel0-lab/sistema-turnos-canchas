@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api } from '../../lib/api';
+import { Card, Button, Input } from '../../components/ui';
+import { RefreshCw, List, DollarSign } from 'lucide-react';
 
 interface Movimiento {
   id: number;
@@ -25,11 +27,11 @@ const hoy = () => new Date().toISOString().slice(0, 10);
 const etiquetas: Record<Periodo, string> = { dia: 'Día', semana: 'Semana', mes: 'Mes' };
 
 export function CajaPage() {
-  const [fecha, setFecha] = useState(hoy());
-  const [periodo, setPeriodo] = useState<Periodo>('dia');
+  const [fecha] = useState(hoy());
   const [datos, setDatos] = useState<Resumen | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
+  const periodo: Periodo = 'dia';
 
   const cargar = useCallback(async () => {
     try {
@@ -38,7 +40,7 @@ export function CajaPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error cargando caja');
     }
-  }, [fecha, periodo]);
+  }, [fecha]);
 
   useEffect(() => {
     void cargar();
@@ -67,170 +69,168 @@ export function CajaPage() {
   }
 
   return (
-    <main style={{ padding: 16, display: 'grid', gap: 20, maxWidth: 860 }}>
-      <h1>Caja y finanzas</h1>
-
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <label>
-          Fecha{' '}
-          <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
-        </label>
-        <div style={{ display: 'flex', gap: 4 }}>
-          {(Object.keys(etiquetas) as Periodo[]).map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setPeriodo(p)}
-              style={{
-                padding: '6px 14px',
-                background: periodo === p ? '#1a73e8' : '#eee',
-                color: periodo === p ? '#fff' : '#000',
-                border: 'none',
-                borderRadius: 4,
-                cursor: 'pointer',
-              }}
-            >
-              {etiquetas[p]}
-            </button>
-          ))}
+    <main className="min-h-screen bg-gray-50 px-6 py-12">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <DollarSign className="w-5 h-5" />
+            Caja y finanzas
+          </h1>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => void cargar()} className="px-4 py-2">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Actualizar
+            </Button>
+          </div>
         </div>
-        <button type="button" onClick={() => void cargar()}>Actualizar</button>
+        {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
+        {mensaje && <p className="text-emerald-600 text-sm mb-4">{mensaje}</p>}
+
+        {datos && (
+          <>
+            {/* Tarjetas de totales */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <Card padded={false}>
+                <div className="p-6">
+                  <div className="text-xs font-semibold text-gray-500 uppercase mb-1">Ingresos ({etiquetas[periodo].toLowerCase()})</div>
+                  <div className="text-2xl font-bold text-emerald-600">${datos.ingresos}</div>
+                </div>
+              </Card>
+              <Card padded={false}>
+                <div className="p-6">
+                  <div className="text-xs font-semibold text-gray-500 uppercase mb-1">Egresos</div>
+                  <div className="text-2xl font-bold text-red-600">${datos.egresos}</div>
+                </div>
+              </Card>
+              <Card padded={false}>
+                <div className="p-6">
+                  <div className="text-xs font-semibold text-gray-500 uppercase mb-1">Saldo</div>
+                  <div className="text-2xl font-bold text-gray-900">${datos.saldo}</div>
+                </div>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <Card padded={false}>
+                <div className="p-6">
+                  <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                    <List className="w-4 h-4" />
+                    Por método de pago
+                  </h3>
+                  {Object.keys(datos.por_metodo_pago).length === 0 ? (
+                    <p className="text-gray-500 text-sm">Sin movimientos.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {Object.entries(datos.por_metodo_pago).map(([metodo, total]) => (
+                        <div key={metodo} className="flex justify-between text-sm">
+                          <span className="text-gray-600">{metodo}</span>
+                          <span className="font-medium">${total}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </Card>
+              <Card padded={false}>
+                <div className="p-6">
+                  <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                    <List className="w-4 h-4" />
+                    Por origen
+                  </h3>
+                  {datos.por_origen.length === 0 ? (
+                    <p className="text-gray-500 text-sm">Sin movimientos.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {datos.por_origen.map((o) => (
+                        <div key={o.origen} className="flex justify-between text-sm">
+                          <span className="text-gray-600">{o.origen}</span>
+                          <span className="font-medium">${o.total}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              <Card padded={false}>
+                <div className="p-6">
+                  <h3 className="font-bold text-gray-900 mb-3">Movimientos</h3>
+                  {datos.movimientos.length === 0 ? (
+                    <p className="text-gray-500 text-sm">Sin movimientos en este período.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {datos.movimientos.map((m) => (
+                        <div key={m.id} className="flex justify-between items-center py-2 border-b border-gray-50/50">
+                          <div>
+                            <div className="text-sm text-gray-900">{m.descripcion}</div>
+                            <div className="text-xs text-gray-500">
+                              {new Date(m.fecha_hora).toLocaleString('es-AR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500">{m.metodo_pago}</span>
+                            <span
+                              className={`text-sm font-medium ${
+                                m.tipo_movimiento === 'ingreso' ? 'text-emerald-600' : 'text-red-600'
+                              }`}
+                            >
+                              {m.tipo_movimiento === 'ingreso' ? '+' : '−'}${m.monto}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+              <Card padded={false}>
+                <div className="p-6">
+                  <h3 className="font-bold text-gray-900 mb-3">Registrar egreso</h3>
+                  <form onSubmit={registrarEgreso} className="space-y-3">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex flex-col">
+                        <label className="text-xs font-medium text-gray-700 mb-1">Monto ($)</label>
+                        <Input name="monto" type="number" min={1} required />
+                      </div>
+                      <div className="flex flex-col">
+                        <label className="text-xs font-medium text-gray-700 mb-1">Método</label>
+                        <select
+                          name="metodo"
+                          className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        >
+                          <option value="efectivo">Efectivo</option>
+                          <option value="transferencia">Transferencia</option>
+                          <option value="mercado_pago">Mercado Pago</option>
+                          <option value="tarjeta">Tarjeta</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex flex-col">
+                      <label className="text-xs font-medium text-gray-700 mb-1">Descripción</label>
+                      <Input
+                        name="descripcion"
+                        required
+                        placeholder="Ej: Pago al encargado"
+                      />
+                    </div>
+                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors">
+                      Registrar egreso
+                    </button>
+                  </form>
+                </div>
+              </Card>
+            </div>
+          </>
+        )}
       </div>
-
-      {error && <p style={{ color: 'crimson' }}>{error}</p>}
-      {mensaje && <p style={{ color: 'green' }}>{mensaje}</p>}
-
-      {datos && (
-        <>
-          {/* Totales */}
-          <section style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-            <div style={{ border: '1px solid #ccc', borderRadius: 8, padding: 16, minWidth: 150 }}>
-              <div style={{ fontSize: 13, color: '#555' }}>Ingresos ({etiquetas[periodo].toLowerCase()})</div>
-              <div style={{ fontSize: 26, color: 'green' }}>${datos.ingresos}</div>
-            </div>
-            <div style={{ border: '1px solid #ccc', borderRadius: 8, padding: 16, minWidth: 150 }}>
-              <div style={{ fontSize: 13, color: '#555' }}>Egresos</div>
-              <div style={{ fontSize: 26, color: 'crimson' }}>${datos.egresos}</div>
-            </div>
-            <div style={{ border: '1px solid #ccc', borderRadius: 8, padding: 16, minWidth: 150 }}>
-              <div style={{ fontSize: 13, color: '#555' }}>Saldo</div>
-              <div style={{ fontSize: 26 }}>${datos.saldo}</div>
-            </div>
-          </section>
-
-          {/* Por método de pago y origen */}
-          <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
-            <div>
-              <h3>Por método de pago</h3>
-              {Object.keys(datos.por_metodo_pago).length === 0 ? (
-                <p style={{ color: '#666' }}>Sin movimientos.</p>
-              ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <tbody>
-                    {Object.entries(datos.por_metodo_pago).map(([metodo, total]) => (
-                      <tr key={metodo}>
-                        <td style={{ padding: 4 }}>{metodo}</td>
-                        <td style={{ padding: 4, textAlign: 'right' }}>${total}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-            <div>
-              <h3>Por origen</h3>
-              {datos.por_origen.length === 0 ? (
-                <p style={{ color: '#666' }}>Sin movimientos.</p>
-              ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <tbody>
-                    {datos.por_origen.map((o) => (
-                      <tr key={o.origen}>
-                        <td style={{ padding: 4 }}>
-                          {o.origen} <span style={{ color: '#888', fontSize: 12 }}>({o.movimientos})</span>
-                        </td>
-                        <td style={{ padding: 4, textAlign: 'right' }}>${o.total}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </section>
-
-          {/* Detalle */}
-          <section>
-            <h3>Movimientos ({datos.movimientos.length})</h3>
-            {datos.movimientos.length === 0 ? (
-              <p style={{ color: '#666' }}>No hay movimientos en este período.</p>
-            ) : (
-              <table border={1} cellPadding={6} style={{ borderCollapse: 'collapse', width: '100%' }}>
-                <thead>
-                  <tr>
-                    <th>Fecha y hora</th>
-                    <th>Descripción</th>
-                    <th>Método</th>
-                    <th style={{ textAlign: 'right' }}>Monto</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {datos.movimientos.map((m) => (
-                    <tr key={m.id}>
-                      <td style={{ whiteSpace: 'nowrap' }}>
-                        {new Date(m.fecha_hora).toLocaleString('es-AR', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </td>
-                      <td>{m.descripcion}</td>
-                      <td>{m.metodo_pago}</td>
-                      <td
-                        style={{
-                          textAlign: 'right',
-                          color: m.tipo_movimiento === 'ingreso' ? 'green' : 'crimson',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {m.tipo_movimiento === 'ingreso' ? '+' : '−'}${m.monto}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </section>
-
-          {/* Egreso manual */}
-          <section style={{ border: '1px solid #ccc', borderRadius: 8, padding: 16 }}>
-            <h3 style={{ marginTop: 0 }}>Registrar egreso</h3>
-            <form onSubmit={registrarEgreso} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'end' }}>
-              <label>
-                Monto ($)
-                <br />
-                <input name="monto" type="number" min={1} required style={{ width: 110 }} />
-              </label>
-              <label>
-                Método
-                <br />
-                <select name="metodo">
-                  <option value="efectivo">Efectivo</option>
-                  <option value="transferencia">Transferencia</option>
-                  <option value="mercado_pago">Mercado Pago</option>
-                  <option value="tarjeta">Tarjeta</option>
-                </select>
-              </label>
-              <label>
-                Descripción
-                <br />
-                <input name="descripcion" required placeholder="Ej: Pago al encargado" style={{ width: 240 }} />
-              </label>
-              <button type="submit">Registrar</button>
-            </form>
-          </section>
-        </>
-      )}
     </main>
   );
 }

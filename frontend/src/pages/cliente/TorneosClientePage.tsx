@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../lib/api';
+import { Card } from '../../components/ui';
+import { Trophy, Users } from 'lucide-react';
 
 interface Torneo {
   id: number;
@@ -61,7 +63,6 @@ export function TorneosClientePage() {
     }
   }, []);
 
-  // Tabla de posiciones simple (por puntos: 3 victoria, 1 empate, 0 derrota)
   const posiciones = equipos.map((e) => {
     const partidosEquipo = partidos.filter(
       (p) => p.jugado && (p.equipo_local_id === e.id || p.equipo_visitante_id === e.id),
@@ -106,114 +107,127 @@ export function TorneosClientePage() {
   }).sort((a, b) => b.puntos - a.puntos || b.dg - a.dg || b.gf - a.gf);
 
   return (
-    <main style={{ padding: 16, display: 'grid', gap: 20, maxWidth: 800 }}>
-      <h1>Torneos</h1>
-      {error && <p style={{ color: 'crimson' }}>{error}</p>}
+    <main className="min-h-screen bg-gray-50 px-6 py-12">
+      <div className="max-w-6xl mx-auto">
+        <h1 className="text-2xl font-bold text-gray-900 mb-8">Torneos</h1>
+        {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
-      <section>
-        <h2>Torneos activos</h2>
-        {torneos.length === 0 ? (
-          <p>No hay torneos en curso.</p>
-        ) : (
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            {torneos.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => {
-                  setTorneoSeleccionado(t.id);
-                  void cargarDetalle(t.id);
-                }}
-                style={{
-                  padding: '10px 14px',
-                  background: torneoSeleccionado === t.id ? '#1a73e8' : '#eee',
-                  color: torneoSeleccionado === t.id ? '#fff' : '#000',
-                  border: 'none',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                }}
-              >
-                {t.nombre}
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
+        <section className="mb-8">
+          <h2 className="font-bold text-gray-900 mb-4">Torneos activos</h2>
+          {torneos.length === 0 ? (
+            <Card padded={false}>
+              <div className="p-8 text-center text-gray-600">
+                No hay torneos en curso.
+              </div>
+            </Card>
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              {torneos.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => {
+                    setTorneoSeleccionado(t.id);
+                    void cargarDetalle(t.id);
+                  }}
+                  className={`px-5 py-3 rounded-xl border transition-all ${
+                    torneoSeleccionado === t.id
+                      ? 'border-indigo-600 bg-indigo-50 text-indigo-700 font-medium'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  {t.nombre}
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
 
-      {torneoSeleccionado && (
-        <section>
-          <h2>{torneos.find((t) => t.id === torneoSeleccionado)?.nombre}</h2>
-          <div style={{ display: 'grid', gap: 20, gridTemplateColumns: '1fr 1fr' }}>
-            <div>
-              <h3>Fixture</h3>
-              {partidos.length === 0 ? (
-                <p>Sin partidos cargados todavía.</p>
-              ) : (
-                <table border={1} cellPadding={6} style={{ borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr>
-                      <th>Local</th>
-                      <th>Resultado</th>
-                      <th>Visitante</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+        {torneoSeleccionado && (
+          <section>
+            <h2 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <Trophy className="w-5 h-5" />
+              {torneos.find((t) => t.id === torneoSeleccionado)?.nombre}
+            </h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div>
+                <h3 className="font-bold text-gray-900 mb-3">Fixture</h3>
+                {partidos.length === 0 ? (
+                  <Card padded={false}>
+                    <div className="p-6 text-center text-gray-600">
+                      Sin partidos cargados todavía.
+                    </div>
+                  </Card>
+                ) : (
+                  <div className="space-y-2">
                     {partidos.map((p) => {
                       const local = equipos.find((e) => e.id === p.equipo_local_id)?.nombre_equipo ?? 'Local';
                       const visitante = equipos.find((e) => e.id === p.equipo_visitante_id)?.nombre_equipo ?? 'Visitante';
                       const resultado = p.jugado ? `${p.goles_local}-${p.goles_visitante}` : '—';
                       return (
-                        <tr key={p.id}>
-                          <td>{local}</td>
-                          <td>{resultado}</td>
-                          <td>{visitante}</td>
-                        </tr>
+                        <Card key={p.id} padded={false}>
+                          <div className="p-3 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Users className="w-4 h-4 text-gray-400" />
+                              <span className="text-sm text-gray-900">{local}</span>
+                            </div>
+                            <span className="font-mono font-bold">{resultado}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-gray-400">{visitante}</span>
+                              <Users className="w-4 h-4 text-gray-400" />
+                            </div>
+                          </div>
+                        </Card>
                       );
                     })}
-                  </tbody>
-                </table>
-              )}
+                  </div>
+                )}
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900 mb-3">Tabla de posiciones</h3>
+                {posiciones.length === 0 ? (
+                  <Card padded={false}>
+                    <div className="p-6 text-center text-gray-600">
+                      Sin equipos cargados.
+                    </div>
+                  </Card>
+                ) : (
+                  <Card padded={false}>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-200">
+                            {['Equipo', 'PJ', 'PG', 'PE', 'PP', 'GF', 'GC', 'DG', 'Pts'].map((h) => (
+                              <th key={h} className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">
+                                {h}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {posiciones.map((pos) => (
+                            <tr key={pos.equipo} className="border-b border-gray-50/50">
+                              <td className="px-4 py-3 font-medium text-gray-900">{pos.equipo}</td>
+                              <td className="px-4 py-3 text-center">{pos.jugados}</td>
+                              <td className="px-4 py-3 text-center">{pos.ganados}</td>
+                              <td className="px-4 py-3 text-center">{pos.empatados}</td>
+                              <td className="px-4 py-3 text-center">{pos.perdidos}</td>
+                              <td className="px-4 py-3 text-center">{pos.gf}</td>
+                              <td className="px-4 py-3 text-center">{pos.gc}</td>
+                              <td className="px-4 py-3 text-center">{pos.dg}</td>
+                              <td className="px-4 py-3 text-center font-bold">{pos.puntos}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Card>
+                )}
+              </div>
             </div>
-            <div>
-              <h3>Tabla de posiciones</h3>
-              {posiciones.length === 0 ? (
-                <p>Sin equipos cargados.</p>
-              ) : (
-                <table border={1} cellPadding={6} style={{ borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr>
-                      <th>Equipo</th>
-                      <th>PJ</th>
-                      <th>PG</th>
-                      <th>PE</th>
-                      <th>PP</th>
-                      <th>GF</th>
-                      <th>GC</th>
-                      <th>DG</th>
-                      <th>Pts</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {posiciones.map((pos, i) => (
-                      <tr key={pos.equipo}>
-                        <td style={{ fontWeight: i < 3 ? 'bold' : 'normal' }}>{pos.equipo}</td>
-                        <td>{pos.jugados}</td>
-                        <td>{pos.ganados}</td>
-                        <td>{pos.empatados}</td>
-                        <td>{pos.perdidos}</td>
-                        <td>{pos.gf}</td>
-                        <td>{pos.gc}</td>
-                        <td>{pos.dg}</td>
-                        <td>{pos.puntos}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
+          </section>
+        )}
+      </div>
     </main>
   );
 }
