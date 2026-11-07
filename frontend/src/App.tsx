@@ -13,6 +13,8 @@ import { LoginPage } from './pages/auth/LoginPage';
 // Páginas admin (protegidas por rol)
 import { GrillaPage } from './pages/admin/GrillaPage';
 import { CanchasPage } from './pages/admin/CanchasPage';
+import { SociosPage } from './pages/admin/SociosPage';
+import { BeneficiosPage } from './pages/admin/BeneficiosPage';
 import { CajaPage } from './pages/admin/CajaPage';
 import { TorneosPage } from './pages/admin/TorneosPage';
 
@@ -42,6 +44,22 @@ export function App() {
           element={
             <RutaProtegida roles={['super_admin', 'recepcionista']}>
               <CanchasPage />
+            </RutaProtegida>
+          }
+        />
+        <Route
+          path="/admin/socios"
+          element={
+            <RutaProtegida roles={['super_admin', 'recepcionista']}>
+              <SociosPage />
+            </RutaProtegida>
+          }
+        />
+        <Route
+          path="/admin/beneficios"
+          element={
+            <RutaProtegida roles={['super_admin', 'recepcionista']}>
+              <BeneficiosPage />
             </RutaProtegida>
           }
         />
