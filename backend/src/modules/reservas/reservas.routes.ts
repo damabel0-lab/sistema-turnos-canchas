@@ -1,7 +1,14 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { AuthedRequest } from '../../middleware/auth.js';
-import { disponibilidad, crearReserva, grillaDelDia, cambiarEstadoReserva } from './reservas.service.js';
+import {
+  disponibilidad,
+  crearReserva,
+  grillaDelDia,
+  cambiarEstadoReserva,
+  reservasDelUsuario,
+  cancelarPropia,
+} from './reservas.service.js';
 import { cargaManual } from './carga-manual.service.js';
 
 export const reservasRouter = Router();
@@ -48,6 +55,22 @@ reservasRouter.post(
     const usuario_id = esStaff ? (body.usuario_id ?? null) : req.userId;
 
     res.status(201).json(await crearReserva({ ...body, usuario_id }));
+  }),
+);
+
+// GET /reservas/mias -> próximas + historial del usuario logueado
+reservasRouter.get(
+  '/mias',
+  h(async (req, res) => {
+    res.json(await reservasDelUsuario(req.userId!));
+  }),
+);
+
+// DELETE /reservas/:id/mia -> el cliente cancela su propia reserva
+reservasRouter.delete(
+  '/:id/mia',
+  h(async (req, res) => {
+    res.json(await cancelarPropia(req.userId!, Number(req.params.id)));
   }),
 );
 

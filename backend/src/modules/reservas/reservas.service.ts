@@ -16,6 +16,87 @@ function quitarOffset(iso: string): string {
 }
 
 /**
+ * Reservas de un usuario: próximas (futuras, no canceladas) e historial.
+ * El cliente solo puede ver las suyas; el staff pasa usuario_id explícito.
+ */
+export async function reservasDelUsuario(usuarioId: string) {
+  if (!usuarioId) throw new HttpError(400, 'usuario_id es obligatorio');
+
+  const hoy = new Date().toISOString().slice(0, 10);
+
+  const { data, error } = await supabaseAdmin
+    .from('reservas')
+    .select('id, fecha, hora_inicio, hora_fin, precio_total, monto_seña, estado, metodo_pago, es_turno_fijo, canchas(nombre, deportes(nombre))')
+    .eq('usuario_id', usuarioId)
+    .order('fecha', { ascending: false })
+    .order('hora_inicio', { ascending: false });
+  if (error) throw new HttpError(500, error.message);
+
+  const filas = (data ?? []) as unknown as Array<{
+    id: number;
+    fecha: string;
+    hora_inicio: string;
+    hora_fin: string;
+    precio_total: number;
+    monto_seña: number;
+    estado: string;
+    metodo_pago: string | null;
+    es_turno_fijo: boolean;
+    canchas: { nombre: string; deportes: { nombre: string } | null } | null;
+  }>;
+
+  const mapear = (r: (typeof filas)[number]) => ({
+    id: r.id,
+    fecha: r.fecha,
+    hora_inicio: r.hora_inicio,
+    hora_fin: r.hora_fin,
+    precio_total: Number(r.precio_total),
+    monto_seña: Number(r.monto_seña),
+    estado: r.estado,
+    metodo_pago: r.metodo_pago,
+    es_turno_fijo: r.es_turno_fijo,
+    cancha: r.canchas?.nombre ?? 'Gimnasio / Pileta',
+    deporte: r.canchas?.deportes?.nombre ?? null,
+  });
+
+  return {
+    proximas: filas
+      .filter((r) => r.fecha >= hoy && r.estado !== 'cancelada')
+      .reverse()
+      .map(mapear),
+    historial: filas
+      .filter((r) => r.fecha < hoy || r.estado === 'cancelada')
+      .map(mapear),
+  };
+}
+
+/**
+ * Cancelación por parte del cliente (solo las suyas y hasta X antes).
+ * Política simple por ahora: se puede cancelar cualquier reserva futura.
+ */
+export async function cancelarPropia(usuarioId: string, reservaId: number) {
+  const { data: reserva, error } = await supabaseAdmin
+    .from('reservas')
+    .select('id, usuario_id, fecha, estado')
+    .eq('id', reservaId)
+    .single();
+  if (error || !reserva) throw new HttpError(404, 'Reserva no encontrada');
+  if (reserva.usuario_id !== usuarioId) throw new HttpError(403, 'Esa reserva no es tuya');
+  if (reserva.estado !== 'pendiente_seña' && reserva.estado !== 'confirmada') {
+    throw new HttpError(409, `No se puede cancelar una reserva "${reserva.estado}"`);
+  }
+
+  const { data, error: eUpd } = await supabaseAdmin
+    .from('reservas')
+    .update({ estado: 'cancelada' })
+    .eq('id', reservaId)
+    .select()
+    .single();
+  if (eUpd) throw new HttpError(500, eUpd.message);
+  return data;
+}
+
+/**
  * Cambia el estado de una reserva y registra el cobro en caja.
  *
  * Transiciones permitidas:
