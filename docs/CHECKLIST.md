@@ -23,11 +23,12 @@
 - [x] Crear esqueleto backend (Express, auth middleware, 6 módulos con TODOs)
 - [x] Crear esqueleto frontend (rutas, páginas cliente/admin, cliente Supabase)
 - [x] `typecheck` verde en backend y frontend
-- [ ] Configurar Git local (usuarios de ambos integrantes)
-- [ ] Conectar repositorio en GitHub y hacer push inicial
+- [x] Configurar Git local (usuarios de ambos integrantes)
+- [x] Conectar repositorio en GitHub y hacer push inicial
+- [x] Conexión a Supabase verificada: claves reales en `.env` locales (no se suben a Git) y las 13 tablas responden
 
 ## Fase 1 — Base de datos y Auth
-- [ ] Pegar `docs/schema.sql` en Supabase y verificar que corre
+- [x] Pegar `docs/schema.sql` en Supabase y verificar que corre (13 tablas OK, 0 filas)
 - [ ] Configurar RLS básico (el cliente solo lee lo permitido)
 - [ ] Login/registro con email (Supabase Auth)
 - [ ] Login con Google (si habilitan el provider)
