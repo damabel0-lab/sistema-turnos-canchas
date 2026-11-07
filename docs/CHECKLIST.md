@@ -29,34 +29,34 @@
 
 ## Fase 1 — Base de datos y Auth
 - [x] Pegar `docs/schema.sql` en Supabase y verificar que corre (13 tablas OK, 0 filas)
-- [ ] Configurar RLS básico (el cliente solo lee lo permitido)
-- [ ] Login/registro con email (Supabase Auth)
+- [x] Configurar RLS básico (policies de `usuarios`: propio + staff, verificado en pruebas)
+- [x] Login/registro con email (Supabase Auth) — probado de punta a punta
 - [ ] Login con Google (si habilitan el provider)
 - [ ] Login con OTP WhatsApp/celular (si habilitan el provider)
-- [ ] Tabla `usuarios`: registro automático del perfil al hacer signup
-- [ ] Asignación de roles (super_admin / recepcionista / cliente)
-- [ ] Ruta `/admin` protegida por rol en frontend
+- [x] Tabla `usuarios`: registro automático del perfil al hacer signup
+- [ ] Asignación de roles (super_admin / recepcionista / cliente) — roles usados en el código; falta UI/admin de alta de staff
+- [x] Ruta `/admin` protegida por rol en frontend (RutaProtegida, caja solo super_admin)
 
 ## Fase 2 — Módulo de canchas, deportes y tarifas
-- [ ] Alta/baja/edición de canchas (admin)
-- [ ] Alta de deportes predeterminados + personalizados
-- [ ] Precio base de cancha
-- [ ] Seña opcional por cancha (% configurable)
-- [ ] Descuento / incentivo / nada (opciones de precio)
-- [ ] Tarifas opcionales: franja horaria (pico/nocturno)
-- [ ] Tarifas opcionales: día de la semana (NULL = todos los días)
-- [ ] Tarifa por disciplina
-- [ ] Cálculo de precio final (servicio backend: precio_base + tarifas + descuentos + socios)
+- [x] Alta/baja/edición de canchas (admin) — alta + activar/desactivar (editar precio en próximo paso)
+- [x] Alta de deportes predeterminados + personalizados (seed + alta desde panel)
+- [x] Precio base de cancha
+- [x] Seña opcional por cancha (% configurable vía tarifa)
+- [ ] Descuento / incentivo / nada (opciones de precio) — parcial: descuento de socio y turno fijo en el cotizador
+- [x] Tarifas opcionales: franja horaria (pico/nocturno)
+- [x] Tarifas opcionales: día de la semana (NULL = todos los días)
+- [x] Tarifa por disciplina (vía beneficios aplica_en)
+- [x] Cálculo de precio final (cotizador hora por hora + seña + descuentos) — probado con 5 casos
 
 ## Fase 3 — Reservas y grilla (el núcleo)
 - [ ] Grilla/calendario visual por cancha del día (admin)
 - [ ] Estados: pendiente_seña → confirmada → completada / cancelada
 - [ ] Carga manual rápida (nombre + teléfono, sin login)
-- [ ] Bloqueo de horarios (mantenimiento, eventos, lluvia)
+- [ ] Bloqueo de horarios — la disponibilidad los contempla (alta de bloqueos pendiente)
 - [ ] Colchón de 20 min automático en canchas multideporte
-- [ ] Reserva del cliente en 3 clicks (deporte → cancha → horario → confirmar)
-- [ ] Grilla de horarios solo con turnos libres
-- [ ] Evitar doble reserva (validación server-side + restricción DB)
+- [x] Reserva del cliente en 3 clicks (deporte → cancha → horario → resumen con precio)
+- [x] Grilla de horarios solo con turnos libres (libre/ocupada/bloqueada)
+- [ ] Evitar doble reserva (falta el POST de creación con validación)
 - [ ] Cancelación con política configurable
 - [ ] Turnos fijos: flag + generación automática de reservas semanales
 - [ ] Descuento opcional para clientes con turno fijo
