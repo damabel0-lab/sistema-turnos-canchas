@@ -19,6 +19,7 @@ import { SociosPage } from './pages/admin/SociosPage';
 import { BeneficiosPage } from './pages/admin/BeneficiosPage';
 import { VenderAbonoPage } from './pages/admin/VenderAbonoPage';
 import { CajaPage } from './pages/admin/CajaPage';
+import { ReportesPage } from './pages/admin/ReportesPage';
 import { TorneosPage } from './pages/admin/TorneosPage';
 
 export function App() {
@@ -81,6 +82,14 @@ export function App() {
           element={
             <RutaProtegida roles={['super_admin']}>
               <CajaPage />
+            </RutaProtegida>
+          }
+        />
+        <Route
+          path="/admin/reportes"
+          element={
+            <RutaProtegida roles={['super_admin']}>
+              <ReportesPage />
             </RutaProtegida>
           }
         />
