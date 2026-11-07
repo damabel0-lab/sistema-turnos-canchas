@@ -4,6 +4,7 @@ import { authMiddleware } from './middleware/auth.js';
 import { errorHandler } from './middleware/error.js';
 import { reservasRouter } from './modules/reservas/reservas.routes.js';
 import { canchasRouter } from './modules/canchas/canchas.routes.js';
+import { deportesRouter } from './modules/deportes/deportes.routes.js';
 import { cajaRouter } from './modules/caja/caja.routes.js';
 import { torneosRouter } from './modules/torneos/torneos.routes.js';
 import { abonosRouter } from './modules/abonos/abonos.routes.js';
@@ -21,6 +22,7 @@ app.get('/health', (_req, res) => {
 // Rutas con autenticación (JWT de Supabase)
 app.use('/reservas', authMiddleware, reservasRouter);
 app.use('/canchas', authMiddleware, canchasRouter);
+app.use('/deportes', authMiddleware, deportesRouter);
 app.use('/caja', authMiddleware, cajaRouter);
 app.use('/torneos', authMiddleware, torneosRouter);
 app.use('/abonos', authMiddleware, abonosRouter);
