@@ -15,6 +15,120 @@ function quitarOffset(iso: string): string {
   return iso.replace(/([+-]\d{2}:\d{2}|Z)$/, '');
 }
 
+/**
+ * Grilla del día para el admin: todas las canchas activas con sus reservas
+ * y bloqueos en la fecha pedida.
+ */
+export interface ItemGrilla {
+  hora: string;
+  tipo: 'reserva' | 'bloqueo';
+  estado?: string;
+  reserva_id?: number;
+  cliente?: string;
+  monto?: number;
+  motivo?: string;
+}
+
+export interface FilaGrilla {
+  cancha_id: number;
+  cancha: string;
+  deporte: string | null;
+  items: ItemGrilla[];
+}
+
+export async function grillaDelDia(fecha: string): Promise<FilaGrilla[]> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+    throw new HttpError(400, 'fecha debe tener formato YYYY-MM-DD');
+  }
+
+  const [canchas, reservas, bloqueos] = await Promise.all([
+    supabaseAdmin
+      .from('canchas')
+      .select('id, nombre, activa, deportes(nombre)')
+      .order('nombre'),
+    supabaseAdmin
+      .from('reservas')
+      .select(
+        'id, cancha_id, hora_inicio, hora_fin, precio_total, monto_seña, estado, usuarios(nombre, apellido)',
+      )
+      .eq('fecha', fecha)
+      .neq('estado', 'cancelada'),
+    supabaseAdmin
+      .from('bloqueos_horarios')
+      .select('cancha_id, fecha_inicio, fecha_fin, motivo')
+      .lte('fecha_inicio', `${fecha}T${HORA_CIERRE}:00`)
+      .gte('fecha_fin', `${fecha}T${HORA_APERTURA}:00`),
+  ]);
+
+  if (canchas.error) throw new HttpError(500, canchas.error.message);
+  if (reservas.error) throw new HttpError(500, reservas.error.message);
+  if (bloqueos.error) throw new HttpError(500, bloqueos.error.message);
+
+  // (casts: sin tipos generados de Supabase, el parser de tipos se confunde con "monto_seña")
+  const filasCan = canchas.data as unknown as Array<{
+    id: number;
+    nombre: string;
+    activa: boolean;
+    deportes: { nombre: string } | null;
+  }>;
+  const filasRes = (reservas.data ?? []) as unknown as Array<{
+    id: number;
+    cancha_id: number;
+    hora_inicio: string;
+    hora_fin: string;
+    precio_total: number;
+    monto_seña: number;
+    estado: string;
+    usuarios: { nombre: string; apellido: string } | null;
+  }>;
+  const filasBlo = (bloqueos.data ?? []) as unknown as Array<{
+    cancha_id: number;
+    fecha_inicio: string;
+    fecha_fin: string;
+    motivo: string;
+  }>;
+
+  const filas: FilaGrilla[] = filasCan.map((c) => {
+    const items: ItemGrilla[] = [];
+
+    for (const r of filasRes.filter((x) => x.cancha_id === c.id)) {
+      const cliente = r.usuarios;
+      // Marcamos cada hora que cubre la reserva para pintarla en la grilla
+      for (let m = aMinutos(r.hora_inicio); m < aMinutos(r.hora_fin); m += 60) {
+        items.push({
+          hora: `${String(Math.floor(m / 60)).padStart(2, '0')}:00`,
+          tipo: 'reserva',
+          estado: r.estado,
+          reserva_id: r.id,
+          cliente: cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Cliente',
+          monto: r.estado === 'confirmada' ? Number(r.precio_total) : Number(r.monto_seña),
+        });
+      }
+    }
+
+    for (const b of filasBlo.filter((x) => x.cancha_id === c.id)) {
+      const inicio = Math.max(aMinutos(quitarOffset(b.fecha_inicio).slice(11, 16)), HORA_APERTURA * 60);
+      const fin = Math.min(aMinutos(quitarOffset(b.fecha_fin).slice(11, 16)), HORA_CIERRE * 60);
+      for (let m = inicio; m < fin; m += 60) {
+        items.push({
+          hora: `${String(Math.floor(m / 60)).padStart(2, '0')}:00`,
+          tipo: 'bloqueo',
+          motivo: b.motivo,
+        });
+      }
+    }
+
+    return {
+      cancha_id: c.id,
+      cancha: c.nombre,
+      deporte: c.deportes?.nombre ?? null,
+      items,
+    };
+  });
+
+  return filas;
+}
+
 export interface NuevaReserva {
   usuario_id?: string | null;
   cancha_id: number;
