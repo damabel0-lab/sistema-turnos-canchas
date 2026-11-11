@@ -23,6 +23,7 @@ import { SociosPage } from './pages/admin/SociosPage';
 import { BeneficiosPage } from './pages/admin/BeneficiosPage';
 import { VenderAbonoPage } from './pages/admin/VenderAbonoPage';
 import { DashboardPage } from './pages/admin/DashboardPage';
+import { ConfiguracionPage } from './pages/admin/ConfiguracionPage';
 import { ConfigurarPage } from './pages/admin/ConfigurarPage';
 import { CajaPage } from './pages/admin/CajaPage';
 import { ComplejoPublicoPage } from './pages/publico/ComplejoPublicoPage';
@@ -76,6 +77,14 @@ export function App() {
           element={
             <RutaProtegida roles={['super_admin', 'recepcionista']}>
               <ConfigurarPage />
+            </RutaProtegida>
+          }
+        />
+        <Route
+          path="/admin/configuracion"
+          element={
+            <RutaProtegida roles={['super_admin', 'recepcionista']}>
+              <ConfiguracionPage />
             </RutaProtegida>
           }
         />

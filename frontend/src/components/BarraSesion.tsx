@@ -48,7 +48,10 @@ export function BarraSesion() {
       <Link to="/complejo">Complejo</Link>
       <Link to="/mis-reservas">Mis reservas</Link>
       {perfil && (perfil.rol === 'super_admin' || perfil.rol === 'recepcionista') && (
-        <Link to="/admin/grilla">Panel</Link>
+        <>
+          <Link to="/admin/grilla">Panel</Link>
+          <Link to="/admin/configuracion">Configuración</Link>
+        </>
       )}
       <div className="nav-derecha">
         <Link
