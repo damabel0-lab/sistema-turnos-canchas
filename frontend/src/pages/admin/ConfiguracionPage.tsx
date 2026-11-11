@@ -76,7 +76,6 @@ export function ConfiguracionPage() {
       setDeportes(dep);
       setCanchas(can);
 
-      // Expandir todo por defecto
       const init: Record<number, boolean> = {};
       dep.forEach((d) => (init[d.id] = true));
       setExpandidos(init);
@@ -117,6 +116,14 @@ export function ConfiguracionPage() {
       descuento: '',
       activa: cancha.activa,
     });
+  }
+
+  function cancelarEdicion() {
+    setAgregandoCancha(null);
+    setEditandoCancha(null);
+    setAgregandoDeporte(false);
+    setCanchaForm(emptyCancha());
+    setDeporteForm(emptyDeporte());
   }
 
   async function guardarCancha(e: FormEvent) {
@@ -192,19 +199,13 @@ export function ConfiguracionPage() {
     }
   }
 
-  function cancelarEdicion() {
-    setAgregandoCancha(null);
-    setEditandoCancha(null);
-    setAgregandoDeporte(false);
-    setCanchaForm(emptyCancha());
-    setDeporteForm(emptyDeporte());
-  }
-
   if (cargando) {
     return (
       <main className="pantalla">
         <div className="contenedor">
-          <Card><p className="texto-sec">Cargando configuración…</p></Card>
+          <Card>
+            <p className="texto-sec">Cargando configuración…</p>
+          </Card>
         </div>
       </main>
     );
@@ -218,6 +219,7 @@ export function ConfiguracionPage() {
   return (
     <main className="pantalla">
       <div className="contenedor">
+        {/* Encabezado */}
         <div className="fila-entre" style={{ marginBottom: '1rem' }}>
           <div>
             <h1 className="titulo">Configuración</h1>
@@ -236,40 +238,42 @@ export function ConfiguracionPage() {
           <div style={{ marginBottom: '1rem' }}>
             <Card>
               <div className="fila-entre" style={{ marginBottom: '0.75rem' }}>
-                <h3 className="titulo" style={{ fontSize: '1rem', margin: 0 }}>Nuevo deporte</h3>
+                <h3 className="titulo" style={{ fontSize: '1rem', margin: 0 }}>
+                  Nuevo deporte
+                </h3>
                 <button className="boton boton-ghost" onClick={cancelarEdicion}>
                   <X size={16} />
                 </button>
               </div>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                agregarDeporteACancha();
-              }}
-              className="fila"
-              style={{ gap: '0.5rem' }}
-            >
-              <input
-                autoFocus
-                value={deporteForm.nombre}
-                onChange={(e) => setDeporteForm({ ...deporteForm, nombre: e.target.value })}
-                placeholder="Nombre del deporte (ej: Pádel)"
-                required
-                className="input"
-                style={{ flex: 1 }}
-              />
-              <select
-                value={deporteForm.tipo}
-                onChange={(e) => setDeporteForm({ ...deporteForm, tipo: e.target.value })}
-                className="input"
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void agregarDeporteACancha();
+                }}
+                className="fila"
+                style={{ gap: '0.5rem' }}
               >
-                <option value="cancha">Cancha</option>
-                <option value="gimnasio">Gimnasio</option>
-                <option value="pileta">Pileta</option>
-                <option value="otro">Otro</option>
-              </select>
-              <button type="submit" className="boton boton-primario">Agregar</button>
-            </form>
+                <input
+                  autoFocus
+                  value={deporteForm.nombre}
+                  onChange={(e) => setDeporteForm({ ...deporteForm, nombre: e.target.value })}
+                  placeholder="Nombre del deporte (ej: Pádel)"
+                  required
+                  className="input"
+                  style={{ flex: 1 }}
+                />
+                <select
+                  value={deporteForm.tipo}
+                  onChange={(e) => setDeporteForm({ ...deporteForm, tipo: e.target.value })}
+                  className="input"
+                >
+                  <option value="cancha">Cancha</option>
+                  <option value="gimnasio">Gimnasio</option>
+                  <option value="pileta">Pileta</option>
+                  <option value="otro">Otro</option>
+                </select>
+                <button type="submit" className="boton boton-primario">Agregar</button>
+              </form>
             </Card>
           </div>
         )}
@@ -297,7 +301,11 @@ export function ConfiguracionPage() {
                   onClick={() => toggleExpandir(deporte.id)}
                 >
                   <div className="fila" style={{ gap: '0.75rem' }}>
-                    {isOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                    {isOpen ? (
+                      <ChevronDown size={18} />
+                    ) : (
+                      <ChevronRight size={18} />
+                    )}
                     <div>
                       <div style={{ fontWeight: 700, fontSize: '1rem' }}>{deporte.nombre}</div>
                       <div className="texto-sec" style={{ fontSize: '0.75rem' }}>
@@ -319,7 +327,9 @@ export function ConfiguracionPage() {
 
                 {/* Contenido expandible */}
                 {isOpen && (
-                  <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                  <div
+                    style={{ padding: '0.75rem 1rem', borderTop: '1px solid #e5e7eb' }}
+                  >
                     {/* Formulario agregar/editar cancha */}
                     {(agregandoCancha?.id === deporte.id || editandoCancha) && (
                       <div style={{ marginBottom: '0.75rem' }}>
@@ -327,7 +337,9 @@ export function ConfiguracionPage() {
                           <div className="fila" style={{ gap: '0.5rem' }}>
                             <input
                               value={canchaForm.nombre}
-                              onChange={(e) => setCanchaForm({ ...canchaForm, nombre: e.target.value })}
+                              onChange={(e) =>
+                                setCanchaForm({ ...canchaForm, nombre: e.target.value })
+                              }
                               placeholder="Nombre de la cancha"
                               required
                               className="input"
@@ -337,7 +349,9 @@ export function ConfiguracionPage() {
                               type="number"
                               min={0}
                               value={canchaForm.precio_base}
-                              onChange={(e) => setCanchaForm({ ...canchaForm, precio_base: e.target.value })}
+                              onChange={(e) =>
+                                setCanchaForm({ ...canchaForm, precio_base: e.target.value })
+                              }
                               placeholder="Precio/hora"
                               required
                               className="input"
@@ -346,12 +360,21 @@ export function ConfiguracionPage() {
                           </div>
                           <input
                             value={canchaForm.caracteristicas}
-                            onChange={(e) => setCanchaForm({ ...canchaForm, caracteristicas: e.target.value })}
+                            onChange={(e) =>
+                              setCanchaForm({ ...canchaForm, caracteristicas: e.target.value })
+                            }
                             placeholder="Características (iluminada, techada, etc.)"
                             className="input"
                           />
-                          <div className="fila" style={{ gap: '0.5rem', justifyContent: 'flex-end' }}>
-                            <button type="button" className="boton boton-secondary" onClick={cancelarEdicion}>
+                          <div
+                            className="fila"
+                            style={{ gap: '0.5rem', justifyContent: 'flex-end' }}
+                          >
+                            <button
+                              type="button"
+                              className="boton boton-secondary"
+                              onClick={cancelarEdicion}
+                            >
                               Cancelar
                             </button>
                             <button type="submit" className="boton boton-primario">
@@ -370,12 +393,18 @@ export function ConfiguracionPage() {
                     ) : (
                       <div className="stack" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                         {canchasDeporte.map((cancha) => (
-                          <div key={cancha.id} className="fila-entre" style={{ padding: '0.5rem 0', borderBottom: '1px solid #f3f4f6' }}>
+                          <div
+                            key={cancha.id}
+                            className="fila-entre"
+                            style={{ padding: '0.5rem 0', borderBottom: '1px solid #f3f4f6' }}
+                          >
                             <div>
                               <div style={{ fontWeight: 600 }}>{cancha.nombre}</div>
                               <div className="texto-sec" style={{ fontSize: '0.75rem' }}>
                                 ${cancha.precio_base}/h
-                                {cancha.caracteristicas ? ` · ${cancha.caracteristicas}` : ''}
+                                {cancha.caracteristicas
+                                  ? ` · ${cancha.caracteristicas}`
+                                  : ''}
                               </div>
                             </div>
                             <div className="fila" style={{ gap: '0.25rem' }}>
