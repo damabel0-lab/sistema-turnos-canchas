@@ -31,11 +31,23 @@ export function MisReservasPage() {
   const [datos, setDatos] = useState<{ proximas: Reserva[]; historial: Reserva[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cancelando, setCancelando] = useState<number | null>(null);
+  const [estadisticas, setEstadisticas] = useState<{
+    veces_jugado: number;
+    gasto_total: number;
+    disciplina_favorita: string | null;
+    cancelaciones: number;
+  } | null>(null);
 
   const cargar = useCallback(async () => {
     if (!session) return;
     try {
       setDatos(await api<{ proximas: Reserva[]; historial: Reserva[] }>('/reservas/mias'));
+      setEstadisticas(await api<{
+        veces_jugado: number;
+        gasto_total: number;
+        disciplina_favorita: string | null;
+        cancelaciones: number;
+      }>('/reservas/mias/estadisticas'));
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error cargando reservas');
@@ -112,6 +124,28 @@ export function MisReservasPage() {
       <div className="contenedor">
         <h1 className="titulo">Mis Reservas</h1>
         {error && <p style={{ color: '#dc2626' }}>{error}</p>}
+
+        {/* Estadísticas del cliente */}
+        {estadisticas && (
+          <div className="grilla-tarjetas" style={{ marginBottom: '1.5rem' }}>
+            <Card>
+              <div className="texto-sec" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Veces jugado</div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{estadisticas.veces_jugado}</div>
+            </Card>
+            <Card>
+              <div className="texto-sec" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Gasto total</div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>${estadisticas.gasto_total}</div>
+            </Card>
+            <Card>
+              <div className="texto-sec" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Disciplina favorita</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{estadisticas.disciplina_favorita ?? '—'}</div>
+            </Card>
+            <Card>
+              <div className="texto-sec" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Cancelaciones</div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{estadisticas.cancelaciones}</div>
+            </Card>
+          </div>
+        )}
 
         <section style={{ marginBottom: '1.5rem' }}>
           <h2 className="titulo" style={{ fontSize: '1.1rem' }}>Próximos turnos</h2>

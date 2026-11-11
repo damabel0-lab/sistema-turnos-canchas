@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Card } from '../../components/ui';
-import { Calendar, Clock, CreditCard, Trophy } from 'lucide-react';
+import { Calendar, CreditCard, Trophy } from 'lucide-react';
 
 export function HomePage() {
   return (
