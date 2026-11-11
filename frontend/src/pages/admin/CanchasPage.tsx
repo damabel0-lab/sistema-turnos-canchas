@@ -109,7 +109,7 @@ export function CanchasPage() {
 
       <div className="grilla-2-col" style={{ gap: '0.9rem' }}>
         {/* ===== Alta de cancha ===== */}
-        <aside className="panel" style={{ alignSelf: 'start' }}>
+        <aside className="panel panel-con-altura">
           <div className="panel-header"><span className="panel-titulo">Agregar cancha</span></div>
           <div className="panel-body">
             <form onSubmit={crearCancha} className="stack">
@@ -132,7 +132,7 @@ export function CanchasPage() {
         </aside>
 
         {/* ===== Listado ===== */}
-        <section className="panel" aria-labelledby="canchas-listado">
+        <section className="panel panel-con-altura" aria-labelledby="canchas-listado">
           <div className="panel-header">
             <span className="panel-titulo" id="canchas-listado">Listado</span>
             <span className="texto-debil">{filtradas.length}/{canchas.length} cancha{canchas.length !== 1 ? 's' : ''}</span>

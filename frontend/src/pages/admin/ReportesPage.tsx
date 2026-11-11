@@ -94,7 +94,7 @@ export function ReportesPage() {
           {/* Layout 2 columnas */}
           <div className="grilla-2-col" style={{ gap: '0.9rem' }}>
             {/* Detalle por origen */}
-            <section className="panel">
+            <section className="panel panel-con-altura">
               <div className="panel-header"><span className="panel-titulo">Detalle por origen</span></div>
               <div className="panel-body" style={{ padding: '0.5rem 0.85rem' }}>
                 {ordenados.length === 0 ? (
@@ -128,7 +128,7 @@ export function ReportesPage() {
             </section>
 
             {/* Distribución visual */}
-            <section className="panel">
+            <section className="panel panel-con-altura">
               <div className="panel-header"><span className="panel-titulo">Distribución por origen</span></div>
               <div className="panel-body" style={{ padding: '1rem', gap: '0.85rem' }}>
                 {ordenados.length === 0 ? (

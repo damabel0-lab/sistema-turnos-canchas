@@ -102,7 +102,7 @@ export function BeneficiosPage() {
 
       <div className="grilla-2-col" style={{ gap: '0.9rem' }}>
         {/* ===== Formulario de creación ===== */}
-        <aside className="panel" style={{ alignSelf: 'start' }}>
+        <aside className="panel panel-con-altura">
           <div className="panel-header"><span className="panel-titulo">Nuevo beneficio</span></div>
           <div className="panel-body">
             <form onSubmit={crear} className="stack">
@@ -126,7 +126,7 @@ export function BeneficiosPage() {
         </aside>
 
         {/* ===== Activos ===== */}
-        <section className="panel" aria-labelledby="activos-titulo">
+        <section className="panel panel-con-altura" aria-labelledby="activos-titulo">
           <div className="panel-header">
             <span className="panel-titulo" id="activos-titulo">Beneficios activos</span>
             <span className="texto-debil">{beneficios.length} total</span>

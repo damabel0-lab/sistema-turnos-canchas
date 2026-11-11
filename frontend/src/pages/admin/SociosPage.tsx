@@ -109,7 +109,7 @@ export function SociosPage() {
 
       <div className="grilla-2-col" style={{ gap: '0.9rem' }}>
         {/* ===== Alta de socio ===== */}
-        <aside className="panel" style={{ alignSelf: 'start' }}>
+        <aside className="panel panel-con-altura">
           <div className="panel-header"><span className="panel-titulo">Dar de alta socio</span></div>
           <div className="panel-body">
             <form onSubmit={darDeAlta} className="stack">
@@ -122,7 +122,7 @@ export function SociosPage() {
         </aside>
 
         {/* ===== Directorio ===== */}
-        <section className="panel" aria-labelledby="directorio-titulo">
+        <section className="panel panel-con-altura" aria-labelledby="directorio-titulo">
           <div className="panel-header">
             <span className="panel-titulo" id="directorio-titulo">Directorio</span>
             <span className="texto-debil">{filtrados.length} socio{filtrados.length !== 1 ? 's' : ''}</span>

@@ -148,7 +148,7 @@ export function CajaPage() {
 
           {/* Resumen 2 columnas */}
           <div className="grilla-2-col" style={{ gap: '0.9rem', marginBottom: '0.9rem' }}>
-            <section className="panel">
+            <section className="panel panel-con-altura">
               <div className="panel-header"><span className="panel-titulo">Por origen y método</span></div>
               <div className="panel-body" style={{ padding: '0.75rem 0.9rem' }}>
                 <div>
@@ -188,7 +188,7 @@ export function CajaPage() {
               </div>
             </section>
 
-            <aside className="panel" style={{ alignSelf: 'start' }}>
+            <aside className="panel panel-con-altura">
               <div className="panel-header"><span className="panel-titulo">Registrar egreso</span></div>
               <div className="panel-body">
                 <form onSubmit={registrarEgreso} className="stack">
