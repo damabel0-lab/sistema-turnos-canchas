@@ -1192,20 +1192,70 @@ body {
 .leyenda-punto.bloqueo { background: var(--texto-3); }
 
 /* ===== Agenda del día: tarjeta por cancha con mini-grilla calendario ===== */
-.grilla-canchas {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
-  gap: 0.8rem;
+.agenda-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+  padding: 0 0.15rem;
+}
+
+.canchas-carril {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
   padding: 0.7rem;
 }
 
+.canchas-carril::-webkit-scrollbar {
+  height: 6px;
+}
+
+.canchas-carril::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 9999px;
+}
+
 .cal-card {
+  flex: 0 0 clamp(300px, 30%, 430px);
+  scroll-snap-align: start;
   background: var(--bg-surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radio-lg);
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.flecha-carril {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: var(--radio-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-surface-2);
+  color: var(--texto-2);
+  cursor: pointer;
+  transition: border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.flecha-carril:hover:not(:disabled) {
+  border-color: var(--primario);
+  color: var(--primario-2);
+  transform: translateY(-1px);
+}
+
+.flecha-carril:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .cal-card-head {

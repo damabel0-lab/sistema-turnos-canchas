@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { api } from '../../lib/api';
 import { ToastContainer, useToast } from '../../components/ui/Toast';
 import { Badge } from '../../components/ui';
@@ -14,6 +14,9 @@ import {
   Repeat,
   Lock,
   X,
+  Trophy,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 interface ItemGrilla {
@@ -81,6 +84,50 @@ export function GrillaPage() {
         return slots;
       })()
     : [];
+
+  // Carril horizontal de canchas por deporte
+  const carrilesRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [nudges, setNudges] = useState<Record<string, { izq: boolean; der: boolean }>>({});
+
+  const grupos = useMemo(() => {
+    const map = new Map<string, FilaGrilla[]>();
+    for (const f of filas) {
+      const key = f.deporte ?? 'Otro';
+      const arr = map.get(key) ?? [];
+      arr.push(f);
+      map.set(key, arr);
+    }
+    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b, 'es'));
+  }, [filas]);
+
+  function mover(id: string, dir: 1 | -1) {
+    const el = carrilesRefs.current[id];
+    if (!el) return;
+    const card = el.querySelector<HTMLElement>('.cal-card');
+    const paso = (card?.offsetWidth ?? 360) + 12;
+    el.scrollBy({ left: dir * paso, behavior: 'smooth' });
+  }
+
+  function onScrollLane(id: string) {
+    const el = carrilesRefs.current[id];
+    if (!el) return;
+    setNudges((prev) => ({
+      ...prev,
+      [id]: { izq: el.scrollLeft <= 4, der: el.scrollLeft + el.clientWidth >= el.scrollWidth - 4 },
+    }));
+  }
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const next: Record<string, { izq: boolean; der: boolean }> = {};
+      for (const [id, el] of Object.entries(carrilesRefs.current)) {
+        if (!el) continue;
+        next[id] = { izq: el.scrollLeft <= 4, der: el.scrollLeft + el.clientWidth >= el.scrollWidth - 4 };
+      }
+      setNudges(next);
+    }, 80);
+    return () => clearTimeout(t);
+  }, [grupos]);
 
   const DIAS_SEMANA = [
     { valor: 0, texto: 'Domingo' },
@@ -217,6 +264,75 @@ export function GrillaPage() {
   );
   const precio = (n: number) => `$${n.toLocaleString('es-AR')}`;
 
+  /** Tarjeta de cancha con su mini-grilla de horarios (se reutiliza en cada grupo) */
+  const renderTarjetaCancha = (f: FilaGrilla) => {
+    const reservasCount = f.items.filter((i) => i.tipo === 'reserva').length;
+    const ocupacion = Math.round((reservasCount / Math.max(HORAS_TURNO.length, 1)) * 100);
+    const libre = Math.max(HORAS_TURNO.length - reservasCount, 0);
+    return (
+      <section key={f.cancha_id} className="cal-card" aria-label={`Cancha ${f.cancha}`}>
+        <div className="cal-card-head">
+          <div className="fila" style={{ gap: '0.5rem', minWidth: 0 }}>
+            <span className="cal-cancha-icono">
+              <Goal size={16} />
+            </span>
+            <div style={{ minWidth: 0 }}>
+              <div className="cal-cancha-nombre">{f.cancha}</div>
+              <div className="cal-cancha-deporte">{f.deporte ?? '—'}</div>
+            </div>
+          </div>
+          <div className="cal-card-resumen">
+            <span className="cal-chip-count">{reservasCount} turno{reservasCount !== 1 ? 's' : ''}</span>
+            {libre > 0 && <span className="cal-chip-libre">{libre} libre{libre !== 1 ? 's' : ''}</span>}
+          </div>
+        </div>
+
+        <div className="cal-ocup-track" role="progressbar" aria-valuenow={ocupacion} aria-valuemin={0} aria-valuemax={100} title={`${ocupacion}% de ocupación`}>
+          <div className="cal-ocup-fill" style={{ width: `${ocupacion}%` }} />
+        </div>
+
+        <div className="cal-slots">
+          {HORAS_TURNO.map((h) => {
+            const item = f.items.find((i) => i.hora === h);
+            if (!item) {
+              return (
+                <div key={h} className="cal-slot libre" title={`${h} · Libre`}>
+                  <span className="cal-slot-hora">{h}</span>
+                </div>
+              );
+            }
+            if (item.tipo === 'bloqueo') {
+              return (
+                <div key={h} className="cal-slot bloqueo" title={`${h} · Bloqueada${item.motivo ? `: ${item.motivo}` : ''}`}>
+                  <Lock size={10} />
+                  <span className="cal-slot-hora">{h}</span>
+                </div>
+              );
+            }
+            const estado = item.estado ?? 'pendiente_seña';
+            return (
+              <button
+                key={h}
+                type="button"
+                className={`cal-slot ${estado}`}
+                disabled={!item.reserva_id}
+                onClick={() => {
+                  if (item.reserva_id) {
+                    setSel({ reserva_id: item.reserva_id, cliente: item.cliente, estado: item.estado, monto: item.monto });
+                  }
+                }}
+                title={`${h} · ${item.cliente ?? 'Reserva'} · ${estado} · ${precio(item.monto ?? 0)}`}
+              >
+                <span className="cal-slot-hora">{h}</span>
+                <span className="cal-slot-cliente">{item.cliente ?? 'Reserva'}</span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+    );
+  };
+
   return (
     <div className="admin-page">
       <ToastContainer toasts={toasts} onCerrar={cerrar} />
@@ -268,95 +384,52 @@ export function GrillaPage() {
         </div>
       </div>
 
-      {/* ===== Agenda del día (protagonista) ===== */}
-      <section className="panel" style={{ marginBottom: '0.9rem' }}>
-        <div className="panel-header">
-          <span className="panel-titulo">Agenda del día</span>
-          <div className="leyenda-grilla" aria-label="Leyenda de la grilla">
-            <span className="leyenda-chip"><span className="leyenda-punto pendiente" /> Pendiente</span>
-            <span className="leyenda-chip"><span className="leyenda-punto confirmada" /> Confirmada</span>
-            <span className="leyenda-chip"><span className="leyenda-punto completada" /> Completada</span>
-            <span className="leyenda-chip"><span className="leyenda-punto bloqueo" /> Bloqueo</span>
-          </div>
+      {/* ===== Agenda del día (agrupada por deporte · carrusel) ===== */}
+      <div className="agenda-head">
+        <span className="panel-titulo">Agenda del día</span>
+        <div className="leyenda-grilla" aria-label="Leyenda de la grilla">
+          <span className="leyenda-chip"><span className="leyenda-punto pendiente" /> Pendiente</span>
+          <span className="leyenda-chip"><span className="leyenda-punto confirmada" /> Confirmada</span>
+          <span className="leyenda-chip"><span className="leyenda-punto completada" /> Completada</span>
+          <span className="leyenda-chip"><span className="leyenda-punto bloqueo" /> Bloqueo</span>
         </div>
-        <div className="grilla-canchas">
-          {filas.length === 0 ? (
-            <div className="panel-vacio">No hay canchas para mostrar.</div>
-          ) : (
-            filas.map((f) => {
-              const reservasCount = f.items.filter((i) => i.tipo === 'reserva').length;
-              const ocupacion = Math.round((reservasCount / Math.max(HORAS_TURNO.length, 1)) * 100);
-              const libre = Math.max(HORAS_TURNO.length - reservasCount, 0);
-              return (
-                <section key={f.cancha_id} className="cal-card" aria-label={`Cancha ${f.cancha}`}>
-                  {/* Encabezado de la cancha */}
-                  <div className="cal-card-head">
-                    <div className="fila" style={{ gap: '0.5rem', minWidth: 0 }}>
-                      <span className="cal-cancha-icono">
-                        <Goal size={16} />
-                      </span>
-                      <div style={{ minWidth: 0 }}>
-                        <div className="cal-cancha-nombre">{f.cancha}</div>
-                        <div className="cal-cancha-deporte">{f.deporte ?? '—'}</div>
-                      </div>
-                    </div>
-                    <div className="cal-card-resumen">
-                      <span className="cal-chip-count">{reservasCount} turno{reservasCount !== 1 ? 's' : ''}</span>
-                      {libre > 0 && <span className="cal-chip-libre">{libre} libre{libre !== 1 ? 's' : ''}</span>}
-                    </div>
-                  </div>
-
-                  {/* Barra de ocupación */}
-                  <div className="cal-ocup-track" role="progressbar" aria-valuenow={ocupacion} aria-valuemin={0} aria-valuemax={100} title={`${ocupacion}% de ocupación`}>
-                    <div className="cal-ocup-fill" style={{ width: `${ocupacion}%` }} />
-                  </div>
-
-                  {/* Grilla de horarios */}
-                  <div className="cal-slots">
-                    {HORAS_TURNO.map((h) => {
-                      const item = f.items.find((i) => i.hora === h);
-                      if (!item) {
-                        return (
-                          <div key={h} className="cal-slot libre" title={`${h} · Libre`}>
-                            <span className="cal-slot-hora">{h}</span>
-                          </div>
-                        );
-                      }
-                      if (item.tipo === 'bloqueo') {
-                        return (
-                          <div key={h} className="cal-slot bloqueo" title={`${h} · Bloqueada${item.motivo ? `: ${item.motivo}` : ''}`}>
-                            <Lock size={10} />
-                            <span className="cal-slot-hora">{h}</span>
-                          </div>
-                        );
-                      }
-                      const estado = item.estado ?? 'pendiente_seña';
-                      return (
-                        <button
-                          key={h}
-                          type="button"
-                          className={`cal-slot ${estado}`}
-                          disabled={!item.reserva_id}
-                          onClick={() => {
-                            if (item.reserva_id) {
-                              setSel({ reserva_id: item.reserva_id, cliente: item.cliente, estado: item.estado, monto: item.monto });
-                            }
-                          }}
-                          title={`${h} · ${item.cliente ?? 'Reserva'} · ${estado} · ${precio(item.monto ?? 0)}`}
-                        >
-                          <span className="cal-slot-hora">{h}</span>
-                          <span className="cal-slot-cliente">{item.cliente ?? 'Reserva'}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </section>
-              );
-            })
-          )}
+      </div>
+      {grupos.length === 0 ? (
+        <div className="panel" style={{ marginBottom: '0.9rem' }}>
+          <div className="panel-vacio">No hay canchas para mostrar.</div>
         </div>
-      </section>
-
+      ) : (
+        grupos.map(([deporte, canchas]) => {
+          const n = nudges[deporte] ?? { izq: true, der: true };
+          const mostrarFlechas = canchas.length > 3;
+          return (
+            <section key={deporte} className="panel" style={{ marginBottom: '0.9rem' }}>
+              <div className="panel-header">
+                <span className="panel-titulo">
+                  <Trophy size={12} style={{ verticalAlign: '-0.15em', marginRight: '0.35rem' }} />
+                  {deporte}
+                  <small className="texto-debil" style={{ marginLeft: '0.35rem', textTransform: 'none', letterSpacing: 0, fontWeight: 650 }}>
+                    {canchas.length} cancha{canchas.length !== 1 ? 's' : ''}
+                  </small>
+                </span>
+                {mostrarFlechas && (
+                  <div className="fila" style={{ gap: '0.35rem' }}>
+                    <button type="button" className="flecha-carril" onClick={() => mover(deporte, -1)} disabled={n.izq} aria-label={`Ver canchas anteriores de ${deporte}`}>
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button type="button" className="flecha-carril" onClick={() => mover(deporte, 1)} disabled={n.der} aria-label={`Ver canchas siguientes de ${deporte}`}>
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="canchas-carril" ref={(el) => { carrilesRefs.current[deporte] = el; }} onScroll={() => onScrollLane(deporte)}>
+                {canchas.map(renderTarjetaCancha)}
+              </div>
+            </section>
+          );
+        })
+      )}
       {/* ===== Herramientas (3 columnas) ===== */}
       <div className="grilla-3">
         {/* Carga rápida */}
