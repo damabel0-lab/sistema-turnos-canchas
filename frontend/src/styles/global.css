@@ -1477,6 +1477,22 @@ body {
   transition: width 0.5s ease;
 }
 
+/* Tarjeta clickeable (torneos, etc.) */
+.tarjeta-palpitante {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radio-lg);
+  padding: 0.9rem 1rem;
+  box-shadow: var(--sombra-sm);
+  color: inherit;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.tarjeta-palpitante:hover {
+  transform: translateY(-3px);
+  border-color: var(--primario);
+  box-shadow: var(--sombra-md), var(--glow);
+}
+
 /* ===== PANEL ENTRADAS ===== */
 .egreso-input-fila {
   display: flex;
