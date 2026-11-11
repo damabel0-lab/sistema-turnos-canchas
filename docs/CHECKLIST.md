@@ -57,8 +57,8 @@
 - [x] Grilla de horarios solo con turnos libres (libre/ocupada/bloqueada)
 - [x] Evitar doble reserva (409 server-side + refresco de grilla en el front)
 - [x] Cancelación — política simple: cliente cancela sus futuras; staff cancela cualquiera
-- [ ] Turnos fijos: flag + generación automática de reservas semanales
-- [ ] Descuento opcional para clientes con turno fijo (parámetro listo en el cotizador)
+- [x] Turnos fijos: genera automáticamente reservas semanales (proyectarTurnosFijos)
+- [ ] Descuento opcional para clientes con turno fijo (parámetro listo en el cotizador; falta que el admin lo pase)
 
 ## Fase 4 — Socios y beneficios ✅
 - [x] Alta/baja de socios (admin)
