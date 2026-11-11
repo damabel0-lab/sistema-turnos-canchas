@@ -58,7 +58,7 @@ export function NotificacionesPage() {
 
   return (
     <main className="pantalla">
-      <div className="contenedor-estrecho">
+      <div className="contenedor">
         <div className="fila-entre" style={{ marginBottom: '1rem' }}>
           <h1 className="titulo" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <Bell size={22} /> Notificaciones
@@ -67,7 +67,16 @@ export function NotificacionesPage() {
             <span className="badge badge-peligro">{noLeidas.length} nueva{noLeidas.length > 1 ? 's' : ''}</span>
           )}
         </div>
-        {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
+        {error && (
+          <div className="alerta-error" role="alert">
+            {error}
+            <div style={{ marginTop: '0.5rem' }}>
+              <button type="button" className="boton boton-outline" onClick={() => void cargar()}>
+                Reintentar
+              </button>
+            </div>
+          </div>
+        )}
 
         {notificaciones.length === 0 ? (
           <Card className="caja-vacia">
@@ -87,8 +96,8 @@ export function NotificacionesPage() {
                 style={{
                   cursor: 'pointer',
                   padding: '0.75rem 1rem',
-                  background: n.leida ? 'var(--primario-contrast)' : 'var(--primario-soft)',
-                  border: n.leida ? '1px solid var(--color-borde)' : '1px solid #c7d2fe',
+                  background: n.leida ? 'var(--bg-surface)' : 'var(--primario-soft)',
+                  border: n.leida ? '1px solid var(--border)' : '1px solid color-mix(in srgb, var(--primario) 40%, transparent)',
                 }}
               >
                 <div className="fila-entre">

@@ -11,6 +11,17 @@ export interface Notificacion {
   creada_en: string;
 }
 
+/** true si el error indica que la tabla notificaciones no existe en Supabase
+ *  (ej: "Could not find the table 'public.notificaciones' in the schema cache") */
+function esTablaNotificacionesFaltante(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  const msg = (error.message ?? '').toLowerCase();
+  return (
+    error.code === 'PGRST205' ||
+    (msg.includes('notificaciones') && (msg.includes('schema cache') || msg.includes('not find the table')))
+  );
+}
+
 /** Listar notificaciones de un usuario */
 export async function listarNotificaciones(usuarioId: string) {
   const { data, error } = await supabaseAdmin
@@ -18,7 +29,13 @@ export async function listarNotificaciones(usuarioId: string) {
     .select('*')
     .eq('usuario_id', usuarioId)
     .order('creada_en', { ascending: false });
-  if (error) throw new HttpError(500, error.message);
+  if (error) {
+    if (esTablaNotificacionesFaltante(error)) {
+      console.warn('Tabla notificaciones no existe — devolviendo lista vacía. Ejecutar docs/notificaciones.sql en Supabase.');
+      return [];
+    }
+    throw new HttpError(500, error.message);
+  }
   return data ?? [];
 }
 
@@ -29,7 +46,13 @@ export async function leerNotificacion(id: string, usuarioId: string) {
     .update({ leida: true })
     .eq('id', id)
     .eq('usuario_id', usuarioId);
-  if (error) throw new HttpError(404, 'Notificación no encontrada');
+  if (error) {
+    if (esTablaNotificacionesFaltante(error)) {
+      console.warn('Tabla notificaciones no existe — se omite el update. Ejecutar docs/notificaciones.sql en Supabase.');
+      return { ok: true };
+    }
+    throw new HttpError(404, 'Notificación no encontrada');
+  }
   return { ok: true };
 }
 
@@ -45,7 +68,13 @@ export async function crearNotificacion(entrada: {
     .insert(entrada)
     .select()
     .single();
-  if (error) throw new HttpError(400, error.message);
+  if (error) {
+    if (esTablaNotificacionesFaltante(error)) {
+      console.warn('Tabla notificaciones no existe — se omite la creación. Ejecutar docs/notificaciones.sql en Supabase.');
+      return null;
+    }
+    throw new HttpError(400, error.message);
+  }
   return data;
 }
 
@@ -124,6 +153,12 @@ export async function avisoSuspension(usuarioIds: string[], motivo: string) {
     cuerpo: `Se suspendió tu turno por: ${motivo}.`,
   }));
   const { error } = await supabaseAdmin.from('notificaciones').insert(rows);
-  if (error) throw new HttpError(400, error.message);
+  if (error) {
+    if (esTablaNotificacionesFaltante(error)) {
+      console.warn('Tabla notificaciones no existe — aviso no enviado. Ejecutar docs/notificaciones.sql en Supabase.');
+      return { ok: true, enviados: 0 };
+    }
+    throw new HttpError(400, error.message);
+  }
   return { ok: true, enviados: usuarioIds.length };
 }

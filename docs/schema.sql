@@ -95,6 +95,19 @@ CREATE TABLE public.reservas (
   creado_en timestamp with time zone DEFAULT CURRENT_TIMESTAMP
 );
 
+-- ---------- NOTIFICACIONES ----------
+CREATE TABLE public.notificaciones (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  usuario_id uuid NOT NULL REFERENCES public.usuarios(id) ON DELETE CASCADE,
+  tipo character varying NOT NULL DEFAULT 'info',
+  titulo character varying NOT NULL,
+  cuerpo text NOT NULL,
+  leida boolean NOT NULL DEFAULT false,
+  creada_en timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_notificaciones_usuario ON public.notificaciones (usuario_id, creada_en DESC);
+
 -- ---------- BLOQUEOS ----------
 CREATE TABLE public.bloqueos_horarios (
   id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
