@@ -20,6 +20,7 @@ import { SociosPage } from './pages/admin/SociosPage';
 import { BeneficiosPage } from './pages/admin/BeneficiosPage';
 import { VenderAbonoPage } from './pages/admin/VenderAbonoPage';
 import { CajaPage } from './pages/admin/CajaPage';
+import { DashboardPage } from './pages/admin/DashboardPage';
 import { ReportesPage } from './pages/admin/ReportesPage';
 import { TorneosPage } from './pages/admin/TorneosPage';
 
@@ -39,6 +40,14 @@ export function App() {
 
         {/* Admin — requiere sesión + rol staff (super_admin o recepcionista).
             Caja además es solo super_admin (verificar dentro de la página). */}
+        <Route
+          path="/admin/dashboard"
+          element={
+            <RutaProtegida roles={['super_admin', 'recepcionista']}>
+              <DashboardPage />
+            </RutaProtegida>
+          }
+        />
         <Route
           path="/admin/grilla"
           element={
