@@ -47,7 +47,8 @@ export function CajaPage() {
 
   async function registrarEgreso(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const form = new FormData(e.currentTarget);
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
     setError(null);
     try {
       await api('/caja/egresos', {
@@ -58,8 +59,8 @@ export function CajaPage() {
           descripcion: String(form.get('descripcion')),
         }),
       });
-      mostrar('Egreso registrado ', 'success');
-      e.currentTarget.reset();
+      mostrar('Egreso registrado', 'success');
+      formEl.reset();
       await cargar();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo registrar');

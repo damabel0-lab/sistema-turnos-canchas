@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api } from '../../lib/api';
 import { ToastContainer, useToast } from '../../components/ui/Toast';
 import { Card, Badge } from '../../components/ui';
-import { Clock, Search, RefreshCw } from 'lucide-react';
+import { Goal, RefreshCw } from 'lucide-react';
 
 interface Cancha {
   id: number;
@@ -48,7 +48,9 @@ export function CanchasPage() {
   async function crearCancha(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    const form = new FormData(e.currentTarget);
+    // Capturar el elemento ANTES de cualquier await: React anula e.currentTarget después
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
     try {
       await api('/canchas', {
         method: 'POST',
@@ -59,8 +61,8 @@ export function CanchasPage() {
           caracteristicas: String(form.get('caracteristicas') ?? '') || null,
         }),
       });
-      e.currentTarget.reset();
-      mostrar('Cancha creada ', 'success');
+      formEl.reset();
+      mostrar('Cancha creada', 'success');
       await cargar();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al crear');
@@ -83,12 +85,12 @@ export function CanchasPage() {
     <div className="admin-page">
       <div className="contenedor">
         <div className="fila-entre" style={{ marginBottom: '1rem' }}>
-          <h1 className="titulo"><span className="fila"><Clock size={20} /> Canchas y tarifas</span></h1>
+          <h1 className="titulo"><span className="fila"><Goal size={20} /> Canchas y tarifas</span></h1>
           <button className="boton boton-outline" onClick={() => void cargar()}>
             <RefreshCw size={16} /> Actualizar
           </button>
         </div>
-        {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
+        {error && <div className="alerta-error" role="alert">{error}</div>}
         <ToastContainer toasts={toasts} onCerrar={cerrar} />
 
         <h2 className="titulo" style={{ fontSize: '1.1rem' }}>Listado</h2>
@@ -100,7 +102,7 @@ export function CanchasPage() {
               <Card key={c.id} className="fila-entre">
                 <div className="fila" style={{ gap: '0.75rem' }}>
                   <div className="icono-circulo" style={{ width: '2.5rem', height: '2.5rem' }}>
-                    <Search size={18} />
+                    <Goal size={18} />
                   </div>
                   <div>
                     <div style={{ fontWeight: 600 }}>{c.nombre}</div>

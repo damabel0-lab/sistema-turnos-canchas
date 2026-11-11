@@ -95,7 +95,8 @@ export function TorneosPage() {
   async function crearEquipo(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    const form = new FormData(e.currentTarget);
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
     try {
       await api(`/torneos/${torneoId}/equipos`, {
         method: 'POST',
@@ -104,7 +105,7 @@ export function TorneosPage() {
           capitan_id: String(form.get('capitan_id') || null),
         }),
       });
-      e.currentTarget.reset();
+      formEl.reset();
       const eq = await api<Equipo[]>(`/torneos/${torneoId}/equipos`);
       setEquipos(eq);
     } catch (err) {
