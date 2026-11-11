@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { requireSuperAdmin } from '../../middleware/auth.js';
+import { supabaseAdmin } from '../../config/supabase.js';
+import { HttpError } from '../../middleware/error.js';
 import {
   crearCancha,
   crearTarifa,
@@ -48,6 +50,20 @@ canchasRouter.patch(
   requireSuperAdmin,
   h(async (req, res) => {
     res.json(await editarCancha(Number(req.params.id), req.body));
+  }),
+);
+
+// DELETE /canchas/:id -> eliminar cancha
+canchasRouter.delete(
+  '/:id',
+  requireSuperAdmin,
+  h(async (req, res) => {
+    const { error } = await supabaseAdmin
+      .from('canchas')
+      .delete()
+      .eq('id', Number(req.params.id));
+    if (error) throw new HttpError(400, error.message);
+    res.json({ ok: true });
   }),
 );
 

@@ -19,6 +19,39 @@ deportesRouter.get(
   }),
 );
 
+// PATCH /deportes/:id -> editar nombre, tipo, requiere_cancha
+deportesRouter.patch(
+  '/:id',
+  requireSuperAdmin,
+  h(async (req, res) => {
+    const { nombre, tipo, requiere_cancha } = req.body;
+    const cambios: Record<string, unknown> = {};
+    if (nombre !== undefined) cambios.nombre = nombre.trim();
+    if (tipo !== undefined) cambios.tipo = tipo;
+    if (requiere_cancha !== undefined) cambios.requiere_cancha = !!requiere_cancha;
+
+    const { data, error } = await supabaseAdmin
+      .from('deportes')
+      .update(cambios)
+      .eq('id', Number(req.params.id))
+      .select()
+      .single();
+    if (error) throw new HttpError(404, error.message);
+    res.json(data);
+  }),
+);
+
+// DELETE /deportes/:id -> eliminar deporte personalizado
+deportesRouter.delete(
+  '/:id',
+  requireSuperAdmin,
+  h(async (req, res) => {
+    const { error } = await supabaseAdmin.from('deportes').delete().eq('id', Number(req.params.id));
+    if (error) throw new HttpError(404, error.message);
+    res.json({ ok: true });
+  }),
+);
+
 // POST /deportes -> deporte personalizado (predeterminados ya vienen de la DB)
 deportesRouter.post(
   '/',
