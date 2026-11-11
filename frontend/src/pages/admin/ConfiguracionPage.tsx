@@ -26,7 +26,7 @@ interface SetupResponse {
   setup_completado: boolean;
   config_id: number | null;
   valores: {
-    metadatos?: { nombre?: string; tipo?: string; hora_apertura?: number; hora_cierre?: number };
+    metadatos?: { nombre?: string; tipo?: string; hora_apertura?: number | null; hora_cierre?: number | null };
     politicas?: { cancelacion_minima_horas?: number; descuento_turno_fijo_porcentaje?: number; seña_obligatoria?: boolean };
     amenidades?: { gym?: boolean; pileta?: boolean; precio_mensual_gym?: number; precio_mensual_pileta?: number };
     socios?: { ofrece_socios?: boolean };
@@ -122,8 +122,9 @@ export function ConfiguracionPage() {
 
       setNombre(meta.nombre ?? '');
       setTipoComplejo(meta.tipo ?? 'fraccionado');
-      setHoraApertura(meta.hora_apertura !== undefined ? `${String(meta.hora_apertura).padStart(2, '0')}:00` : '08:00');
-      setHoraCierre(meta.hora_cierre !== undefined ? `${String(meta.hora_cierre).padStart(2, '0')}:00` : '23:00');
+      const horaValida = (v: unknown): v is number => v != null && Number.isFinite(Number(v));
+      setHoraApertura(horaValida(meta.hora_apertura) ? `${String(meta.hora_apertura).padStart(2, '0')}:00` : '08:00');
+      setHoraCierre(horaValida(meta.hora_cierre) ? `${String(meta.hora_cierre).padStart(2, '0')}:00` : '23:00');
       setCancelacionHoras(String(pol.cancelacion_minima_horas ?? '2'));
       setDescuentoTurnoFijo(String(pol.descuento_turno_fijo_porcentaje ?? '10'));
       setSeñaObligatoria(pol.seña_obligatoria ?? false);

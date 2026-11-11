@@ -35,8 +35,8 @@ export function ConfigurarPage() {
 
   const [tipo, setTipo] = useState<'fraccionado' | 'complejo_deportivo'>('fraccionado');
   const [nombre, setNombre] = useState('');
-  const [horaApertura, setHoraApertura] = useState('08');
-  const [horaCierre, setHoraCierre] = useState('23');
+  const [horaApertura, setHoraApertura] = useState('08:00');
+  const [horaCierre, setHoraCierre] = useState('23:00');
   const [cancelacionHoras, setCancelacionHoras] = useState('2');
   const [descuentoTurnoFijo, setDescuentoTurnoFijo] = useState('10');
   const [gym, setGym] = useState(false);
@@ -60,8 +60,8 @@ export function ConfigurarPage() {
         body: JSON.stringify({
           tipo,
           nombre,
-          hora_apertura: Number(horaApertura),
-          hora_cierre: Number(horaCierre),
+          hora_apertura: Number(horaApertura.split(':')[0]),
+          hora_cierre: Number(horaCierre.split(':')[0]),
           politica_cancelacion_horas: Number(cancelacionHoras),
           descuento_turno_fijo_porcentaje: Number(descuentoTurnoFijo),
           gym,

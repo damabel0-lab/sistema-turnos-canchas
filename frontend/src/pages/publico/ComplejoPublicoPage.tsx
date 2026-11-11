@@ -1,79 +1,205 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
-import { Card } from '../../components/ui';
+import {
+  Clock,
+  ShieldCheck,
+  BadgePercent,
+  Dumbbell,
+  Waves,
+  Users,
+  Goal,
+  ArrowRight,
+  Info,
+  RefreshCw,
+} from 'lucide-react';
 
 interface ConfigComplejo {
+  nombre: string | null;
+  tipo: string | null;
   hora_apertura: number;
   hora_cierre: number;
   cancelacion_minima_horas: number;
   descuento_turno_fijo_porcentaje: number;
+  seña_obligatoria: boolean;
+  amenidades: {
+    gym: boolean;
+    pileta: boolean;
+    precio_mensual_gym: number | null;
+    precio_mensual_pileta: number | null;
+  };
+  ofrece_socios: boolean;
 }
 
 export function ComplejoPublicoPage() {
   const [config, setConfig] = useState<ConfigComplejo | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [cargando, setCargando] = useState(true);
 
-  useEffect(() => {
-    api<ConfigComplejo>('/config')
-      .then(setConfig)
-      .catch((e) => setError(e instanceof Error ? e.message : 'Error cargando datos'));
+  const cargar = useCallback(async () => {
+    setCargando(true);
+    try {
+      setConfig(await api<ConfigComplejo>('/config'));
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error cargando datos');
+    } finally {
+      setCargando(false);
+    }
   }, []);
 
-  const formatearHora = (h: number) => `${String(h).padStart(2, '0')}:00`;
+  useEffect(() => {
+    void cargar();
+  }, [cargar]);
+
+  const hora = (h: number) => `${String(h).padStart(2, '0')}:00`;
+  const esComplejo = config?.tipo === 'complejo_deportivo';
+  const titulo = config?.nombre ?? 'Nuestro complejo';
 
   return (
-    <main className="pantalla">
-      <div className="contenedor">
-        <h1 className="titulo">Nuestro complejo</h1>
-        <p className="texto-sec">Información general para todos los visitantes</p>
+    <main className="pantalla" style={{ paddingTop: '1.5rem' }}>
+      <div className="contenedor-ancho">
+        {/* Encabezado */}
+        <div className="fila-entre" style={{ marginBottom: '1.25rem', gap: '1rem' }}>
+          <div>
+            <div className="fila" style={{ gap: '0.6rem', marginBottom: '0.3rem' }}>
+              <span className="hero-badge" style={{ marginBottom: 0 }}>
+                <Goal size={14} /> {esComplejo ? 'Complejo deportivo' : 'Canchas individuales'}
+              </span>
+            </div>
+            <h1 className="titulo" style={{ fontSize: '1.9rem', marginBottom: '0.2rem' }}>
+              {titulo}
+            </h1>
+            <p className="subtitulo" style={{ margin: 0 }}>Información general del complejo, abierta a todos los visitantes.</p>
+          </div>
+          <Link to="/reservar" className="boton boton-primario" style={{ whiteSpace: 'nowrap' }}>
+            Reservar <ArrowRight size={16} />
+          </Link>
+        </div>
 
-        {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
+        {error && (
+          <div className="alerta-error" role="alert">
+            {error}
+            <div style={{ marginTop: '0.5rem' }}>
+              <button type="button" className="boton boton-outline" onClick={() => void cargar()}>
+                <RefreshCw size={14} /> Reintentar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {cargando && !config && (
+          <div className="grilla-tarjetas" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="skeleton" style={{ height: '8rem' }} />
+            ))}
+          </div>
+        )}
 
         {config && (
-          <div className="grilla-tarjetas">
-            <Card>
-              <h3 className="titulo" style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>
-                Horarios de atención
-              </h3>
-              <p className="texto-sec">
-                Abrimos de {formatearHora(config.hora_apertura)} a {formatearHora(config.hora_cierre)} hs.
+          <div className="grilla-tarjetas" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+            {/* Horarios */}
+            <div className="tarjeta-plana" style={{ padding: '1.15rem' }}>
+              <div className="fila" style={{ gap: '0.55rem', marginBottom: '0.5rem' }}>
+                <span className="metrica-icono azul"><Clock size={18} /></span>
+                <h2 className="titulo" style={{ fontSize: '1rem', margin: 0 }}>Horarios de atención</h2>
+              </div>
+              <p style={{ margin: 0, fontSize: '1.35rem', fontWeight: 850, letterSpacing: '-0.02em' }}>
+                {hora(config.hora_apertura)} – {hora(config.hora_cierre)}
               </p>
-            </Card>
+              <p className="texto-sec" style={{ margin: '0.25rem 0 0' }}>hs. Todos los días, sujeto a disponibilidad.</p>
+            </div>
 
-            <Card>
-              <h3 className="titulo" style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>
-                Cancelaciones
-              </h3>
-              <p className="texto-sec">
-                Los turnos pueden cancelarse hasta {config.cancelacion_minima_horas} hs antes del inicio.
+            {/* Cancelaciones */}
+            <div className="tarjeta-plana" style={{ padding: '1.15rem' }}>
+              <div className="fila" style={{ gap: '0.55rem', marginBottom: '0.5rem' }}>
+                <span className="metrica-icono verde"><ShieldCheck size={18} /></span>
+                <h2 className="titulo" style={{ fontSize: '1rem', margin: 0 }}>Políticas</h2>
+              </div>
+              <p style={{ margin: 0 }}>
+                {config.cancelacion_minima_horas > 0
+                  ? `Podés cancelar tu turno hasta ${config.cancelacion_minima_horas} h antes del horario, sin costo.`
+                  : 'Las cancelaciones se pueden gestionar en el complejo.'}
               </p>
-            </Card>
-
-            {config.descuento_turno_fijo_porcentaje > 0 && (
-              <Card>
-                <h3 className="titulo" style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>
-                  Turno fijo
-                </h3>
-                <p className="texto-sec">
-                  Los clientes con turno fijo obtienen un {config.descuento_turno_fijo_porcentaje}% de descuento automático.
+              {config.seña_obligatoria && (
+                <p className="texto-sec" style={{ margin: '0.35rem 0 0' }}>
+                  La seña es obligatoria para confirmar el turno.
                 </p>
-              </Card>
+              )}
+            </div>
+
+            {/* Turno fijo */}
+            {config.descuento_turno_fijo_porcentaje > 0 && (
+              <div className="tarjeta-plana" style={{ padding: '1.15rem' }}>
+                <div className="fila" style={{ gap: '0.55rem', marginBottom: '0.5rem' }}>
+                  <span className="metrica-icono ambar"><BadgePercent size={18} /></span>
+                  <h2 className="titulo" style={{ fontSize: '1rem', margin: 0 }}>Turno fijo</h2>
+                </div>
+                <p style={{ margin: 0 }}>
+                  Clientes con turno fijo: <strong>{config.descuento_turno_fijo_porcentaje}% de descuento</strong> automático.
+                </p>
+                <p className="texto-sec" style={{ margin: '0.35rem 0 0' }}>Mismo horario todas las semanas. Consultá en recepción.</p>
+              </div>
+            )}
+
+            {/* Gimnasio */}
+            {config.amenidades.gym && (
+              <div className="tarjeta-plana" style={{ padding: '1.15rem' }}>
+                <div className="fila" style={{ gap: '0.55rem', marginBottom: '0.5rem' }}>
+                  <span className="metrica-icono verde"><Dumbbell size={18} /></span>
+                  <h2 className="titulo" style={{ fontSize: '1rem', margin: 0 }}>Gimnasio</h2>
+                </div>
+                <p style={{ margin: 0 }}>
+                  {config.amenidades.precio_mensual_gym
+                    ? <strong>Mensual {config.amenidades.precio_mensual_gym.toLocaleString('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 })}</strong>
+                    : 'Mensualidad disponible.'}
+                </p>
+                <p className="texto-sec" style={{ margin: '0.35rem 0 0' }}>Bono mensual sin límite de horarios. Preguntá en recepción.</p>
+              </div>
+            )}
+
+            {/* Pileta */}
+            {config.amenidades.pileta && (
+              <div className="tarjeta-plana" style={{ padding: '1.15rem' }}>
+                <div className="fila" style={{ gap: '0.55rem', marginBottom: '0.5rem' }}>
+                  <span className="metrica-icono azul"><Waves size={18} /></span>
+                  <h2 className="titulo" style={{ fontSize: '1rem', margin: 0 }}>Pileta</h2>
+                </div>
+                <p style={{ margin: 0 }}>
+                  {config.amenidades.precio_mensual_pileta
+                    ? <strong>Mensual {config.amenidades.precio_mensual_pileta.toLocaleString('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 })}</strong>
+                    : 'Mensualidad disponible.'}
+                </p>
+                <p className="texto-sec" style={{ margin: '0.35rem 0 0' }}>Natación y entrenamiento libre. Consultá horarios de natación.</p>
+              </div>
+            )}
+
+            {/* Socios */}
+            {config.ofrece_socios && (
+              <div className="tarjeta-plana" style={{ padding: '1.15rem' }}>
+                <div className="fila" style={{ gap: '0.55rem', marginBottom: '0.5rem' }}>
+                  <span className="metrica-icono ambar"><Users size={18} /></span>
+                  <h2 className="titulo" style={{ fontSize: '1rem', margin: 0 }}>Socios</h2>
+                </div>
+                <p style={{ margin: 0 }}>Tenemos <strong>socios con beneficios</strong> en turnos y abonos del complejo.</p>
+                <p className="texto-sec" style={{ margin: '0.35rem 0 0' }}>Preguntá en recepción cómo asociarte.</p>
+              </div>
             )}
           </div>
         )}
 
-        <div style={{ marginTop: '1rem' }}>
-          <Card>
-            <h3 className="titulo" style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>
-              ¿Cómo reservar?
-            </h3>
-            <ol style={{ paddingLeft: '1rem' }}>
-              <li className="texto-sec">Registrá tu cuenta o iniciá sesión</li>
-              <li className="texto-sec">Elegí el deporte y la cancha que quieras reservar</li>
-              <li className="texto-sec">Seleccioná el horario disponible</li>
-              <li className="texto-sec">Confirmá la reserva</li>
-            </ol>
-          </Card>
+        {/* Cómo reservar */}
+        <div className="tarjeta-plana" style={{ padding: '1.25rem', marginTop: '1rem' }}>
+          <div className="fila" style={{ gap: '0.55rem', marginBottom: '0.6rem' }}>
+            <Info size={18} style={{ color: 'var(--primario-2)' }} />
+            <h2 className="titulo" style={{ fontSize: '1rem', margin: 0 }}>¿Cómo reservar?</h2>
+          </div>
+          <ol style={{ margin: 0, paddingLeft: '1.15rem', color: 'var(--texto-2)', lineHeight: 1.9, fontSize: '0.92rem' }}>
+            <li>Registrá tu cuenta o iniciá sesión.</li>
+            <li>Elegí el deporte y la cancha que querés.</li>
+            <li>Elegí fecha y horario disponible (turnos de 1 h, de :15 a :15).</li>
+            <li>Confirmá la reserva. Si tiene seña, se paga en el complejo.</li>
+          </ol>
         </div>
       </div>
     </main>
