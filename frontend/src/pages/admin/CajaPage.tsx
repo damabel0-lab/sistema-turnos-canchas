@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api } from '../../lib/api';
 import { Card } from '../../components/ui';
-import { DollarSign, List, RefreshCw } from 'lucide-react';
+import { DollarSign, List, RefreshCw, Download } from 'lucide-react';
 
 interface Movimiento {
   id: number;
@@ -66,6 +66,32 @@ export function CajaPage() {
     }
   }
 
+  function descargarCsv() {
+    if (!datos) return;
+    const encabezados = ['Fecha y hora', 'Tipo', 'Descripción', 'Método', 'Monto'];
+    const filas = datos.movimientos.map((m) => [
+      new Date(m.fecha_hora).toLocaleString('es-AR'),
+      m.tipo_movimiento,
+      m.descripcion,
+      m.metodo_pago,
+      m.tipo_movimiento === 'ingreso' ? `+$${m.monto}` : `-$${m.monto}`,
+    ]);
+
+    const csv = [encabezados, ...filas]
+      .map((fila) =>
+        fila.map((celda) => `"${String(celda).replace(/"/g, '""')}"`).join(',')
+      )
+      .join('\r\n');
+
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `caja-${fecha}-${periodo}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const etiquetasOrigenOrdenadas = datos?.por_origen.slice().sort((a, b) => b.total - a.total) ?? [];
 
   return (
@@ -73,9 +99,14 @@ export function CajaPage() {
       <div className="contenedor-ancho">
         <div className="fila-entre" style={{ marginBottom: '0.75rem' }}>
           <h1 className="titulo"><span className="fila"><DollarSign size={20} /> Caja y finanzas</span></h1>
-          <button className="boton boton-outline" onClick={() => void cargar()}>
-            <RefreshCw size={16} /> Actualizar
-          </button>
+          <div className="fila">
+            <button className="boton boton-outline" onClick={() => void cargar()}>
+              <RefreshCw size={16} /> Actualizar
+            </button>
+            <button className="boton boton-outline" onClick={descargarCsv}>
+              <Download size={16} /> Exportar CSV
+            </button>
+          </div>
         </div>
         {error && <p style={{ color: '#dc2626' }}>{error}</p>}
         {mensaje && <p style={{ color: '#10b981' }}>{mensaje}</p>}
