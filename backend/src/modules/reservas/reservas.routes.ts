@@ -9,6 +9,7 @@ import {
   reservasDelUsuario,
   cancelarPropia,
   proyectarTurnosFijos,
+  estadisticasDelUsuario,
 } from './reservas.service.js';
 import { cargaManual } from './carga-manual.service.js';
 
@@ -64,6 +65,14 @@ reservasRouter.get(
   '/mias',
   h(async (req, res) => {
     res.json(await reservasDelUsuario(req.userId!));
+  }),
+);
+
+// GET /reservas/mias/estadisticas -> actividad del cliente (veces jugado, gasto, favorita)
+reservasRouter.get(
+  '/mias/estadisticas',
+  h(async (req, res) => {
+    res.json(await estadisticasDelUsuario(req.userId!));
   }),
 );
 

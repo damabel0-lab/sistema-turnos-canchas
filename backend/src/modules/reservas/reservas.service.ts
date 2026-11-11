@@ -90,6 +90,62 @@ export async function reservasDelUsuario(usuarioId: string) {
 }
 
 /**
+ * Estadísticas de actividad del cliente:
+ * - veces jugado (completadas)
+ * - gasto total
+ * - disciplina favorita (por cantidad de reservas)
+ * - cancelaciones
+ */
+export async function estadisticasDelUsuario(usuarioId: string) {
+  const { data, error } = await supabaseAdmin
+    .from('reservas')
+    .select('id, fecha, estado, precio_total, canchas(deportes(nombre))')
+    .eq('usuario_id', usuarioId);
+  if (error) throw new HttpError(500, error.message);
+
+  const filas = (data ?? []) as unknown as Array<{
+    id: number;
+    fecha: string;
+    estado: string;
+    precio_total: number;
+    canchas: { deportes: { nombre: string } | null } | null;
+  }>;
+
+  // Veces jugado (estado completada)
+  const jugadas = filas.filter((r) => r.estado === 'completada').length;
+
+  // Gasto total
+  const gastoTotal = filas.reduce((sum, r) => sum + Number(r.precio_total), 0);
+
+  // Disciplina favorita (por cantidad de reservas, contando todas las no canceladas)
+  const conteoDeportes = new Map<string, number>();
+  for (const r of filas) {
+    const deporte = r.canchas?.deportes?.nombre;
+    if (deporte && r.estado !== 'cancelada') {
+      conteoDeportes.set(deporte, (conteoDeportes.get(deporte) ?? 0) + 1);
+    }
+  }
+  let disciplinaFavorita: string | null = null;
+  let maxDeporte = 0;
+  for (const [dep, count] of conteoDeportes.entries()) {
+    if (count > maxDeporte) {
+      maxDeporte = count;
+      disciplinaFavorita = dep;
+    }
+  }
+
+  // Cancelaciones
+  const cancelaciones = filas.filter((r) => r.estado === 'cancelada').length;
+
+  return {
+    veces_jugado: jugadas,
+    gasto_total: gastoTotal,
+    disciplina_favorita: disciplinaFavorita,
+    cancelaciones,
+  };
+}
+
+/**
  * Cancelación por parte del cliente (solo las suyas y hasta X antes).
  * Política simple por ahora: se puede cancelar cualquier reserva futura.
  */
