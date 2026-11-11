@@ -35,6 +35,13 @@ interface Cotizacion {
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 
+/** '20:15' + 1h -> '21:15' */
+function sumarUnaHora(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  const total = h * 60 + m + 60;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
 export function ReservarPage() {
   const { session } = useAuth();
 
@@ -57,6 +64,15 @@ export function ReservarPage() {
     api<Cancha[]>('/canchas').then(setCanchas).catch((e) => setError(e.message));
   }, []);
 
+  /** true si el turno ya empezó (solo aplica cuando la fecha es hoy) */
+  const turnoYaPaso = (hora: string): boolean => {
+    if (fecha !== hoy()) return false;
+    const ahora = new Date();
+    const ahoraMin = ahora.getHours() * 60 + ahora.getMinutes();
+    const [h, m] = hora.split(':').map(Number);
+    return h * 60 + m <= ahoraMin;
+  };
+
   // Cargar disponibilidad cuando cambia cancha o fecha
   useEffect(() => {
     setHoraSel(null);
@@ -70,11 +86,17 @@ export function ReservarPage() {
       .catch((e) => setError(e.message));
   }, [canchaId, fecha]);
 
-  // Cotizar al elegir hora
+  // Cotizar al elegir hora (turno de exactamente 60 minutos)
   useEffect(() => {
     setCotizacion(null);
     if (!canchaId || !horaSel) return;
-    const fin = `${String(Number(horaSel.slice(0, 2)) + 1).padStart(2, '0')}:00`;
+
+    const [h, m] = horaSel.split(':').map(Number);
+    const base = new Date();
+    base.setHours(h, m, 0, 0);
+    const finDate = new Date(base.getTime() + 60 * 60 * 1000);
+    const fin = `${String(finDate.getHours()).padStart(2, '0')}:${String(finDate.getMinutes()).padStart(2, '0')}`;
+
     api<Cotizacion>('/canchas/cotizar', {
       method: 'POST',
       body: JSON.stringify({
@@ -94,7 +116,11 @@ export function ReservarPage() {
     setCreando(true);
     setError(null);
     try {
-      const fin = `${String(Number(horaSel.slice(0, 2)) + 1).padStart(2, '0')}:00`;
+      const [h, m] = horaSel.split(':').map(Number);
+      const base = new Date();
+      base.setHours(h, m, 0, 0);
+      const finDate = new Date(base.getTime() + 60 * 60 * 1000);
+      const fin = `${String(finDate.getHours()).padStart(2, '0')}:${String(finDate.getMinutes()).padStart(2, '0')}`;
       const reserva = await api<{ id: number }>('/reservas', {
         method: 'POST',
         body: JSON.stringify({
@@ -216,12 +242,16 @@ export function ReservarPage() {
                   onChange={(e) => setFecha(e.target.value)}
                   style={{ marginBottom: '0.75rem' }}
                 />
+                <p className="texto-sec" style={{ fontSize: '0.8rem', margin: '0 0 0.5rem' }}>
+                  Los turnos son fijos y duran exactamente 1 hora (de :15 a :15).
+                </p>
                 <div
-                  style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(70px, 1fr))', gap: '0.4rem' }}
+                  style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(104px, 1fr))', gap: '0.4rem' }}
                 >
                   {horas.map((h) => {
+                    const pasado = turnoYaPaso(h.hora);
+                    const libre = h.estado === 'libre' && !pasado;
                     const seleccionado = horaSel === h.hora;
-                    const libre = h.estado === 'libre';
                     let fondo = '#e5e7eb';
                     let texto = '#6b7280';
                     if (libre) {
@@ -234,18 +264,20 @@ export function ReservarPage() {
                         type="button"
                         disabled={!libre}
                         onClick={() => setHoraSel(h.hora)}
+                        title={pasado ? 'Ese turno ya pasó' : h.estado === 'libre' ? `${h.hora} a ${sumarUnaHora(h.hora)}` : h.estado === 'ocupada' ? 'Ocupada' : 'Bloqueada'}
                         style={{
-                          padding: '0.5rem 0.25rem',
+                          padding: '0.45rem 0.25rem',
                           border: 'none',
                           borderRadius: '0.6rem',
                           background: fondo,
                           color: texto,
                           cursor: libre ? 'pointer' : 'not-allowed',
-                          fontSize: '0.8rem',
                           fontWeight: 600,
+                          lineHeight: 1.15,
                         }}
                       >
-                        {h.hora}
+                        <span style={{ display: 'block', fontSize: '0.82rem' }}>{h.hora}</span>
+                        <span style={{ display: 'block', fontSize: '0.66rem', opacity: 0.85 }}>a {sumarUnaHora(h.hora)}</span>
                       </button>
                     );
                   })}
@@ -260,7 +292,7 @@ export function ReservarPage() {
                   Resumen
                 </h2>
                 <p className="texto-sec">
-                  <strong>{fecha}</strong> · <strong>{horaSel}</strong> (1 h)
+                  <strong>{fecha}</strong> · <strong>{horaSel}–{sumarUnaHora(horaSel)}</strong> (1 hora)
                 </p>
                 {cotizacion.descuento_socio > 0 && (
                   <p className="texto-sec" style={{ color: '#065f46' }}>

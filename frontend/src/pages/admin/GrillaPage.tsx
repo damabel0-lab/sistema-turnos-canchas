@@ -28,7 +28,6 @@ interface ConfigComplejo {
 }
 
 const hoy = () => new Date().toISOString().slice(0, 10);
-const MINUTOS_BLOQUE = 15;
 
 const estadosReserva: Record<string, 'neutral' | 'success' | 'warning' | 'danger'> = {
   pendiente_seña: 'warning',
@@ -50,7 +49,7 @@ export function GrillaPage() {
   const [error, setError] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
 
-  const [carga, setCarga] = useState({ nombre: '', telefono: '', cancha_id: '', hora: '10:00' });
+  const [carga, setCarga] = useState({ nombre: '', telefono: '', cancha_id: '', hora: '10:15' });
   const [sel, setSel] = useState<{ reserva_id: number; cliente?: string; estado?: string; monto?: number } | null>(null);
   const [metodo, setMetodo] = useState('efectivo');
   const [bloqueo, setBloqueo] = useState({ cancha_id: '', desde: '08:00', hasta: '09:00', motivo: '' });
@@ -61,14 +60,15 @@ export function GrillaPage() {
     api<ConfigComplejo>('/config').then(setConfig).catch((e) => setError(e.message));
   }, []);
 
+  // Turnos válidos (:15 a :15, 1 hora) — coincide con la disponibilidad del backend
   const HORAS_TURNO = config
-    ? Array.from(
-        { length: ((config.hora_cierre - config.hora_apertura) * 60) / MINUTOS_BLOQUE },
-        (_, i) => {
-          const min = i * MINUTOS_BLOQUE;
-          return `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
-        },
-      )
+    ? (() => {
+        const slots: string[] = [];
+        for (let min = config.hora_apertura * 60 + 15; min + 60 <= config.hora_cierre * 60; min += 60) {
+          slots.push(`${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`);
+        }
+        return slots;
+      })()
     : [];
 
   const DIAS_SEMANA = [
@@ -121,7 +121,9 @@ export function GrillaPage() {
     setError(null);
     setMensaje(null);
     try {
-      const fin = `${String(Number(carga.hora.slice(0, 2)) + 1).padStart(2, '0')}:00`;
+      const [h, m] = carga.hora.split(':').map(Number);
+      const totalFin = h * 60 + m + 60;
+      const fin = `${String(Math.floor(totalFin / 60)).padStart(2, '0')}:${String(totalFin % 60).padStart(2, '0')}`;
       const r = await api<{ id: number }>('/reservas/manual', {
         method: 'POST',
         body: JSON.stringify({

@@ -10,7 +10,19 @@ import { cotizar, aMinutos } from '../../services/tarifas/cotizador.js';
 export const HORA_APERTURA = process.env.HORA_APERTURA_COMPLEJO ? Number(process.env.HORA_APERTURA_COMPLEJO) : 8;
 export const HORA_CIERRE = process.env.HORA_CIERRE_COMPLEJO ? Number(process.env.HORA_CIERRE_COMPLEJO) : 23;
 export const DURACION_TURNO_MINUTOS = 60;
-export const MINUTOS_BLOQUE = 15; // los turnos arrancan en cuartos de hora (00, 15, 30, 45)
+/** Los turnos arrancan siempre en este minuto de cada hora (:15) y duran 1 hora.
+ *  Configurable por complejo vía env `TURNO_MINUTO_INICIO_COMPLEJO` (0-59). Por defecto 15. */
+export const MINUTO_INICIO_TURNO = process.env.TURNO_MINUTO_INICIO_COMPLEJO ? Number(process.env.TURNO_MINUTO_INICIO_COMPLEJO) : 15;
+
+/** true si el minuto dado corresponde al inicio de un turno válido (ej: :15) */
+export function esInicioTurno(min: number): boolean {
+  return min >= 0 && min % 60 === MINUTO_INICIO_TURNO;
+}
+
+/** Etiqueta HH:MM de un minuto del día */
+export function fmtMinuto(min: number): string {
+  return `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+}
 
 /** '2026-11-13T15:00:00+00:00' -> '2026-11-13T15:00:00' */
 function quitarOffset(iso: string): string {
@@ -341,33 +353,46 @@ export async function grillaDelDia(fecha: string): Promise<FilaGrilla[]> {
     motivo: string;
   }>;
 
+  // Turnos válidos del día (:15 a :15, 1 hora) — debe coincidir con la
+  // disponibilidad para que las celdas de la grilla encajen en sus columnas
+  const slots: number[] = [];
+  for (let s = HORA_APERTURA * 60 + MINUTO_INICIO_TURNO; s + DURACION_TURNO_MINUTOS <= HORA_CIERRE * 60; s += 60) {
+    slots.push(s);
+  }
+
   const filas: FilaGrilla[] = filasCan.map((c) => {
     const items: ItemGrilla[] = [];
 
     for (const r of filasRes.filter((x) => x.cancha_id === c.id)) {
       const cliente = r.usuarios;
-      // Marcamos cada hora que cubre la reserva para pintarla en la grilla
-      for (let m = aMinutos(r.hora_inicio); m < aMinutos(r.hora_fin); m += 60) {
-        items.push({
-          hora: `${String(Math.floor(m / 60)).padStart(2, '0')}:00`,
+      const inicioRes = aMinutos(r.hora_inicio);
+      const finRes = aMinutos(r.hora_fin);
+      // Marcamos los turnos que se solapan con la reserva para pintarla en la grilla
+      for (const s of slots) {
+        if (s < finRes && s + DURACION_TURNO_MINUTOS > inicioRes) {
+          items.push({
+            hora: fmtMinuto(s),
           tipo: 'reserva',
           estado: r.estado,
           reserva_id: r.id,
           cliente: cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Cliente',
-          monto: r.estado === 'confirmada' ? Number(r.precio_total) : Number(r.monto_seña),
-        });
+            monto: r.estado === 'confirmada' ? Number(r.precio_total) : Number(r.monto_seña),
+          });
+        }
       }
     }
 
     for (const b of filasBlo.filter((x) => x.cancha_id === c.id)) {
-      const inicio = Math.max(aMinutos(quitarOffset(b.fecha_inicio).slice(11, 16)), HORA_APERTURA * 60);
-      const fin = Math.min(aMinutos(quitarOffset(b.fecha_fin).slice(11, 16)), HORA_CIERRE * 60);
-      for (let m = inicio; m < fin; m += 60) {
-        items.push({
-          hora: `${String(Math.floor(m / 60)).padStart(2, '0')}:00`,
-          tipo: 'bloqueo',
-          motivo: b.motivo,
-        });
+      const inicio = aMinutos(quitarOffset(b.fecha_inicio).slice(11, 16));
+      const fin = aMinutos(quitarOffset(b.fecha_fin).slice(11, 16));
+      for (const s of slots) {
+        if (s < fin && s + DURACION_TURNO_MINUTOS > inicio) {
+          items.push({
+            hora: fmtMinuto(s),
+            tipo: 'bloqueo',
+            motivo: b.motivo,
+          });
+        }
       }
     }
 
@@ -417,12 +442,12 @@ export async function crearReserva(entrada: NuevaReserva) {
   const inicioMin = aMinutos(hora_inicio);
   const finMin = aMinutos(hora_fin);
 
-  // Los turnos duran exactamente 1 hora y arrancan en cuartos de hora (00, 15, 30, 45)
+  // Los turnos duran exactamente 1 hora y arrancan siempre a los :15 (ej: 20:15-21:15)
   if (finMin - inicioMin !== DURACION_TURNO_MINUTOS) {
     throw new HttpError(400, `El turno debe durar exactamente ${DURACION_TURNO_MINUTOS} minutos`);
   }
-  if (inicioMin % MINUTOS_BLOQUE !== 0) {
-    throw new HttpError(400, `La hora de inicio debe ser en cuartos de hora (${MINUTOS_BLOQUE} min)`);
+  if (!esInicioTurno(inicioMin)) {
+    throw new HttpError(400, `La hora de inicio debe ser a los :${String(MINUTO_INICIO_TURNO).padStart(2, '0')}`);
   }
   if (inicioMin < HORA_APERTURA * 60 || finMin > HORA_CIERRE * 60) {
     throw new HttpError(400, `El horario debe estar entre ${HORA_APERTURA}:00 y ${HORA_CIERRE}:00`);
@@ -542,8 +567,8 @@ export async function disponibilidad(canchaId: number, fecha: string): Promise<E
   const minutosApertura = HORA_APERTURA * 60; // 480 = 08:00
   const minutosCierre = HORA_CIERRE * 60; // 1380 = 23:00
 
-  // Los turnos duran 1 hora y arrancan en cuartos de hora (00, 15, 30, 45)
-  for (let inicioMin = minutosApertura; inicioMin + DURACION_TURNO_MINUTOS <= minutosCierre; inicioMin += MINUTOS_BLOQUE) {
+  // Los turnos duran 1 hora y arrancan siempre a los :15 (ej: 08:15-09:15)
+  for (let inicioMin = minutosApertura + MINUTO_INICIO_TURNO; inicioMin + DURACION_TURNO_MINUTOS <= minutosCierre; inicioMin += 60) {
     const finMin = inicioMin + DURACION_TURNO_MINUTOS;
     const hora = `${String(Math.floor(inicioMin / 60)).padStart(2, '0')}:${String(inicioMin % 60).padStart(2, '0')}`;
     const finHora = `${String(Math.floor(finMin / 60)).padStart(2, '0')}:${String(finMin % 60).padStart(2, '0')}`;
@@ -577,7 +602,7 @@ export interface TurnoFijoEntrada {
   cliente_telefono?: string | null;
   cancha_id: number;
   dia_semana: number; // 0 = domingo ... 6 = sábado
-  hora: string; // HH:MM (debe ser múltiplo de 15)
+  hora: string; // HH:MM (debe arrancar a los :15)
   semanas: number; // cuántas semanas proyectar
   precio_total?: number;
   monto_seña?: number;
@@ -642,8 +667,8 @@ export async function proyectarTurnosFijos(entrada: TurnoFijoEntrada) {
   const usuario_id = await resolverUsuarioId(entrada);
 
   const inicioMin = aMinutos(hora);
-  if (inicioMin % MINUTOS_BLOQUE !== 0) {
-    throw new HttpError(400, `La hora debe ser en cuartos de hora (${MINUTOS_BLOQUE} min)`);
+  if (!esInicioTurno(inicioMin)) {
+    throw new HttpError(400, `La hora debe arrancar a los :${String(MINUTO_INICIO_TURNO).padStart(2, '0')}`);
   }
   if (inicioMin < HORA_APERTURA * 60 || inicioMin + DURACION_TURNO_MINUTOS > HORA_CIERRE * 60) {
     throw new HttpError(400, `El horario debe estar entre ${HORA_APERTURA}:00 y ${HORA_CIERRE}:00`);
