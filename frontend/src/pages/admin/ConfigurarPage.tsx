@@ -18,6 +18,14 @@ function Paso({ titulo, subtitulo, children }: PasoProps) {
   );
 }
 
+interface CanchaNueva {
+  nombre: string;
+  deporte_id: string;
+  precio_base: string;
+  activa: boolean;
+  caracteristicas: string;
+}
+
 export function ConfigurarPage() {
   const [paso, setPaso] = useState(0);
   const [guardando, setGuardando] = useState(false);
@@ -34,9 +42,17 @@ export function ConfigurarPage() {
   const [pileta, setPileta] = useState(false);
   const [socios, setSocios] = useState(false);
 
-  async function guardarYIrAlDashboard() {
+  // Canchas nuevas
+  const [cantidadCanchas, setCantidadCanchas] = useState('1');
+  const [canchasNuevas, setCanchasNuevas] = useState<CanchaNueva[]>([
+    { nombre: '', deporte_id: '', precio_base: '', activa: true, caracteristicas: '' },
+  ]);
+
+  async function guardarTodo() {
     setGuardando(true);
     setError(null);
+
+    // 1. Guardar metadatos del complejo
     try {
       await api('/admin/setup', {
         method: 'POST',
@@ -52,12 +68,41 @@ export function ConfigurarPage() {
           socios,
         }),
       });
-      setMensaje('Complejo configurado ✅');
-      window.location.href = '/admin/dashboard';
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error al guardar');
+      setError(e instanceof Error ? e.message : 'Error al guardar configuración');
       setGuardando(false);
+      return;
     }
+
+    // 2. Crear cada cancha
+    for (const cancha of canchasNuevas) {
+      if (!cancha.nombre.trim() || !cancha.deporte_id || !cancha.precio_base) {
+        continue; // saltar canchas vacías
+      }
+      try {
+        await api('/canchas', {
+          method: 'POST',
+          body: JSON.stringify({
+            nombre: cancha.nombre.trim(),
+            deporte_id: Number(cancha.deporte_id),
+            precio_base: Number(cancha.precio_base),
+            activa: cancha.activa,
+            caracteristicas: cancha.caracteristicas || null,
+          }),
+        });
+      } catch (e) {
+        setError(
+          e instanceof Error
+            ? `Error al crear cancha "${cancha.nombre}": ${e.message}`
+            : 'Error desconocido al crear cancha',
+        );
+        setGuardando(false);
+        return;
+      }
+    }
+
+    setMensaje('Complejo configurado ✅');
+    window.location.href = '/admin/dashboard';
   }
 
   const pasos = [
@@ -124,11 +169,25 @@ export function ConfigurarPage() {
         <div className="stack">
           <label className="label">
             Horas mínimas para cancelar antes del turno
-            <input type="number" min={0} max={48} value={cancelacionHoras} onChange={(e) => setCancelacionHoras(e.target.value)} className="input" />
+            <input
+              type="number"
+              min={0}
+              max={48}
+              value={cancelacionHoras}
+              onChange={(e) => setCancelacionHoras(e.target.value)}
+              className="input"
+            />
           </label>
           <label className="label">
             Descuento para clientes con turno fijo (%)
-            <input type="number" min={0} max={100} value={descuentoTurnoFijo} onChange={(e) => setDescuentoTurnoFijo(e.target.value)} className="input" />
+            <input
+              type="number"
+              min={0}
+              max={100}
+              value={descuentoTurnoFijo}
+              onChange={(e) => setDescuentoTurnoFijo(e.target.value)}
+              className="input"
+            />
           </label>
         </div>
       ),
@@ -166,7 +225,104 @@ export function ConfigurarPage() {
         </div>
       ),
     },
-    // Paso 5 — Resumen
+    // Paso 5 — ¿Cuántas canchas?
+    {
+      titulo: '¿Cuántas canchas/sectores tiene?',
+      subtitulo: 'Indicá la cantidad total de espacios que administra tu complejo/cancha.',
+      contenido: (
+        <div className="stack">
+          <label className="label">
+            Cantidad de canchas
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={cantidadCanchas}
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                setCantidadCanchas(e.target.value);
+                setCanchasNuevas((prev) => {
+                  const nuevo = [...prev];
+                  while (nuevo.length < n) {
+                    nuevo.push({ nombre: '', deporte_id: '', precio_base: '', activa: true, caracteristicas: '' });
+                  }
+                  return nuevo.slice(0, n);
+                });
+              }}
+              className="input"
+            />
+          </label>
+          <p className="texto-sec" style={{ fontSize: '0.85rem' }}>
+            Podés cargar los datos de cada cancha en el próximo paso.
+          </p>
+        </div>
+      ),
+    },
+    // Paso 6 — Datos de cada cancha
+    {
+      titulo: 'Datos de las canchas',
+      subtitulo: 'Para cada cancha, completá los datos principales.',
+      contenido: (
+        <div className="stack">
+          {canchasNuevas.map((cancha, i) => (
+            <div key={i} className="tarjeta-plana" style={{ padding: '0.75rem' }}>
+              <h4 style={{ marginTop: 0 }}>Cancha {i + 1}</h4>
+              <label className="label">
+                Nombre
+                <input
+                  value={cancha.nombre}
+                  onChange={(e) =>
+                    setCanchasNuevas((prev) => prev.map((c, j) => (j === i ? { ...c, nombre: e.target.value } : c)))
+                  }
+                  className="input"
+                />
+              </label>
+              <label className="label">
+                Deporte
+                <select
+                  value={cancha.deporte_id}
+                  onChange={(e) =>
+                    setCanchasNuevas((prev) => prev.map((c, j) => (j === i ? { ...c, deporte_id: e.target.value } : c)))
+                  }
+                  className="input"
+                >
+                  <option value="">Elegir…</option>
+                  <option value="1">Fútbol Sintético 5</option>
+                  <option value="2">Fútbol Sintético 7</option>
+                  <option value="4">Pádel</option>
+                  <option value="5">Tenis</option>
+                  <option value="6">Básquet</option>
+                </select>
+              </label>
+              <label className="label">
+                Precio por hora ($)
+                <input
+                  type="number"
+                  min={0}
+                  value={cancha.precio_base}
+                  onChange={(e) =>
+                    setCanchasNuevas((prev) => prev.map((c, j) => (j === i ? { ...c, precio_base: e.target.value } : c)))
+                  }
+                  className="input"
+                />
+              </label>
+              <label className="label">
+                Características
+                <input
+                  value={cancha.caracteristicas}
+                  placeholder="Ej: Iluminada, techada…"
+                  onChange={(e) =>
+                    setCanchasNuevas((prev) => prev.map((c, j) => (j === i ? { ...c, caracteristicas: e.target.value } : c)))
+                  }
+                  className="input"
+                />
+              </label>
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    // Paso 7 — Resumen y publicar
     {
       titulo: 'Resumen y publicar',
       subtitulo: 'Revisá la configuración antes de arrancar.',
@@ -180,11 +336,12 @@ export function ConfigurarPage() {
           <p className="texto-sec">Gimnasio: {gym ? 'Sí' : 'No'}</p>
           <p className="texto-sec">Pileta: {pileta ? 'Sí' : 'No'}</p>
           <p className="texto-sec">Socios: {socios ? 'Sí' : 'No'}</p>
+          <p className="texto-sec">Canchas: {canchasNuevas.filter((c) => c.nombre.trim()).length} cargadas</p>
           {error && <p style={{ color: '#dc2626' }}>{error}</p>}
           <button
             type="button"
             className="boton boton-primario"
-            onClick={guardarYIrAlDashboard}
+            onClick={guardarTodo}
             disabled={guardando || !nombre.trim()}
           >
             {guardando ? 'Guardando…' : 'Finalizar configuración'}
