@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api } from '../../lib/api';
-import { Card } from '../../components/ui';
-import { ChevronDown, ChevronRight, Plus, Edit3, Trash2, X } from 'lucide-react';
+import { Card, Button } from '../../components/ui';
+import { ChevronDown, ChevronRight, Plus, Edit3, Trash2, CalendarClock, Building2, ShieldCheck, Dumbbell, Users } from 'lucide-react';
 
 interface Deporte {
   id: number;
@@ -20,12 +20,22 @@ interface Cancha {
   deportes?: { nombre: string; tipo: string } | null;
 }
 
+interface SetupResponse {
+  setup_completado: boolean;
+  config_id: number | null;
+  valores: {
+    metadatos?: { nombre?: string; tipo?: string; hora_apertura?: number; hora_cierre?: number };
+    politicas?: { cancelacion_minima_horas?: number; descuento_turno_fijo_porcentaje?: number; seña_obligatoria?: boolean };
+    amenidades?: { gym?: boolean; pileta?: boolean; precio_mensual_gym?: number; precio_mensual_pileta?: number };
+    socios?: { ofrece_socios?: boolean };
+  };
+}
+
 interface CanchaForm {
   nombre: string;
   deporte_id: string;
   precio_base: string;
   caracteristicas: string;
-  descuento: string;
   activa: boolean;
 }
 
@@ -40,7 +50,6 @@ const emptyCancha = (): CanchaForm => ({
   deporte_id: '',
   precio_base: '',
   caracteristicas: '',
-  descuento: '',
   activa: true,
 });
 
@@ -51,10 +60,12 @@ const emptyDeporte = (): DeporteForm => ({
 });
 
 export function ConfiguracionPage() {
+  const [tab, setTab] = useState<'deportes' | 'datos' | 'politicas' | 'amenidades' | 'socios'>('deportes');
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
 
+  // Deportes y canchas
   const [deportes, setDeportes] = useState<Deporte[]>([]);
   const [canchas, setCanchas] = useState<Cancha[]>([]);
   const [expandidos, setExpandidos] = useState<Record<number, boolean>>({});
@@ -65,20 +76,61 @@ export function ConfiguracionPage() {
   const [canchaForm, setCanchaForm] = useState<CanchaForm>(emptyCancha());
   const [deporteForm, setDeporteForm] = useState<DeporteForm>(emptyDeporte());
 
+  // Datos del complejo
+  const [nombre, setNombre] = useState('');
+  const [tipoComplejo, setTipoComplejo] = useState('fraccionado');
+  const [horaApertura, setHoraApertura] = useState('08');
+  const [horaCierre, setHoraCierre] = useState('23');
+
+  // Políticas
+  const [cancelacionHoras, setCancelacionHoras] = useState('2');
+  const [descuentoTurnoFijo, setDescuentoTurnoFijo] = useState('10');
+  const [señaObligatoria, setSeñaObligatoria] = useState(false);
+
+  // Amenidades
+  const [gym, setGym] = useState(false);
+  const [pileta, setPileta] = useState(false);
+  const [precioMensualGym, setPrecioMensualGym] = useState('');
+  const [precioMensualPileta, setPrecioMensualPileta] = useState('');
+
+  // Socios
+  const [ofreceSocios, setOfreceSocios] = useState(false);
+
   const cargar = useCallback(async () => {
     setCargando(true);
     setError(null);
     try {
-      const [dep, can] = await Promise.all([
+      const [setup, dep, can] = await Promise.all([
+        api<SetupResponse>('/admin/setup'),
         api<Deporte[]>('/deportes'),
         api<Cancha[]>('/canchas'),
       ]);
       setDeportes(dep);
       setCanchas(can);
 
+      // Expandir todo por defecto
       const init: Record<number, boolean> = {};
       dep.forEach((d) => (init[d.id] = true));
       setExpandidos(init);
+
+      // Cargar setup
+      const meta = setup.valores?.metadatos ?? {};
+      const pol = setup.valores?.politicas ?? {};
+      const am = setup.valores?.amenidades ?? {};
+      const soc = setup.valores?.socios ?? {};
+
+      setNombre(meta.nombre ?? '');
+      setTipoComplejo(meta.tipo ?? 'fraccionado');
+      setHoraApertura(meta.hora_apertura !== undefined ? `${String(meta.hora_apertura).padStart(2, '0')}:00` : '08:00');
+      setHoraCierre(meta.hora_cierre !== undefined ? `${String(meta.hora_cierre).padStart(2, '0')}:00` : '23:00');
+      setCancelacionHoras(String(pol.cancelacion_minima_horas ?? '2'));
+      setDescuentoTurnoFijo(String(pol.descuento_turno_fijo_porcentaje ?? '10'));
+      setSeñaObligatoria(pol.seña_obligatoria ?? false);
+      setGym(am.gym ?? false);
+      setPileta(am.pileta ?? false);
+      setPrecioMensualGym(String(am.precio_mensual_gym ?? ''));
+      setPrecioMensualPileta(String(am.precio_mensual_pileta ?? ''));
+      setOfreceSocios(soc.ofrece_socios ?? false);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error cargando datos');
     } finally {
@@ -98,10 +150,7 @@ export function ConfiguracionPage() {
     setAgregandoCancha(deporte);
     setAgregandoDeporte(false);
     setEditandoCancha(null);
-    setCanchaForm({
-      ...emptyCancha(),
-      deporte_id: String(deporte.id),
-    });
+    setCanchaForm({ ...emptyCancha(), deporte_id: String(deporte.id) });
   }
 
   function abrirEditarCancha(cancha: Cancha) {
@@ -113,7 +162,6 @@ export function ConfiguracionPage() {
       deporte_id: String(cancha.deporte_id ?? ''),
       precio_base: String(cancha.precio_base),
       caracteristicas: cancha.caracteristicas ?? '',
-      descuento: '',
       activa: cancha.activa,
     });
   }
@@ -163,12 +211,10 @@ export function ConfiguracionPage() {
     }
   }
 
-  async function agregarDeporteACancha() {
-    if (!agregandoDeporte || !deporteForm.nombre.trim()) return;
-
+  async function agregarDeporteSubmit() {
+    if (!deporteForm.nombre.trim()) return;
     setError(null);
     setMensaje(null);
-
     try {
       const created = await api<Deporte>('/deportes', {
         method: 'POST',
@@ -188,6 +234,17 @@ export function ConfiguracionPage() {
     }
   }
 
+  async function eliminarDeporte(id: number) {
+    if (!confirm('¿Eliminar este deporte?')) return;
+    try {
+      await api(`/deportes/${id}`, { method: 'DELETE' });
+      setDeportes((prev) => prev.filter((d) => d.id !== id));
+      setMensaje('Deporte eliminado ✅');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo eliminar');
+    }
+  }
+
   async function eliminarCancha(id: number) {
     if (!confirm('¿Eliminar esta cancha?')) return;
     try {
@@ -196,6 +253,44 @@ export function ConfiguracionPage() {
       setMensaje('Cancha eliminada ✅');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo eliminar');
+    }
+  }
+
+  async function guardarSetup(parcial?: Record<string, unknown>) {
+    setError(null);
+    setMensaje(null);
+    try {
+      const payload = parcial ?? {
+        metadatos: {
+          nombre,
+          tipo: tipoComplejo,
+          hora_apertura: Number(horaApertura.split(':')[0] || '0'),
+          hora_cierre: Number(horaCierre.split(':')[0] || '0'),
+        },
+        politicas: {
+          cancelacion_minima_horas: Number(cancelacionHoras),
+          descuento_turno_fijo_porcentaje: Number(descuentoTurnoFijo),
+          seña_obligatoria: señaObligatoria,
+        },
+        amenidades: {
+          gym,
+          pileta,
+          precio_mensual_gym: gym && precioMensualGym ? Number(precioMensualGym) : undefined,
+          precio_mensual_pileta: pileta && precioMensualPileta ? Number(precioMensualPileta) : undefined,
+        },
+        socios: {
+          ofrece_socios: ofreceSocios,
+        },
+      };
+
+      await api('/admin/setup', {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      });
+
+      setMensaje('Configuración guardada ✅');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo guardar');
     }
   }
 
@@ -216,224 +311,331 @@ export function ConfiguracionPage() {
     canchas: canchas.filter((c) => c.deporte_id === d.id),
   }));
 
+  const tabs = [
+    { id: 'deportes', label: 'Deportes y Canchas', icon: CalendarClock },
+    { id: 'datos', label: 'Datos del complejo', icon: Building2 },
+    { id: 'politicas', label: 'Políticas', icon: ShieldCheck },
+    { id: 'amenidades', label: 'Gym y Pileta', icon: Dumbbell },
+    { id: 'socios', label: 'Socios', icon: Users },
+  ];
+
   return (
     <main className="pantalla">
-      <div className="contenedor">
+      <div className="contenedor-ancho">
         {/* Encabezado */}
         <div className="fila-entre" style={{ marginBottom: '1rem' }}>
           <div>
             <h1 className="titulo">Configuración</h1>
-            <p className="texto-sec">Organizá tus deportes y canchas.</p>
+            <p className="texto-sec">Organizá todo tu complejo desde un solo lugar.</p>
           </div>
-          <button className="boton boton-outline" onClick={() => setAgregandoDeporte(true)}>
-            <Plus size={16} /> Agregar deporte
+          <button className="boton boton-outline" onClick={() => void cargar()}>
+            Recargar
           </button>
         </div>
 
         {error && <p style={{ color: '#dc2626', marginBottom: '0.75rem' }}>{error}</p>}
         {mensaje && <p style={{ color: '#10b981', marginBottom: '0.75rem' }}>{mensaje}</p>}
 
-        {/* Formulario agregar deporte */}
-        {agregandoDeporte && (
-          <div style={{ marginBottom: '1rem' }}>
-            <Card>
-              <div className="fila-entre" style={{ marginBottom: '0.75rem' }}>
-                <h3 className="titulo" style={{ fontSize: '1rem', margin: 0 }}>
-                  Nuevo deporte
-                </h3>
-                <button className="boton boton-ghost" onClick={cancelarEdicion}>
-                  <X size={16} />
+        {/* Layout sidebar + contenido */}
+        <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '1rem' }}>
+          {/* Sidebar */}
+          <div className="stack" style={{ alignSelf: 'start' }}>
+            {tabs.map((t) => {
+              const Icon = t.icon;
+              const activo = tab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTab(t.id as typeof tab)}
+                  className={`boton ${activo ? 'boton-primario' : 'boton-outline'}`}
+                  style={{ justifyContent: 'flex-start', width: '100%' }}
+                >
+                  <Icon size={16} />
+                  {t.label}
                 </button>
-              </div>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void agregarDeporteACancha();
-                }}
-                className="fila"
-                style={{ gap: '0.5rem' }}
-              >
-                <input
-                  autoFocus
-                  value={deporteForm.nombre}
-                  onChange={(e) => setDeporteForm({ ...deporteForm, nombre: e.target.value })}
-                  placeholder="Nombre del deporte (ej: Pádel)"
-                  required
-                  className="input"
-                  style={{ flex: 1 }}
-                />
-                <select
-                  value={deporteForm.tipo}
-                  onChange={(e) => setDeporteForm({ ...deporteForm, tipo: e.target.value })}
-                  className="input"
-                >
-                  <option value="cancha">Cancha</option>
-                  <option value="gimnasio">Gimnasio</option>
-                  <option value="pileta">Pileta</option>
-                  <option value="otro">Otro</option>
-                </select>
-                <button type="submit" className="boton boton-primario">Agregar</button>
-              </form>
-            </Card>
+              );
+            })}
           </div>
-        )}
 
-        {/* Lista de deportes (acordeón) */}
-        <div className="stack">
-          {canchasPorDeporte.length === 0 && !agregandoDeporte && (
-            <Card className="caja-vacia">
-              <p className="texto-sec">No hay deportes cargados todavía.</p>
-              <button className="boton boton-primario" onClick={() => setAgregandoDeporte(true)}>
-                <Plus size={16} /> Agregar tu primer deporte
-              </button>
-            </Card>
-          )}
-
-          {canchasPorDeporte.map(({ deporte, canchas: canchasDeporte }) => {
-            const isOpen = expandidos[deporte.id] ?? false;
-
-            return (
-              <div key={deporte.id} className="tarjeta-plana">
-                {/* Header del deporte */}
-                <div
-                  className="fila-entre"
-                  style={{ padding: '0.75rem 1rem', cursor: 'pointer' }}
-                  onClick={() => toggleExpandir(deporte.id)}
-                >
-                  <div className="fila" style={{ gap: '0.75rem' }}>
-                    {isOpen ? (
-                      <ChevronDown size={18} />
-                    ) : (
-                      <ChevronRight size={18} />
-                    )}
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '1rem' }}>{deporte.nombre}</div>
-                      <div className="texto-sec" style={{ fontSize: '0.75rem' }}>
-                        {canchasDeporte.length} cancha{canchasDeporte.length !== 1 ? 's' : ''}
-                      </div>
-                    </div>
+          {/* Contenido principal */}
+          <div className="stack">
+            {/* === DEPORTES Y CANCHAS === */}
+            {tab === 'deportes' && (
+              <>
+                <Card>
+                  <div className="fila-entre" style={{ marginBottom: '0.75rem' }}>
+                    <h3 className="titulo" style={{ fontSize: '1.1rem', margin: 0 }}>Deportes y Canchas</h3>
+                    <button className="boton boton-outline" onClick={() => setAgregandoDeporte(true)}>
+                      <Plus size={16} /> Agregar deporte
+                    </button>
                   </div>
-                  <button
-                    className="boton boton-outline"
-                    style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      abrirAgregarCancha(deporte);
-                    }}
-                  >
-                    <Plus size={14} /> Agregar cancha
-                  </button>
-                </div>
 
-                {/* Contenido expandible */}
-                {isOpen && (
-                  <div
-                    style={{ padding: '0.75rem 1rem', borderTop: '1px solid #e5e7eb' }}
-                  >
-                    {/* Formulario agregar/editar cancha */}
-                    {(agregandoCancha?.id === deporte.id || editandoCancha) && (
-                      <div style={{ marginBottom: '0.75rem' }}>
-                        <form onSubmit={guardarCancha} className="stack">
+                  {agregandoDeporte && (
+                    <form onSubmit={(e) => { e.preventDefault(); void agregarDeporteSubmit(); }} className="fila" style={{ gap: '0.5rem', marginBottom: '0.75rem' }}>
+                      <input
+                        autoFocus
+                        value={deporteForm.nombre}
+                        onChange={(e) => setDeporteForm({ ...deporteForm, nombre: e.target.value })}
+                        placeholder="Nombre del deporte (ej: Pádel)"
+                        required
+                        className="input"
+                        style={{ flex: 1 }}
+                      />
+                      <select
+                        value={deporteForm.tipo}
+                        onChange={(e) => setDeporteForm({ ...deporteForm, tipo: e.target.value })}
+                        className="input"
+                      >
+                        <option value="cancha">Cancha</option>
+                        <option value="gimnasio">Gimnasio</option>
+                        <option value="pileta">Pileta</option>
+                        <option value="otro">Otro</option>
+                      </select>
+                      <button type="submit" className="boton boton-primario">Agregar</button>
+                    </form>
+                  )}
+
+                  {canchasPorDeporte.length === 0 && !agregandoDeporte && (
+                    <p className="texto-sec">No hay deportes cargados todavía.</p>
+                  )}
+
+                  {canchasPorDeporte.map(({ deporte, canchas: canchasDeporte }) => {
+                    const isOpen = expandidos[deporte.id] ?? false;
+                    return (
+                      <div key={deporte.id} className="tarjeta-plana" style={{ marginBottom: '0.5rem' }}>
+                        {/* Header del deporte */}
+                        <div
+                          className="fila-entre"
+                          style={{ padding: '0.6rem 0.75rem', cursor: 'pointer' }}
+                          onClick={() => toggleExpandir(deporte.id)}
+                        >
                           <div className="fila" style={{ gap: '0.5rem' }}>
-                            <input
-                              value={canchaForm.nombre}
-                              onChange={(e) =>
-                                setCanchaForm({ ...canchaForm, nombre: e.target.value })
-                              }
-                              placeholder="Nombre de la cancha"
-                              required
-                              className="input"
-                              style={{ flex: 1 }}
-                            />
-                            <input
-                              type="number"
-                              min={0}
-                              value={canchaForm.precio_base}
-                              onChange={(e) =>
-                                setCanchaForm({ ...canchaForm, precio_base: e.target.value })
-                              }
-                              placeholder="Precio/hora"
-                              required
-                              className="input"
-                              style={{ width: '120px' }}
-                            />
-                          </div>
-                          <input
-                            value={canchaForm.caracteristicas}
-                            onChange={(e) =>
-                              setCanchaForm({ ...canchaForm, caracteristicas: e.target.value })
-                            }
-                            placeholder="Características (iluminada, techada, etc.)"
-                            className="input"
-                          />
-                          <div
-                            className="fila"
-                            style={{ gap: '0.5rem', justifyContent: 'flex-end' }}
-                          >
-                            <button
-                              type="button"
-                              className="boton boton-secondary"
-                              onClick={cancelarEdicion}
-                            >
-                              Cancelar
-                            </button>
-                            <button type="submit" className="boton boton-primario">
-                              {editandoCancha ? 'Guardar' : 'Agregar cancha'}
-                            </button>
-                          </div>
-                        </form>
-                      </div>
-                    )}
-
-                    {/* Listado de canchas */}
-                    {canchasDeporte.length === 0 ? (
-                      <p className="texto-sec" style={{ fontSize: '0.85rem' }}>
-                        No hay canchas para este deporte.
-                      </p>
-                    ) : (
-                      <div className="stack" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                        {canchasDeporte.map((cancha) => (
-                          <div
-                            key={cancha.id}
-                            className="fila-entre"
-                            style={{ padding: '0.5rem 0', borderBottom: '1px solid #f3f4f6' }}
-                          >
+                            {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                             <div>
-                              <div style={{ fontWeight: 600 }}>{cancha.nombre}</div>
-                              <div className="texto-sec" style={{ fontSize: '0.75rem' }}>
-                                ${cancha.precio_base}/h
-                                {cancha.caracteristicas
-                                  ? ` · ${cancha.caracteristicas}`
-                                  : ''}
-                              </div>
-                            </div>
-                            <div className="fila" style={{ gap: '0.25rem' }}>
-                              <button
-                                className="boton boton-ghost"
-                                style={{ padding: '0.35rem' }}
-                                onClick={() => abrirEditarCancha(cancha)}
-                                aria-label="Editar"
-                              >
-                                <Edit3 size={14} />
-                              </button>
-                              <button
-                                className="boton boton-ghost"
-                                style={{ padding: '0.35rem', color: '#dc2626' }}
-                                onClick={() => void eliminarCancha(cancha.id)}
-                                aria-label="Eliminar"
-                              >
-                                <Trash2 size={14} />
-                              </button>
+                              <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{deporte.nombre}</span>
+                              <span className="texto-sec" style={{ marginLeft: '0.5rem', fontSize: '0.75rem' }}>
+                                {canchasDeporte.length} cancha{canchasDeporte.length !== 1 ? 's' : ''}
+                              </span>
                             </div>
                           </div>
-                        ))}
+                          <div className="fila" style={{ gap: '0.25rem' }}>
+                            <button
+                              className="boton boton-outline"
+                              style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                              onClick={(e) => { e.stopPropagation(); abrirAgregarCancha(deporte); }}
+                            >
+                              + Cancha
+                            </button>
+                            <button
+                              className="boton boton-ghost"
+                              style={{ padding: '0.3rem', color: '#dc2626' }}
+                              onClick={() => eliminarDeporte(deporte.id)}
+                              aria-label="Eliminar deporte"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Contenido expandible */}
+                        {isOpen && (
+                          <div style={{ padding: '0.6rem 0.75rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb' }}>
+                            {/* Formulario agregar/editar cancha */}
+                            {(agregandoCancha?.id === deporte.id || editandoCancha) && (
+                              <form onSubmit={guardarCancha} className="stack" style={{ marginBottom: '0.5rem' }}>
+                                <div className="fila" style={{ gap: '0.5rem' }}>
+                                  <input
+                                    value={canchaForm.nombre}
+                                    onChange={(e) => setCanchaForm({ ...canchaForm, nombre: e.target.value })}
+                                    placeholder="Nombre de la cancha"
+                                    required
+                                    className="input"
+                                    style={{ flex: 1 }}
+                                  />
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    value={canchaForm.precio_base}
+                                    onChange={(e) => setCanchaForm({ ...canchaForm, precio_base: e.target.value })}
+                                    placeholder="Precio/h"
+                                    required
+                                    className="input"
+                                    style={{ width: '110px' }}
+                                  />
+                                </div>
+                                <input
+                                  value={canchaForm.caracteristicas}
+                                  onChange={(e) => setCanchaForm({ ...canchaForm, caracteristicas: e.target.value })}
+                                  placeholder="Características (iluminada, techada…)"
+                                  className="input"
+                                />
+                                <div className="fila" style={{ gap: '0.5rem', justifyContent: 'flex-end' }}>
+                                  <button type="button" className="boton boton-secondary" onClick={cancelarEdicion}>
+                                    Cancelar
+                                  </button>
+                                  <button type="submit" className="boton boton-primario">
+                                    {editandoCancha ? 'Guardar' : 'Agregar'}
+                                  </button>
+                                </div>
+                              </form>
+                            )}
+
+                            {/* Lista de canchas */}
+                            {canchasDeporte.length === 0 ? (
+                              <p className="texto-sec" style={{ fontSize: '0.85rem' }}>
+                                No hay canchas en este deporte.
+                              </p>
+                            ) : (
+                              <div className="stack" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                                {canchasDeporte.map((cancha) => (
+                                  <div
+                                    key={cancha.id}
+                                    className="fila-entre"
+                                    style={{ padding: '0.4rem 0', borderBottom: '1px solid #e5e7eb' }}
+                                  >
+                                    <div>
+                                      <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{cancha.nombre}</span>
+                                      <span className="texto-sec" style={{ marginLeft: '0.5rem', fontSize: '0.75rem' }}>
+                                        ${cancha.precio_base}/h
+                                      </span>
+                                      {cancha.caracteristicas ? (
+                                        <span className="texto-sec" style={{ fontSize: '0.75rem', marginLeft: '0.5rem' }}>
+                                          · {cancha.caracteristicas}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                    <div className="fila" style={{ gap: '0.25rem' }}>
+                                      <button
+                                        className="boton boton-ghost"
+                                        style={{ padding: '0.3rem' }}
+                                        onClick={() => abrirEditarCancha(cancha)}
+                                        aria-label="Editar cancha"
+                                      >
+                                        <Edit3 size={12} />
+                                      </button>
+                                      <button
+                                        className="boton boton-ghost"
+                                        style={{ padding: '0.3rem', color: '#dc2626' }}
+                                        onClick={() => eliminarCancha(cancha.id)}
+                                        aria-label="Eliminar cancha"
+                                      >
+                                        <Trash2 size={12} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    );
+                  })}
+                </Card>
+              </>
+            )}
+
+            {/* === DATOS DEL COMPLEJO === */}
+            {tab === 'datos' && (
+              <Card>
+                <h3 className="titulo" style={{ fontSize: '1.1rem', marginBottom: '0.75rem' }}>Datos del complejo</h3>
+                <label className="label">Nombre comercial<input value={nombre} onChange={(e) => setNombre(e.target.value)} className="input" /></label>
+                <label className="label">Tipo
+                  <select value={tipoComplejo} onChange={(e) => setTipoComplejo(e.target.value)} className="input">
+                    <option value="fraccionado">Cancha individual / Fraccionado</option>
+                    <option value="complejo_deportivo">Complejo deportivo</option>
+                  </select>
+                </label>
+                <label className="label">Horario de apertura<input type="time" value={horaApertura} onChange={(e) => setHoraApertura(e.target.value)} className="input" /></label>
+                <label className="label">Horario de cierre<input type="time" value={horaCierre} onChange={(e) => setHoraCierre(e.target.value)} className="input" /></label>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.75rem' }}>
+                  <Button variant="secondary" onClick={() => void guardarSetup({ metadatos: { nombre, tipo: tipoComplejo, hora_apertura: Number(horaApertura.split(':')[0] || '0'), hora_cierre: Number(horaCierre.split(':')[0] || '0') } })}>
+                    Guardar cambios
+                  </Button>
+                </div>
+              </Card>
+            )}
+
+            {/* === POLÍTICAS === */}
+            {tab === 'politicas' && (
+              <Card>
+                <h3 className="titulo" style={{ fontSize: '1.1rem', marginBottom: '0.75rem' }}>Políticas</h3>
+                <label className="label">
+                  Horas mínimas para cancelar antes del turno
+                  <input type="number" min={0} max={48} value={cancelacionHoras} onChange={(e) => setCancelacionHoras(e.target.value)} className="input" />
+                </label>
+                <label className="label">
+                  Descuento para clientes con turno fijo (%)
+                  <input type="number" min={0} max={100} value={descuentoTurnoFijo} onChange={(e) => setDescuentoTurnoFijo(e.target.value)} className="input" />
+                </label>
+                <label className="label" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <input type="checkbox" checked={señaObligatoria} onChange={(e) => setSeñaObligatoria(e.target.checked)} />
+                  Seña obligatoria por defecto
+                </label>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.75rem' }}>
+                  <Button variant="secondary" onClick={() => void guardarSetup({ politicas: { cancelacion_minima_horas: Number(cancelacionHoras), descuento_turno_fijo_porcentaje: Number(descuentoTurnoFijo), seña_obligatoria: señaObligatoria } })}>
+                    Guardar cambios
+                  </Button>
+                </div>
+              </Card>
+            )}
+
+            {/* === AMENIDADES (GYM/PILETA) === */}
+            {tab === 'amenidades' && (
+              <Card>
+                <h3 className="titulo" style={{ fontSize: '1.1rem', marginBottom: '0.75rem' }}>Gimnasio y Pileta</h3>
+                <label className="label" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <input type="checkbox" checked={gym} onChange={(e) => setGym(e.target.checked)} />
+                  Gimnasio activo
+                </label>
+                {gym && (
+                  <label className="label">
+                    Precio mensual del gym (opcional)
+                    <input type="number" min={0} value={precioMensualGym} onChange={(e) => setPrecioMensualGym(e.target.value)} className="input" placeholder="Precio mensual" />
+                  </label>
                 )}
-              </div>
-            );
-          })}
+                <label className="label" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.5rem' }}>
+                  <input type="checkbox" checked={pileta} onChange={(e) => setPileta(e.target.checked)} />
+                  Pileta activa
+                </label>
+                {pileta && (
+                  <label className="label" style={{ marginTop: '0.5rem' }}>
+                    Precio mensual de pileta (opcional)
+                    <input type="number" min={0} value={precioMensualPileta} onChange={(e) => setPrecioMensualPileta(e.target.value)} className="input" placeholder="Precio mensual" />
+                  </label>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.75rem' }}>
+                  <Button variant="secondary" onClick={() => void guardarSetup({ amenidades: { gym, pileta, precio_mensual_gym: gym && precioMensualGym ? Number(precioMensualGym) : undefined, precio_mensual_pileta: pileta && precioMensualPileta ? Number(precioMensualPileta) : undefined } })}>
+                    Guardar cambios
+                  </Button>
+                </div>
+              </Card>
+            )}
+
+            {/* === SOCIOS === */}
+            {tab === 'socios' && (
+              <Card>
+                <h3 className="titulo" style={{ fontSize: '1.1rem', marginBottom: '0.75rem' }}>Socios y Beneficios</h3>
+                <label className="label" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <input type="checkbox" checked={ofreceSocios} onChange={(e) => setOfreceSocios(e.target.checked)} />
+                  Ofrecer socios con descuentos
+                </label>
+                <div style={{ marginTop: '1rem' }}>
+                  <h4 style={{ fontSize: '0.9rem' }}>Configuración de beneficios</h4>
+                  <p className="texto-sec">
+                    Acá se configurarán los beneficios para socios (porcentaje de descuento, límites, etc.).
+                    Esta sección se conectará con la tabla beneficios_socios cuando esté implementada por completo.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.75rem' }}>
+                  <Button variant="secondary" onClick={() => void guardarSetup({ socios: { ofrece_socios: ofreceSocios } })}>
+                    Guardar cambios
+                  </Button>
+                </div>
+              </Card>
+            )}
+          </div>
         </div>
       </div>
     </main>
