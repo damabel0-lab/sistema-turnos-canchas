@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import { Card, Button, Input } from '../../components/ui';
-import { Calendar, Clock, MapPin, Loader2 } from 'lucide-react';
+import { MapPin, Loader2, CheckCircle2 } from 'lucide-react';
 
 interface Deporte {
   id: number;
@@ -18,6 +18,7 @@ interface Cancha {
   deporte_id: number | null;
   precio_base: number;
   activa: boolean;
+  caracteristicas?: string | null;
   deportes?: { nombre: string; tipo: string } | null;
 }
 
@@ -152,185 +153,254 @@ export function ReservarPage() {
     }
   }
 
-  return (
-    <main className="pantalla">
-      <div className="contenedor-estrecho">
-        <h1 className="titulo">Reservar</h1>
-        {error && <p style={{ color: '#dc2626', marginBottom: '1rem' }}>{error}</p>}
+  const deporteSel = deportes.find((d) => d.id === deporteId);
+  const canchaSel = canchas.find((c) => c.id === canchaId);
+  const fechaLegible = new Date(`${fecha}T00:00:00`).toLocaleDateString('es-AR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
 
-        {confirmada && (
+  return (
+    <main className="pantalla" style={{ paddingTop: '1.5rem' }}>
+      <div className="contenedor-ancho">
+        {/* Encabezado */}
+        <div className="fila-entre" style={{ marginBottom: '1.1rem' }}>
+          <div>
+            <h1 className="titulo" style={{ fontSize: '1.65rem', marginBottom: '0.15rem' }}>
+              Reservá tu cancha
+            </h1>
+            <p className="subtitulo" style={{ margin: 0 }}>
+              Elegí disciplina, cancha y horario — todo en un solo vistazo.
+            </p>
+          </div>
+        </div>
+
+        {error && <div className="alerta-error" role="alert">{error}</div>}
+
+        {confirmada ? (
           <Card className="caja-vacia">
             <div className="icono-circulo" style={{ margin: '0 auto 0.75rem' }}>
-              <Clock size={28} />
+              <CheckCircle2 size={28} />
             </div>
-            <h3 style={{ margin: '0 0 0.25rem' }}>Reserva #{confirmada.id} creada ✅</h3>
-            <p className="texto-sec">Si tiene seña, abonala en el complejo para confirmarla.</p>
-            <Link to="/mis-reservas" className="boton boton-outline" style={{ marginTop: '0.75rem' }}>
-              Ver mis reservas
-            </Link>
+            <h3 style={{ margin: '0 0 0.25rem' }}>¡Reserva #{confirmada.id} confirmada!</h3>
+            <p className="texto-sec">
+              {canchaSel ? `${canchaSel.nombre} · ` : ''}Si la reserva tiene seña, abonala en el complejo para dejarla confirmada.
+            </p>
+            <div className="fila" style={{ justifyContent: 'center', marginTop: '0.85rem' }}>
+              <Link to="/mis-reservas" className="boton boton-primario">
+                Ver mis reservas
+              </Link>
+              <button type="button" className="boton boton-outline" onClick={() => setConfirmada(null)}>
+                Hacer otra reserva
+              </button>
+            </div>
           </Card>
-        )}
-
-        {!confirmada && (
-          <div className="stack">
-            {/* Paso 1: disciplina */}
-            <Card>
-              <h2 className="titulo" style={{ fontSize: '1.05rem', marginBottom: '0.75rem' }}>
-                <span className="fila"><Calendar size={18} /> 1. ¿Qué querés jugar?</span>
-              </h2>
-              <div className="fila">
-                {deportes.map((d) => (
-                  <button
-                    key={d.id}
-                    type="button"
-                    onClick={() => {
-                      setDeporteId(d.id);
-                      setCancaId(null);
-                    }}
-                    className="boton"
-                    style={{
-                      background: deporteId === d.id ? '#4f46e5' : '#f3f4f6',
-                      color: deporteId === d.id ? '#ffffff' : '#374151',
-                    }}
-                  >
-                    {d.nombre}
-                  </button>
-                ))}
-              </div>
-            </Card>
-
-            {/* Paso 2: cancha */}
-            {deporteId && (
+        ) : (
+          <div className="reserva-layout">
+            {/* ===== Columna 1: Disciplina + Cancha ===== */}
+            <div className="stack">
               <Card>
-                <h2 className="titulo" style={{ fontSize: '1.05rem', marginBottom: '0.75rem' }}>
-                  <span className="fila"><MapPin size={18} /> 2. Elegí la cancha</span>
-                </h2>
-                {canchasDelDeporte.length === 0 ? (
+                <div className="paso-header">
+                  <span className="paso-num">1</span>
+                  <h2 className="titulo" style={{ fontSize: '1rem', margin: 0 }}>Disciplina</h2>
+                </div>
+                <div className="fila">
+                  {deportes.length === 0 && <p className="texto-debil">Cargando disciplinas…</p>}
+                  {deportes.map((d) => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      className={`opcion-chip${deporteId === d.id ? ' activo' : ''}`}
+                      onClick={() => {
+                        setDeporteId(d.id);
+                        setCancaId(null);
+                      }}
+                    >
+                      {d.nombre}
+                    </button>
+                  ))}
+                </div>
+              </Card>
+
+              <Card>
+                <div className="paso-header">
+                  <span className="paso-num">2</span>
+                  <h2 className="titulo" style={{ fontSize: '1rem', margin: 0 }}>Cancha</h2>
+                </div>
+                {!deporteId ? (
+                  <p className="texto-debil">Elegí una disciplina para ver sus canchas disponibles.</p>
+                ) : canchasDelDeporte.length === 0 ? (
                   <p className="texto-sec">No hay canchas activas para esta disciplina.</p>
                 ) : (
-                  <div className="fila">
+                  <div className="stack" style={{ gap: '0.5rem' }}>
                     {canchasDelDeporte.map((c) => (
                       <button
                         key={c.id}
                         type="button"
+                        className={`cancha-opcion${canchaId === c.id ? ' activo' : ''}`}
                         onClick={() => setCancaId(c.id)}
-                        className="boton"
-                        style={{
-                          background: canchaId === c.id ? '#4f46e5' : '#f3f4f6',
-                          color: canchaId === c.id ? '#ffffff' : '#374151',
-                        }}
+                        aria-pressed={canchaId === c.id}
                       >
-                        {c.nombre} · ${c.precio_base}/h
+                        <span className="cancha-opcion-icono"><MapPin size={16} /></span>
+                        <span className="cancha-opcion-info">
+                          <span className="cancha-opcion-nombre">{c.nombre}</span>
+                          {c.caracteristicas && <span className="cancha-opcion-meta">{c.caracteristicas}</span>}
+                        </span>
+                        <span className="cancha-opcion-precio">
+                          ${c.precio_base}
+                          <small>/h</small>
+                        </span>
                       </button>
                     ))}
                   </div>
                 )}
               </Card>
-            )}
+            </div>
 
-            {/* Paso 3: fecha y horario */}
-            {canchaId && (
-              <Card>
-                <h2 className="titulo" style={{ fontSize: '1.05rem', marginBottom: '0.75rem' }}>
-                  <span className="fila"><Clock size={18} /> 3. Fecha y horario</span>
-                </h2>
-                <label className="label">Fecha</label>
-                <Input
-                  type="date"
-                  value={fecha}
-                  min={hoy()}
-                  onChange={(e) => setFecha(e.target.value)}
-                  style={{ marginBottom: '0.75rem' }}
-                />
-                <p className="texto-sec" style={{ fontSize: '0.8rem', margin: '0 0 0.5rem' }}>
-                  Los turnos son fijos y duran exactamente 1 hora (de :15 a :15).
-                </p>
-                <div
-                  style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(104px, 1fr))', gap: '0.4rem' }}
-                >
+            {/* ===== Columna 2: Fecha y horario ===== */}
+            <Card>
+              <div className="paso-header">
+                <span className="paso-num">3</span>
+                <h2 className="titulo" style={{ fontSize: '1rem', margin: 0 }}>Fecha y horario</h2>
+                <span className="texto-debil" style={{ marginLeft: 'auto' }}>turnos de 1 h · :15 a :15</span>
+              </div>
+
+              <div className="fila-entre" style={{ marginBottom: '0.75rem', gap: '0.75rem' }}>
+                <div style={{ flex: '1 1 180px' }}>
+                  <label className="label" htmlFor="fecha-reserva">Fecha</label>
+                  <Input
+                    id="fecha-reserva"
+                    type="date"
+                    value={fecha}
+                    min={hoy()}
+                    onChange={(e) => setFecha(e.target.value)}
+                  />
+                </div>
+                <div className="leyenda">
+                  <span className="leyenda-item"><span className="leyenda-punto libre" /> Libre</span>
+                  <span className="leyenda-item"><span className="leyenda-punto ocupado" /> Ocupada</span>
+                  <span className="leyenda-item"><span className="leyenda-punto pasado" /> Pasado</span>
+                </div>
+              </div>
+
+              {!canchaId ? (
+                <p className="texto-debil">Elegí una cancha para ver los horarios disponibles.</p>
+              ) : (
+                <div className="slots-grid">
                   {horas.map((h) => {
                     const pasado = turnoYaPaso(h.hora);
                     const libre = h.estado === 'libre' && !pasado;
                     const seleccionado = horaSel === h.hora;
-                    let fondo = '#e5e7eb';
-                    let texto = '#6b7280';
-                    if (libre) {
-                      fondo = seleccionado ? '#4f46e5' : '#d1fae5';
-                      texto = seleccionado ? '#ffffff' : '#065f46';
-                    }
+                    const estadoClase = seleccionado
+                      ? 'slot-seleccionado'
+                      : libre
+                        ? 'slot-libre'
+                        : pasado
+                          ? 'slot-pasado'
+                          : h.estado === 'bloqueada'
+                            ? 'slot-bloqueado'
+                            : 'slot-ocupado';
                     return (
                       <button
                         key={h.hora}
                         type="button"
                         disabled={!libre}
                         onClick={() => setHoraSel(h.hora)}
-                        title={pasado ? 'Ese turno ya pasó' : h.estado === 'libre' ? `${h.hora} a ${sumarUnaHora(h.hora)}` : h.estado === 'ocupada' ? 'Ocupada' : 'Bloqueada'}
-                        style={{
-                          padding: '0.45rem 0.25rem',
-                          border: 'none',
-                          borderRadius: '0.6rem',
-                          background: fondo,
-                          color: texto,
-                          cursor: libre ? 'pointer' : 'not-allowed',
-                          fontWeight: 600,
-                          lineHeight: 1.15,
-                        }}
+                        aria-pressed={seleccionado}
+                        title={
+                          pasado
+                            ? 'Ese turno ya pasó'
+                            : libre
+                              ? `${h.hora} a ${sumarUnaHora(h.hora)}`
+                              : h.estado === 'ocupada'
+                                ? 'Ocupada'
+                                : 'Bloqueada'
+                        }
+                        className={`slot ${estadoClase}`}
                       >
-                        <span style={{ display: 'block', fontSize: '0.82rem' }}>{h.hora}</span>
-                        <span style={{ display: 'block', fontSize: '0.66rem', opacity: 0.85 }}>a {sumarUnaHora(h.hora)}</span>
+                        <span className="slot-hora">{h.hora}</span>
+                        <span className="slot-fin">a {sumarUnaHora(h.hora)}</span>
                       </button>
                     );
                   })}
                 </div>
-              </Card>
-            )}
+              )}
+            </Card>
 
-            {/* Resumen */}
-            {cotizacion && horaSel && (
-              <Card>
-                <h2 className="titulo" style={{ fontSize: '1.05rem', marginBottom: '0.75rem' }}>
-                  Resumen
-                </h2>
-                <p className="texto-sec">
-                  <strong>{fecha}</strong> · <strong>{horaSel}–{sumarUnaHora(horaSel)}</strong> (1 hora)
-                </p>
-                {cotizacion.descuento_socio > 0 && (
-                  <p className="texto-sec" style={{ color: '#065f46' }}>
-                    Descuento socio: -${cotizacion.descuento_socio}
+            {/* ===== Columna 3: Resumen (sticky) ===== */}
+            <aside className="reserva-rail">
+              <Card className="resumen-card">
+                <div className="paso-header" style={{ marginBottom: '0.85rem' }}>
+                  <h2 className="titulo" style={{ fontSize: '1rem', margin: 0 }}>Resumen</h2>
+                </div>
+
+                <dl className="resumen-lista">
+                  <div>
+                    <dt>Disciplina</dt>
+                    <dd>{deporteSel?.nombre ?? '—'}</dd>
+                  </div>
+                  <div>
+                    <dt>Cancha</dt>
+                    <dd>{canchaSel?.nombre ?? '—'}</dd>
+                  </div>
+                  <div>
+                    <dt>Fecha</dt>
+                    <dd style={{ textTransform: 'capitalize' }}>{fechaLegible}</dd>
+                  </div>
+                  <div>
+                    <dt>Horario</dt>
+                    <dd>{horaSel ? `${horaSel} – ${sumarUnaHora(horaSel)} (1 h)` : '—'}</dd>
+                  </div>
+                </dl>
+
+                <div className="divider" />
+
+                {cotizacion ? (
+                  <>
+                    {cotizacion.descuento_socio > 0 && (
+                      <div className="resumen-fila-desc">Descuento socio <span>-${cotizacion.descuento_socio}</span></div>
+                    )}
+                    {cotizacion.descuento_turno_fijo > 0 && (
+                      <div className="resumen-fila-desc">Descuento turno fijo <span>-${cotizacion.descuento_turno_fijo}</span></div>
+                    )}
+                    {cotizacion.monto_seña > 0 && (
+                      <div className="resumen-fila-senia">Seña a pagar en el complejo <span>${cotizacion.monto_seña}</span></div>
+                    )}
+                    <div className="resumen-total">
+                      <span>Total</span>
+                      <span>${cotizacion.precio_total}</span>
+                    </div>
+                  </>
+                ) : (
+                  <p className="texto-debil" style={{ margin: '0.25rem 0 0.75rem' }}>
+                    El total aparece cuando elegís un horario.
                   </p>
                 )}
-                {cotizacion.descuento_turno_fijo > 0 && (
-                  <p className="texto-sec" style={{ color: '#065f46' }}>
-                    Descuento turno fijo: -${cotizacion.descuento_turno_fijo}
-                  </p>
-                )}
-                <p style={{ fontSize: '1.25rem', fontWeight: 700 }}>
-                  Total: ${cotizacion.precio_total}
-                </p>
-                {cotizacion.monto_seña > 0 && (
-                  <p className="texto-sec" style={{ color: '#92400e' }}>
-                    Seña a pagar ahora: ${cotizacion.monto_seña}
-                  </p>
-                )}
+
                 <Button
                   variant="primary"
-                  disabled={!session || creando}
+                  disabled={!session || creando || !canchaId || !horaSel || !cotizacion}
                   onClick={confirmar}
                   className="boton-block"
                   style={{ marginTop: '0.75rem' }}
                 >
                   {creando ? (
                     <><Loader2 size={16} /> Creando…</>
-                  ) : session ? (
-                    cotizacion.monto_seña > 0
-                      ? `Reservar y señar $${cotizacion.monto_seña}`
-                      : 'Confirmar reserva'
-                  ) : (
+                  ) : !session ? (
                     'Iniciá sesión para reservar'
+                  ) : cotizacion && cotizacion.monto_seña > 0 ? (
+                    `Reservar y señar $${cotizacion.monto_seña}`
+                  ) : (
+                    'Confirmar reserva'
                   )}
                 </Button>
+                <p className="texto-debil" style={{ textAlign: 'center', marginTop: '0.5rem' }}>
+                  Cancelación sin cargo hasta 2 h antes del turno
+                </p>
               </Card>
-            )}
+            </aside>
           </div>
         )}
       </div>

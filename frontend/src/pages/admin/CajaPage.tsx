@@ -95,7 +95,7 @@ export function CajaPage() {
   const etiquetasOrigenOrdenadas = datos?.por_origen.slice().sort((a, b) => b.total - a.total) ?? [];
 
   return (
-    <main className="pantalla">
+    <div className="admin-page">
       <div className="contenedor-ancho">
         <div className="fila-entre" style={{ marginBottom: '0.75rem' }}>
           <h1 className="titulo"><span className="fila"><DollarSign size={20} /> Caja y finanzas</span></h1>
@@ -108,8 +108,8 @@ export function CajaPage() {
             </button>
           </div>
         </div>
-        {error && <p style={{ color: '#dc2626' }}>{error}</p>}
-        {mensaje && <p style={{ color: '#10b981' }}>{mensaje}</p>}
+        {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
+        {mensaje && <p style={{ color: 'var(--exito)' }}>{mensaje}</p>}
 
         {datos && (
           <>
@@ -117,11 +117,11 @@ export function CajaPage() {
             <div className="grilla-tarjetas" style={{ marginBottom: '1rem' }}>
               <Card>
                 <div className="texto-sec" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Ingresos ({etiquetasPeriodo[periodo].toLowerCase()})</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#10b981' }}>${datos.ingresos}</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--exito)' }}>${datos.ingresos}</div>
               </Card>
               <Card>
                 <div className="texto-sec" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Egresos</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ef4444' }}>${datos.egresos}</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--peligro)' }}>${datos.egresos}</div>
               </Card>
               <Card>
                 <div className="texto-sec" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Saldo</div>
@@ -182,7 +182,7 @@ export function CajaPage() {
                       </div>
                       <div className="fila" style={{ gap: '0.5rem' }}>
                         <span className="texto-sec" style={{ fontSize: '0.75rem' }}>{m.metodo_pago}</span>
-                        <span style={{ fontWeight: 600, color: m.tipo_movimiento === 'ingreso' ? '#10b981' : '#ef4444' }}>
+                        <span style={{ fontWeight: 600, color: m.tipo_movimiento === 'ingreso' ? 'var(--exito)' : 'var(--peligro)' }}>
                           {m.tipo_movimiento === 'ingreso' ? '+' : '−'}${m.monto}
                         </span>
                       </div>
@@ -213,6 +213,6 @@ export function CajaPage() {
           </>
         )}
       </div>
-    </main>
+    </div>
   );
 }

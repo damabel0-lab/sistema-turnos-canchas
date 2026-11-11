@@ -37,10 +37,10 @@ const estadosReserva: Record<string, 'neutral' | 'success' | 'warning' | 'danger
 };
 
 const coloresReserva: Record<string, string> = {
-  pendiente_seña: '#fef3c7',
-  confirmada: '#d1fae5',
-  completada: '#e0e7ff',
-  bloqueo: '#e5e7eb',
+  pendiente_seña: 'color-mix(in srgb, var(--advertencia) 18%, transparent)',
+  confirmada: 'color-mix(in srgb, var(--exito) 18%, transparent)',
+  completada: 'color-mix(in srgb, var(--info) 18%, transparent)',
+  bloqueo: 'var(--border)',
 };
 
 export function GrillaPage() {
@@ -210,7 +210,7 @@ export function GrillaPage() {
   );
 
   return (
-    <main className="pantalla">
+    <div className="admin-page">
       <div className="contenedor-ancho">
         <div className="fila-entre" style={{ marginBottom: '0.75rem' }}>
           <div>
@@ -224,17 +224,17 @@ export function GrillaPage() {
             </button>
           </div>
         </div>
-        {error && <p style={{ color: '#dc2626' }}>{error}</p>}
-        {mensaje && <p style={{ color: '#10b981' }}>{mensaje}</p>}
+        {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
+        {mensaje && <p style={{ color: 'var(--exito)' }}>{mensaje}</p>}
 
         <div className="fila" style={{ gap: '0.5rem', marginBottom: '1rem' }}>
           <div className="tarjeta-plana" style={{ padding: '0.5rem 0.75rem' }}>
             <span style={{ fontWeight: 700 }}>🕐 {totalReservas}</span> turnos
           </div>
-          <div className="tarjeta-plana" style={{ padding: '0.5rem 0.75rem', background: '#fef9c3', borderColor: '#fde68a' }}>
+          <div className="tarjeta-plana" style={{ padding: '0.5rem 0.75rem', background: 'color-mix(in srgb, var(--advertencia) 18%, transparent)', borderColor: 'color-mix(in srgb, var(--advertencia) 40%, transparent)' }}>
             <span style={{ fontWeight: 700 }}>⏳ ${porCobrar}</span> por cobrar
           </div>
-          <div className="tarjeta-plana" style={{ padding: '0.5rem 0.75rem', background: '#d1fae5', borderColor: '#a7f3d0' }}>
+          <div className="tarjeta-plana" style={{ padding: '0.5rem 0.75rem', background: 'color-mix(in srgb, var(--exito) 18%, transparent)', borderColor: 'color-mix(in srgb, var(--exito) 40%, transparent)' }}>
             <span style={{ fontWeight: 700 }}>✅ ${cobrado}</span> cobrado
           </div>
         </div>
@@ -327,14 +327,14 @@ export function GrillaPage() {
               <tbody>
                 {filas.map((f) => (
                   <tr key={f.cancha_id}>
-                    <td style={{ position: 'sticky', left: 0, background: '#fff' }}>
+                    <td style={{ position: 'sticky', left: 0, background: 'var(--bg-surface)' }}>
                       {f.cancha}
                       <br />
                       <span className="texto-sec" style={{ fontSize: '0.7rem' }}>{f.deporte}</span>
                     </td>
                     {HORAS_TURNO.map((h) => {
                       const item = f.items.find((i) => i.hora === h);
-                      const fondo = item ? (item.tipo === 'bloqueo' ? coloresReserva.bloqueo : coloresReserva[item.estado ?? 'pendiente_seña'] ?? coloresReserva.pendiente_seña) : '#fff';
+                      const fondo = item ? (item.tipo === 'bloqueo' ? coloresReserva.bloqueo : coloresReserva[item.estado ?? 'pendiente_seña'] ?? coloresReserva.pendiente_seña) : 'var(--bg-surface)';
                       const titulo = item ? (item.tipo === 'bloqueo' ? `Bloqueada: ${item.motivo}` : `${item.cliente} · $${item.monto} · ${item.estado}`) : 'Libre';
                       return (
                         <td
@@ -400,6 +400,6 @@ export function GrillaPage() {
           </Card>
         )}
       </div>
-    </main>
+    </div>
   );
 }

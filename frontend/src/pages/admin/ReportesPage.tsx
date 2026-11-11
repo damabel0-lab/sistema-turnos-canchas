@@ -35,7 +35,7 @@ export function ReportesPage() {
   }, [cargar]);
 
   return (
-    <main className="pantalla">
+    <div className="admin-page">
       <div className="contenedor-estrecho">
         <div className="fila-entre" style={{ marginBottom: '0.75rem' }}>
           <h1 className="titulo"><span className="fila"><DollarSign size={20} /> Reportes y estadísticas</span></h1>
@@ -47,7 +47,7 @@ export function ReportesPage() {
             <button className="boton boton-outline" onClick={() => void cargar()}>Actualizar</button>
           </div>
         </div>
-        {error && <p style={{ color: '#dc2626' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
 
         {reporte && (
           <Card>
@@ -85,6 +85,6 @@ export function ReportesPage() {
           </Card>
         )}
       </div>
-    </main>
+    </div>
   );
 }

@@ -95,7 +95,7 @@ export function MisReservasPage() {
           disabled={cancelando === r.id}
           onClick={() => void cancelar(r.id)}
           className="boton boton-ghost"
-          style={{ color: '#dc2626' }}
+          style={{ color: 'var(--peligro)' }}
         >
           {cancelando === r.id ? 'Cancelando…' : 'Cancelar'}
         </button>
@@ -123,7 +123,7 @@ export function MisReservasPage() {
     <main className="pantalla">
       <div className="contenedor">
         <h1 className="titulo">Mis Reservas</h1>
-        {error && <p style={{ color: '#dc2626' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
 
         {/* Estadísticas del cliente */}
         {estadisticas && (

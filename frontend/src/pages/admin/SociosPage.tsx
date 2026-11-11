@@ -64,7 +64,7 @@ export function SociosPage() {
   }
 
   return (
-    <main className="pantalla">
+    <div className="admin-page">
       <div className="contenedor">
         <div className="fila-entre" style={{ marginBottom: '1rem' }}>
           <h1 className="titulo"><span className="fila"><Users size={20} /> Socios</span></h1>
@@ -72,8 +72,8 @@ export function SociosPage() {
             <RefreshCw size={16} /> Actualizar
           </button>
         </div>
-        {error && <p style={{ color: '#dc2626' }}>{error}</p>}
-        {mensaje && <p style={{ color: '#10b981' }}>{mensaje}</p>}
+        {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
+        {mensaje && <p style={{ color: 'var(--exito)' }}>{mensaje}</p>}
 
         <h2 className="titulo" style={{ fontSize: '1.1rem' }}>Dar de alta socio</h2>
         <Card>
@@ -103,7 +103,7 @@ export function SociosPage() {
                     <div className="texto-sec" style={{ fontSize: '0.85rem' }}>{s.telefono ?? '—'}</div>
                   </div>
                 </div>
-                <button type="button" onClick={() => void darDeBaja(s.id)} className="boton boton-ghost" style={{ color: '#dc2626' }}>
+                <button type="button" onClick={() => void darDeBaja(s.id)} className="boton boton-ghost" style={{ color: 'var(--peligro)' }}>
                   Baja
                 </button>
               </Card>
@@ -111,6 +111,6 @@ export function SociosPage() {
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }

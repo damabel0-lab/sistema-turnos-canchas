@@ -17,6 +17,7 @@ import { NotificacionesPage } from './pages/cliente/NotificacionesPage';
 import { LoginPage } from './pages/auth/LoginPage';
 
 // Páginas admin (protegidas por rol)
+import { AdminLayout } from './components/AdminLayout';
 import { GrillaPage } from './pages/admin/GrillaPage';
 import { CanchasPage } from './pages/admin/CanchasPage';
 import { SociosPage } from './pages/admin/SociosPage';
@@ -70,8 +71,7 @@ export function App() {
         <Route path="/torneos" element={<TorneosClientePage />} />
         <Route path="/notificaciones" element={<NotificacionesPage />} />
 
-        {/* Admin — requiere sesión + rol staff (super_admin o recepcionista).
-            Caja además es solo super_admin (verificar dentro de la página). */}
+        {/* Asistente de configuración inicial (a pantalla completa, sin sidebar) */}
         <Route
           path="/admin/configurar"
           element={
@@ -80,6 +80,10 @@ export function App() {
             </RutaProtegida>
           }
         />
+
+        {/* Admin — layout con sidebar. Requiere sesión + rol staff (super_admin o recepcionista).
+            Caja además es solo super_admin (verificar dentro de la página). */}
+        <Route element={<AdminLayout />}>
         <Route
           path="/admin/configuracion"
           element={
@@ -160,6 +164,7 @@ export function App() {
             </RutaProtegida>
           }
         />
+        </Route>
       </Routes>
     </>
   );

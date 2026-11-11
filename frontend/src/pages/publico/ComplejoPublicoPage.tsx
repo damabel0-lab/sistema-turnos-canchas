@@ -27,7 +27,7 @@ export function ComplejoPublicoPage() {
         <h1 className="titulo">Nuestro complejo</h1>
         <p className="texto-sec">Información general para todos los visitantes</p>
 
-        {error && <p style={{ color: '#dc2626' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
 
         {config && (
           <div className="grilla-tarjetas">

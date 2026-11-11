@@ -80,7 +80,7 @@ export function CanchasPage() {
   }
 
   return (
-    <main className="pantalla">
+    <div className="admin-page">
       <div className="contenedor">
         <div className="fila-entre" style={{ marginBottom: '1rem' }}>
           <h1 className="titulo"><span className="fila"><Clock size={20} /> Canchas y tarifas</span></h1>
@@ -88,8 +88,8 @@ export function CanchasPage() {
             <RefreshCw size={16} /> Actualizar
           </button>
         </div>
-        {error && <p style={{ color: '#dc2626' }}>{error}</p>}
-        {mensaje && <p style={{ color: '#10b981' }}>{mensaje}</p>}
+        {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
+        {mensaje && <p style={{ color: 'var(--exito)' }}>{mensaje}</p>}
 
         <h2 className="titulo" style={{ fontSize: '1.1rem' }}>Listado</h2>
         {canchas.length === 0 ? (
@@ -145,6 +145,6 @@ export function CanchasPage() {
           </form>
         </Card>
       </div>
-    </main>
+    </div>
   );
 }

@@ -103,7 +103,7 @@ export function TorneosClientePage() {
     <main className="pantalla">
       <div className="contenedor">
         <h1 className="titulo">Torneos</h1>
-        {error && <p style={{ color: '#dc2626' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
 
         <section style={{ marginBottom: '1.5rem' }}>
           <h2 className="titulo" style={{ fontSize: '1.1rem' }}>Torneos activos</h2>
@@ -121,8 +121,8 @@ export function TorneosClientePage() {
                   }}
                   className="boton"
                   style={{
-                    background: torneoSeleccionado === t.id ? '#4f46e5' : '#f3f4f6',
-                    color: torneoSeleccionado === t.id ? '#ffffff' : '#374151',
+                    background: torneoSeleccionado === t.id ? 'var(--primario)' : 'var(--bg-surface-2)',
+                    color: torneoSeleccionado === t.id ? 'var(--primario-contrast)' : 'var(--texto)',
                   }}
                 >
                   {t.nombre}

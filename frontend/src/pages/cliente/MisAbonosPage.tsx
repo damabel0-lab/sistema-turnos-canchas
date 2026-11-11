@@ -64,7 +64,7 @@ export function MisAbonosPage() {
             Actualizar
           </button>
         </div>
-        {error && <p style={{ color: '#dc2626' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
 
         {abonos.length === 0 ? (
           <Card className="caja-vacia">

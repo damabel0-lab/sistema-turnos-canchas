@@ -1,96 +1,71 @@
-import { useEffect, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Bell, Goal } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { Link } from 'react-router-dom';
-import { api } from '../lib/api';
-import { Bell } from 'lucide-react';
+import { useNoLeidas } from '../hooks/useNoLeidas';
+import { ThemeToggle } from './ThemeToggle';
 
-/** Barra de navegación superior */
+/** Barra de navegación superior (cliente / público). En rutas /admin la reemplaza el sidebar. */
 export function BarraSesion() {
   const { session, perfil, salir } = useAuth();
-  const [notificacionesNoLeidas, setNotificacionesNoLeidas] = useState(0);
+  const { pathname } = useLocation();
+  const noLeidas = useNoLeidas();
 
-  useEffect(() => {
-    if (!session) return;
+  // Las pantallas de administración usan el AdminLayout (sidebar)
+  if (pathname.startsWith('/admin')) return null;
 
-    let cancelado = false;
+  const esStaff = perfil && (perfil.rol === 'super_admin' || perfil.rol === 'recepcionista');
 
-    async function cargar() {
-      try {
-        const datos = await api<Array<{ leida: boolean }>>('/notificaciones');
-        if (!cancelado) setNotificacionesNoLeidas(datos.filter((n) => !n.leida).length);
-      } catch {
-        // no bloquear la navegación por un error de notificaciones
-      }
-    }
-
-    cargar();
-    const intervalo = setInterval(cargar, 30000); // refrescar cada 30 segundos
-
-    return () => {
-      cancelado = true;
-      clearInterval(intervalo);
-    };
-  }, [session]);
+  const brand = (
+    <Link to="/" className="nav-brand" aria-label="PlayControl — inicio">
+      <span className="brand-mark">
+        <Goal size={17} strokeWidth={2.2} />
+      </span>
+      PlayControl
+    </Link>
+  );
 
   if (!session) {
     return (
-      <nav className="nav-barra">
-        <Link to="/">Inicio</Link>
+      <nav className="nav-barra" aria-label="Navegación principal">
+        {brand}
         <Link to="/complejo">Complejo</Link>
-        <Link to="/login">Iniciar sesión</Link>
+        <div className="nav-derecha">
+          <ThemeToggle />
+          <Link to="/login" className="boton boton-primario" style={{ fontSize: '0.82rem', padding: '0.45rem 1rem' }}>
+            Iniciar sesión
+          </Link>
+        </div>
       </nav>
     );
   }
 
   return (
-    <nav className="nav-barra">
-      <Link to="/">Inicio</Link>
+    <nav className="nav-barra" aria-label="Navegación principal">
+      {brand}
+      <Link to="/reservar">Reservar</Link>
       <Link to="/complejo">Complejo</Link>
       <Link to="/mis-reservas">Mis reservas</Link>
-      {perfil && (perfil.rol === 'super_admin' || perfil.rol === 'recepcionista') && (
-        <>
-          <Link to="/admin/grilla">Panel</Link>
-          <Link to="/admin/configuracion">Configuración</Link>
-        </>
-      )}
+      <Link to="/torneos">Torneos</Link>
       <div className="nav-derecha">
+        <ThemeToggle />
         <Link
           to="/notificaciones"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.35rem',
-            position: 'relative',
-            textDecoration: 'none',
-            color: 'inherit',
-          }}
-          aria-label="Notificaciones"
+          className="theme-toggle"
+          style={{ position: 'relative' }}
+          aria-label={`Notificaciones${noLeidas > 0 ? `, ${noLeidas} sin leer` : ''}`}
         >
-          <Bell size={18} />
-          {notificacionesNoLeidas > 0 && (
-            <span
-              style={{
-                position: 'absolute',
-                top: '-0.35rem',
-                right: '-0.35rem',
-                background: '#ef4444',
-                color: '#fff',
-                fontSize: '0.65rem',
-                fontWeight: 700,
-                borderRadius: '9999px',
-                padding: '0.1rem 0.35rem',
-                lineHeight: 1,
-              }}
-            >
-              {notificacionesNoLeidas}
-            </span>
-          )}
+          <Bell size={17} />
+          {noLeidas > 0 && <span className="nav-badge">{noLeidas > 99 ? '99+' : noLeidas}</span>}
         </Link>
-
-        <span className="texto-sec">
+        <span className="texto-sec" style={{ fontSize: '0.85rem', maxWidth: '10rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {perfil ? `${perfil.nombre} ${perfil.apellido}` : session.user.email}
         </span>
-        <button className="boton boton-ghost" onClick={() => salir()}>
+        {esStaff && (
+          <Link to="/admin/dashboard" className="boton boton-outline" style={{ fontSize: '0.8rem', padding: '0.42rem 0.85rem' }}>
+            Panel
+          </Link>
+        )}
+        <button type="button" className="boton boton-ghost" onClick={() => void salir()}>
           Salir
         </button>
       </div>

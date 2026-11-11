@@ -66,7 +66,7 @@ export function BeneficiosPage() {
   }
 
   return (
-    <main className="pantalla">
+    <div className="admin-page">
       <div className="contenedor">
         <div className="fila-entre" style={{ marginBottom: '1rem' }}>
           <h1 className="titulo"><span className="fila"><Users size={20} /> Beneficios de socios</span></h1>
@@ -74,8 +74,8 @@ export function BeneficiosPage() {
             <RefreshCw size={16} /> Actualizar
           </button>
         </div>
-        {error && <p style={{ color: '#dc2626' }}>{error}</p>}
-        {mensaje && <p style={{ color: '#10b981' }}>{mensaje}</p>}
+        {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
+        {mensaje && <p style={{ color: 'var(--exito)' }}>{mensaje}</p>}
 
         <h2 className="titulo" style={{ fontSize: '1.1rem' }}>Catálogo de beneficios</h2>
         <Card>
@@ -113,7 +113,7 @@ export function BeneficiosPage() {
                     {b.descuento_porcentaje}% de descuento en {b.aplica_en}
                   </div>
                 </div>
-                <button type="button" onClick={() => void borrar(b.id)} className="boton boton-ghost" style={{ color: '#dc2626' }}>
+                <button type="button" onClick={() => void borrar(b.id)} className="boton boton-ghost" style={{ color: 'var(--peligro)' }}>
                   Borrar
                 </button>
               </Card>
@@ -121,6 +121,6 @@ export function BeneficiosPage() {
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }

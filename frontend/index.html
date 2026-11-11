@@ -3,7 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PlayControl</title>
+    <meta name="description" content="PlayControl — Sistema de gestión integral para complejos deportivos: turnos, caja, socios, abonos y torneos." />
+    <meta name="theme-color" content="#0a0f1e" />
+    <title>PlayControl — Gestión de complejos deportivos</title>
+    <script>
+      // Aplica el tema guardado antes del primer paint (evita flash)
+      (function () {
+        try {
+          var t = localStorage.getItem('playcontrol-theme');
+          if (!t) t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          document.documentElement.setAttribute('data-theme', t);
+        } catch (e) { /* no-op */ }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

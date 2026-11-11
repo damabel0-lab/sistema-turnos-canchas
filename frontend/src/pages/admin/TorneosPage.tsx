@@ -136,16 +136,16 @@ export function TorneosPage() {
 
   if (!session) {
     return (
-      <main className="pantalla">
+      <div className="admin-page">
         <div className="contenedor">
           <Card className="caja-vacia"><p className="texto-sec">Iniciá sesión.</p></Card>
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="pantalla">
+    <div className="admin-page">
       <div className="contenedor-ancho">
         <div className="fila-entre" style={{ marginBottom: '1rem' }}>
           <h1 className="titulo"><span className="fila"><Trophy size={20} /> Torneos</span></h1>
@@ -153,8 +153,8 @@ export function TorneosPage() {
             <RefreshCw size={16} /> Actualizar
           </button>
         </div>
-        {error && <p style={{ color: '#dc2626' }}>{error}</p>}
-        {mensaje && <p style={{ color: '#10b981' }}>{mensaje}</p>}
+        {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
+        {mensaje && <p style={{ color: 'var(--exito)' }}>{mensaje}</p>}
 
         <h2 className="titulo" style={{ fontSize: '1.1rem' }}>Crear torneo</h2>
         <Card>
@@ -181,8 +181,8 @@ export function TorneosPage() {
                 onClick={() => void cargarDetalle(t.id)}
                 className="boton"
                 style={{
-                  background: torneoId === t.id ? '#4f46e5' : '#f3f4f6',
-                  color: torneoId === t.id ? '#ffffff' : '#374151',
+                  background: torneoId === t.id ? 'var(--primario)' : 'var(--bg-surface-2)',
+                  color: torneoId === t.id ? 'var(--primario-contrast)' : 'var(--texto)',
                 }}
               >
                 {t.nombre}
@@ -207,7 +207,7 @@ export function TorneosPage() {
                 ) : (
                   <ul className="stack" style={{ listStyle: 'none', padding: 0, marginTop: '0.5rem' }}>
                     {equipos.map((e) => (
-                      <li key={e.id} className="tarjeta-plana" style={{ padding: '0.5rem 0.75rem', background: '#f9fafb' }}>
+                      <li key={e.id} className="tarjeta-plana" style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-surface-2)' }}>
                         {e.nombre_equipo}
                       </li>
                     ))}
@@ -243,6 +243,6 @@ export function TorneosPage() {
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }

@@ -300,13 +300,13 @@ export function ConfiguracionPage() {
 
   if (cargando) {
     return (
-      <main className="pantalla">
+      <div className="admin-page">
         <div className="contenedor">
           <Card>
             <p className="texto-sec">Cargando configuración…</p>
           </Card>
         </div>
-      </main>
+      </div>
     );
   }
 
@@ -324,7 +324,7 @@ export function ConfiguracionPage() {
   ];
 
   return (
-    <main className="pantalla">
+    <div className="admin-page">
       <div className="contenedor-ancho">
         <ToastContainer toasts={toasts} onCerrar={cerrar} />
         <ConfirmDialog
@@ -352,7 +352,7 @@ export function ConfiguracionPage() {
           </button>
         </div>
 
-        {error && <p style={{ color: '#dc2626', marginBottom: '0.75rem' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--peligro)', marginBottom: '0.75rem' }}>{error}</p>}
 
         {/* Layout sidebar + contenido */}
         <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '1rem' }}>
@@ -445,7 +445,7 @@ export function ConfiguracionPage() {
                             </button>
                             <button
                               className="boton boton-ghost"
-                              style={{ padding: '0.3rem', color: '#dc2626' }}
+                              style={{ padding: '0.3rem', color: 'var(--peligro)' }}
                               onClick={() => eliminarDeporte(deporte.id, deporte.nombre)}
                               aria-label="Eliminar deporte"
                             >
@@ -456,7 +456,7 @@ export function ConfiguracionPage() {
 
                         {/* Contenido expandible */}
                         {isOpen && (
-                          <div style={{ padding: '0.6rem 0.75rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb' }}>
+                          <div style={{ padding: '0.6rem 0.75rem', borderTop: '1px solid #e5e7eb', background: 'var(--bg-surface-2)' }}>
                             {/* Formulario agregar/editar cancha */}
                             {(agregandoCancha?.id === deporte.id || editandoCancha) && (
                               <form onSubmit={guardarCancha} className="stack" style={{ marginBottom: '0.5rem' }}>
@@ -532,7 +532,7 @@ export function ConfiguracionPage() {
                                       </button>
                                       <button
                                         className="boton boton-ghost"
-                                        style={{ padding: '0.3rem', color: '#dc2626' }}
+                                        style={{ padding: '0.3rem', color: 'var(--peligro)' }}
                                         onClick={() => eliminarCancha(cancha.id, cancha.nombre)}
                                         aria-label="Eliminar cancha"
                                       >
@@ -695,6 +695,6 @@ export function ConfiguracionPage() {
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

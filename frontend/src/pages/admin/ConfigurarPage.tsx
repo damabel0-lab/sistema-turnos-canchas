@@ -119,8 +119,8 @@ export function ConfigurarPage() {
               onClick={() => setTipo('fraccionado')}
               className="boton"
               style={{
-                background: tipo === 'fraccionado' ? '#4f46e5' : '#f3f4f6',
-                color: tipo === 'fraccionado' ? '#fff' : '#374151',
+                background: tipo === 'fraccionado' ? 'var(--primario)' : 'var(--bg-surface-2)',
+                color: tipo === 'fraccionado' ? '#fff' : 'var(--texto)',
               }}
             >
               Cancha individual / Fraccionado
@@ -130,8 +130,8 @@ export function ConfigurarPage() {
               onClick={() => setTipo('complejo_deportivo')}
               className="boton"
               style={{
-                background: tipo === 'complejo_deportivo' ? '#4f46e5' : '#f3f4f6',
-                color: tipo === 'complejo_deportivo' ? '#fff' : '#374151',
+                background: tipo === 'complejo_deportivo' ? 'var(--primario)' : 'var(--bg-surface-2)',
+                color: tipo === 'complejo_deportivo' ? '#fff' : 'var(--texto)',
               }}
             >
               Complejo deportivo
@@ -337,7 +337,7 @@ export function ConfigurarPage() {
           <p className="texto-sec">Pileta: {pileta ? 'Sí' : 'No'}</p>
           <p className="texto-sec">Socios: {socios ? 'Sí' : 'No'}</p>
           <p className="texto-sec">Canchas: {canchasNuevas.filter((c) => c.nombre.trim()).length} cargadas</p>
-          {error && <p style={{ color: '#dc2626' }}>{error}</p>}
+          {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
           <button
             type="button"
             className="boton boton-primario"
@@ -358,12 +358,12 @@ export function ConfigurarPage() {
       <div className="contenedor-estrecho">
         <div style={{ marginBottom: '0.75rem' }}>
           <span className="texto-sec">Paso {paso + 1} de {pasos.length}</span>
-          <div style={{ height: '6px', background: '#e5e7eb', borderRadius: '9999px', marginTop: '0.25rem' }}>
+          <div style={{ height: '6px', background: 'var(--border)', borderRadius: '9999px', marginTop: '0.25rem' }}>
             <div
               style={{
                 height: '100%',
                 width: `${((paso + 1) / pasos.length) * 100}%`,
-                background: '#4f46e5',
+                background: 'var(--primario)',
                 borderRadius: '9999px',
                 transition: 'width 0.3s ease',
               }}
@@ -387,7 +387,7 @@ export function ConfigurarPage() {
             </button>
           )}
         </div>
-        {mensaje && <p style={{ color: '#10b981', marginTop: '0.5rem' }}>{mensaje}</p>}
+        {mensaje && <p style={{ color: 'var(--exito)', marginTop: '0.5rem' }}>{mensaje}</p>}
       </div>
     </main>
   );

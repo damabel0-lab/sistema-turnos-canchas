@@ -67,7 +67,7 @@ export function NotificacionesPage() {
             <span className="badge badge-peligro">{noLeidas.length} nueva{noLeidas.length > 1 ? 's' : ''}</span>
           )}
         </div>
-        {error && <p style={{ color: '#dc2626' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
 
         {notificaciones.length === 0 ? (
           <Card className="caja-vacia">
@@ -87,7 +87,7 @@ export function NotificacionesPage() {
                 style={{
                   cursor: 'pointer',
                   padding: '0.75rem 1rem',
-                  background: n.leida ? '#ffffff' : '#eef2ff',
+                  background: n.leida ? 'var(--primario-contrast)' : 'var(--primario-soft)',
                   border: n.leida ? '1px solid var(--color-borde)' : '1px solid #c7d2fe',
                 }}
               >

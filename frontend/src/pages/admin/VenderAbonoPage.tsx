@@ -57,11 +57,11 @@ export function VenderAbonoPage() {
   }
 
   return (
-    <main className="pantalla">
+    <div className="admin-page">
       <div className="contenedor-estrecho">
         <h1 className="titulo"><span className="fila"><CreditCard size={20} /> Vender abono / pase</span></h1>
-        {error && <p style={{ color: '#dc2626' }}>{error}</p>}
-        {mensaje && <p style={{ color: '#10b981' }}>{mensaje}</p>}
+        {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
+        {mensaje && <p style={{ color: 'var(--exito)' }}>{mensaje}</p>}
 
         <Card>
           <form onSubmit={vender} className="stack">
@@ -91,6 +91,6 @@ export function VenderAbonoPage() {
           </form>
         </Card>
       </div>
-    </main>
+    </div>
   );
 }
