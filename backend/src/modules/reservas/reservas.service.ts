@@ -1,14 +1,13 @@
 import { supabaseAdmin } from '../../config/supabase.js';
 import { HttpError } from '../../middleware/error.js';
 import { cotizar, aMinutos } from '../../services/tarifas/cotizador.js';
+import { leerHorasComplejo, minutosCierreAjustado } from '../../config/complejoHoras.js';
 
-/**
- * Disponibilidad de una cancha para una fecha.
- * Devuelve las horas del día con su estado: libre / ocupada / bloqueada.
- * Horario de atención del complejo: por defecto 08:00 a 23:00 (ajustable por complejo vía env vars)
- */
-export const HORA_APERTURA = process.env.HORA_APERTURA_COMPLEJO ? Number(process.env.HORA_APERTURA_COMPLEJO) : 8;
-export const HORA_CIERRE = process.env.HORA_CIERRE_COMPLEJO ? Number(process.env.HORA_CIERRE_COMPLEJO) : 23;
+/** Inicio o fin de un turno ajustado al día "deportivo" (que empieza a la apertura).
+ *  Necesario para clubs que pasan medianoche (slot 00:15 -> 24:15). */
+function ajustarAlDia(min: number, aperturaMin: number): number {
+  return min < aperturaMin ? min + 1440 : min;
+}
 export const DURACION_TURNO_MINUTOS = 60;
 /** Los turnos arrancan siempre en este minuto de cada hora (:15) y duran 1 hora.
  *  Configurable por complejo vía env `TURNO_MINUTO_INICIO_COMPLEJO` (0-59). Por defecto 15. */
@@ -19,9 +18,10 @@ export function esInicioTurno(min: number): boolean {
   return min >= 0 && min % 60 === MINUTO_INICIO_TURNO;
 }
 
-/** Etiqueta HH:MM de un minuto del día */
+/** Etiqueta HH:MM de un minuto del día (pasa de medianoche da 00:15, etc.) */
 export function fmtMinuto(min: number): string {
-  return `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+  const m = ((min % 1440) + 1440) % 1440;
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 }
 
 /** '2026-11-13T15:00:00+00:00' -> '2026-11-13T15:00:00' */
@@ -306,6 +306,11 @@ export async function grillaDelDia(fecha: string): Promise<FilaGrilla[]> {
     throw new HttpError(400, 'fecha debe tener formato YYYY-MM-DD');
   }
 
+  const { apertura, cierre } = await leerHorasComplejo();
+  const cierreAjustado = minutosCierreAjustado(apertura, cierre);
+  const aperturaTexto = `${String(apertura).padStart(2, '0')}:00`;
+  const cierreTexto = `${String(cierre).padStart(2, '0')}:00`;
+
   const [canchas, reservas, bloqueos] = await Promise.all([
     supabaseAdmin
       .from('canchas')
@@ -321,8 +326,8 @@ export async function grillaDelDia(fecha: string): Promise<FilaGrilla[]> {
     supabaseAdmin
       .from('bloqueos_horarios')
       .select('cancha_id, fecha_inicio, fecha_fin, motivo')
-      .lte('fecha_inicio', `${fecha}T${HORA_CIERRE}:00`)
-      .gte('fecha_fin', `${fecha}T${HORA_APERTURA}:00`),
+      .lte('fecha_inicio', `${fecha}T${cierreTexto}:00`)
+      .gte('fecha_fin', `${fecha}T${aperturaTexto}:00`),
   ]);
 
   if (canchas.error) throw new HttpError(500, canchas.error.message);
@@ -355,8 +360,10 @@ export async function grillaDelDia(fecha: string): Promise<FilaGrilla[]> {
 
   // Turnos válidos del día (:15 a :15, 1 hora) — debe coincidir con la
   // disponibilidad para que las celdas de la grilla encajen en sus columnas
+  const aperturaGrilla = apertura * 60;
+  const cierreAjustadoNum = cierreAjustado;
   const slots: number[] = [];
-  for (let s = HORA_APERTURA * 60 + MINUTO_INICIO_TURNO; s + DURACION_TURNO_MINUTOS <= HORA_CIERRE * 60; s += 60) {
+  for (let s = aperturaGrilla + MINUTO_INICIO_TURNO; s + DURACION_TURNO_MINUTOS <= cierreAjustadoNum; s += 60) {
     slots.push(s);
   }
 
@@ -439,18 +446,27 @@ export async function crearReserva(entrada: NuevaReserva) {
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) throw new HttpError(400, 'fecha inválida (YYYY-MM-DD)');
 
+  const { apertura, cierre } = await leerHorasComplejo();
+  const aperturaMin = apertura * 60;
+  const cierreAjustado = minutosCierreAjustado(apertura, cierre);
+  const aperturaTexto = `${apertura}:00`;
+  const cierreTexto = `${cierre}:00`;
+  const mensajeHorario = `El horario debe estar entre ${aperturaTexto} y ${cierreTexto}${cierre <= apertura ? ' (del día siguiente)' : ''}`;
+
   const inicioMin = aMinutos(hora_inicio);
   const finMin = aMinutos(hora_fin);
+  const adjInicio = ajustarAlDia(inicioMin, aperturaMin);
+  const adjFin = ajustarAlDia(finMin, aperturaMin);
 
   // Los turnos duran exactamente 1 hora y arrancan siempre a los :15 (ej: 20:15-21:15)
-  if (finMin - inicioMin !== DURACION_TURNO_MINUTOS) {
+  if (adjFin - adjInicio !== DURACION_TURNO_MINUTOS) {
     throw new HttpError(400, `El turno debe durar exactamente ${DURACION_TURNO_MINUTOS} minutos`);
   }
   if (!esInicioTurno(inicioMin)) {
     throw new HttpError(400, `La hora de inicio debe ser a los :${String(MINUTO_INICIO_TURNO).padStart(2, '0')}`);
   }
-  if (inicioMin < HORA_APERTURA * 60 || finMin > HORA_CIERRE * 60) {
-    throw new HttpError(400, `El horario debe estar entre ${HORA_APERTURA}:00 y ${HORA_CIERRE}:00`);
+  if (adjInicio < aperturaMin || adjFin > cierreAjustado) {
+    throw new HttpError(400, mensajeHorario);
   }
 
   // 1. cancha activa
@@ -471,9 +487,12 @@ export async function crearReserva(entrada: NuevaReserva) {
     .neq('estado', 'cancelada');
   if (eReservas) throw new HttpError(500, eReservas.message);
 
-  const solapa = (reservas ?? []).some(
-    (r) => r.hora_inicio.slice(0, 5) < hora_fin && r.hora_fin.slice(0, 5) > hora_inicio,
-  );
+  const aMinAdjust = (t: string) => ajustarAlDia(aMinutos(t), aperturaMin);
+  const solapa = (reservas ?? []).some((r) => {
+    const ri = aMinAdjust(r.hora_inicio);
+    const rf = aMinAdjust(r.hora_fin);
+    return ri < adjFin && rf > adjInicio;
+  });
   if (solapa) throw new HttpError(409, 'Ese horario ya está reservado (alguien ganó la carrera)');
 
   // 4. bloqueos
@@ -564,16 +583,22 @@ export async function disponibilidad(canchaId: number, fecha: string): Promise<E
 
   const horas: EstadoHora[] = [];
 
-  const minutosApertura = HORA_APERTURA * 60; // 480 = 08:00
-  const minutosCierre = HORA_CIERRE * 60; // 1380 = 23:00
+  const { apertura, cierre } = await leerHorasComplejo();
+  const aperturaMin = apertura * 60;
+  const minutosCierre = minutosCierreAjustado(apertura, cierre);
+  const aMinAdjust = (t: string) => ajustarAlDia(aMinutos(t), aperturaMin);
+  const minutosApertura = aperturaMin;
 
-  // Los turnos duran 1 hora y arrancan siempre a los :15 (ej: 08:15-09:15)
   for (let inicioMin = minutosApertura + MINUTO_INICIO_TURNO; inicioMin + DURACION_TURNO_MINUTOS <= minutosCierre; inicioMin += 60) {
     const finMin = inicioMin + DURACION_TURNO_MINUTOS;
-    const hora = `${String(Math.floor(inicioMin / 60)).padStart(2, '0')}:${String(inicioMin % 60).padStart(2, '0')}`;
-    const finHora = `${String(Math.floor(finMin / 60)).padStart(2, '0')}:${String(finMin % 60).padStart(2, '0')}`;
+    const hora = fmtMinuto(inicioMin);
+    const finHora = fmtMinuto(finMin);
 
-    const ocupada = (reservas ?? []).some((r) => r.hora_inicio.slice(0, 5) < finHora && r.hora_fin.slice(0, 5) > hora);
+    const ocupada = (reservas ?? []).some((r) => {
+      const ri = aMinAdjust(r.hora_inicio);
+      const rf = aMinAdjust(r.hora_fin);
+      return ri < finMin && rf > inicioMin;
+    });
     const bloqueada = (bloqueos ?? []).some((b) => {
       const bInicio = new Date(`${quitarOffset(b.fecha_inicio)}Z`);
       const bFin = new Date(`${quitarOffset(b.fecha_fin)}Z`);
@@ -666,15 +691,21 @@ export async function proyectarTurnosFijos(entrada: TurnoFijoEntrada) {
 
   const usuario_id = await resolverUsuarioId(entrada);
 
+  const { apertura, cierre } = await leerHorasComplejo();
+  const aperturaMin = apertura * 60;
+  const cierreAjustado = minutosCierreAjustado(apertura, cierre);
+  const mensajeHorario = `El horario debe estar entre ${apertura}:00 y ${cierre}:00${cierre <= apertura ? ' (del día siguiente)' : ''}`;
+
   const inicioMin = aMinutos(hora);
-  if (!esInicioTurno(inicioMin)) {
+  const adjInicio = ajustarAlDia(inicioMin, aperturaMin);
+  if (!esInicioTurno(adjInicio)) {
     throw new HttpError(400, `La hora debe arrancar a los :${String(MINUTO_INICIO_TURNO).padStart(2, '0')}`);
   }
-  if (inicioMin < HORA_APERTURA * 60 || inicioMin + DURACION_TURNO_MINUTOS > HORA_CIERRE * 60) {
-    throw new HttpError(400, `El horario debe estar entre ${HORA_APERTURA}:00 y ${HORA_CIERRE}:00`);
+  if (adjInicio < aperturaMin || adjInicio + DURACION_TURNO_MINUTOS > cierreAjustado) {
+    throw new HttpError(400, mensajeHorario);
   }
 
-  const horaFin = `${String(Math.floor((inicioMin + DURACION_TURNO_MINUTOS) / 60)).padStart(2, '0')}:${String((inicioMin + DURACION_TURNO_MINUTOS) % 60).padStart(2, '0')}`;
+  const horaFin = fmtMinuto(adjInicio + DURACION_TURNO_MINUTOS);
 
   const fechas = proximasNFechasDiaSemana(dia_semana, semanas);
 

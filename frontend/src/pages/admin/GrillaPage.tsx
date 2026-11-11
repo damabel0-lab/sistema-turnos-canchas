@@ -65,11 +65,17 @@ export function GrillaPage() {
     api<ConfigComplejo>('/config').then(setConfig).catch((e) => setError(e.message));
   }, []);
 
+  // Turnos válidos (:15 a :15, 1 hora) — coincide con la disponibilidad del backend
+  // Si el cierre es <= apertura, se interpreta del día siguiente (complejo de noche)
   const HORAS_TURNO = config
     ? (() => {
+        const ajusteCierre = config.hora_cierre <= config.hora_apertura
+          ? (config.hora_cierre === 0 ? 24 * 60 : (config.hora_cierre + 24) * 60)
+          : config.hora_cierre * 60;
         const slots: string[] = [];
-        for (let min = config.hora_apertura * 60 + 15; min + 60 <= config.hora_cierre * 60; min += 60) {
-          slots.push(`${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`);
+        for (let min = config.hora_apertura * 60 + 15; min + 60 <= ajusteCierre; min += 60) {
+          const m = ((min % 1440) + 1440) % 1440;
+          slots.push(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`);
         }
         return slots;
       })()
