@@ -19,8 +19,9 @@ import { CanchasPage } from './pages/admin/CanchasPage';
 import { SociosPage } from './pages/admin/SociosPage';
 import { BeneficiosPage } from './pages/admin/BeneficiosPage';
 import { VenderAbonoPage } from './pages/admin/VenderAbonoPage';
-import { CajaPage } from './pages/admin/CajaPage';
 import { DashboardPage } from './pages/admin/DashboardPage';
+import { CajaPage } from './pages/admin/CajaPage';
+import { ComplejoPublicoPage } from './pages/publico/ComplejoPublicoPage';
 import { ReportesPage } from './pages/admin/ReportesPage';
 import { TorneosPage } from './pages/admin/TorneosPage';
 
@@ -31,6 +32,7 @@ export function App() {
       <Routes>
         {/* Cliente */}
         <Route path="/" element={<HomePage />} />
+        <Route path="/complejo" element={<ComplejoPublicoPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/reservar" element={<ReservarPage />} />
         <Route path="/mis-reservas" element={<MisReservasPage />} />
