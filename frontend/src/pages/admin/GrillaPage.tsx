@@ -273,32 +273,40 @@ export function GrillaPage() {
           </div>
         </div>
         <div style={{ overflowX: 'auto' }}>
-          <table className="grilla-tabla">
+          <table className="grilla-dia">
             <thead>
               <tr>
-                <th scope="col">Cancha</th>
-                {HORAS_TURNO.map((h) => (
-                  <th key={h} scope="col">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filas.map((f) => (
-                <tr key={f.cancha_id}>
-                  <th scope="row" className="grilla-cancha-nombre">
+                <th scope="col" className="grilla-hora-col">Hora</th>
+                {filas.map((f) => (
+                  <th key={f.cancha_id} scope="col" className="grilla-cancha-head">
                     {f.cancha}
                     {f.deporte && <small>{f.deporte}</small>}
                   </th>
-                  {HORAS_TURNO.map((h) => {
-                    const item = f.items.find((i) => i.hora === h);
+                ))}
+                {filas.length === 0 && <th scope="col" className="grilla-cancha-head">—</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {HORAS_TURNO.map((hora, idx) => (
+                <tr key={hora} className={idx % 2 === 0 ? 'grilla-fila-par' : undefined}>
+                  <th scope="row" className="grilla-hora-celda">
+                    <span className="grilla-hora-num">{hora.slice(0, 2)}<small>:{hora.slice(3)}</small></span>
+                    <span className="grilla-hora-dur">1 h</span>
+                  </th>
+                  {filas.map((f) => {
+                    const item = f.items.find((i) => i.hora === hora);
                     if (!item) {
-                      return <td key={h} className="grilla-slot" aria-label="Libre">·</td>;
+                      return (
+                        <td key={f.cancha_id} className="grilla-slot-libre" aria-label="Libre">
+                          <span>libre</span>
+                        </td>
+                      );
                     }
                     if (item.tipo === 'bloqueo') {
                       return (
-                        <td key={h}>
+                        <td key={f.cancha_id} className="grilla-slot-celda">
                           <div className="grilla-celda grilla-bloqueo" title={`Bloqueada: ${item.motivo ?? ''}`}>
-                            <Lock size={11} />
+                            <Lock size={12} />
                             <span className="grilla-celda-cliente">Bloqueo</span>
                           </div>
                         </td>
@@ -306,10 +314,10 @@ export function GrillaPage() {
                     }
                     const estado = item.estado ?? 'pendiente_seña';
                     return (
-                      <td key={h}>
+                      <td key={f.cancha_id} className="grilla-slot-celda">
                         <button
                           type="button"
-                          className={`grilla-celda ${estado}`}
+                          className={`grilla-celda grilla-celda-grande ${estado}`}
                           onClick={() => {
                             if (item.reserva_id) {
                               setSel({ reserva_id: item.reserva_id, cliente: item.cliente, estado: item.estado, monto: item.monto });
@@ -323,14 +331,9 @@ export function GrillaPage() {
                       </td>
                     );
                   })}
+                  {filas.length === 0 && <td className="grilla-slot-libre">—</td>}
                 </tr>
               ))}
-              {filas.length === 0 && (
-                <tr>
-                  <th scope="row" className="grilla-cancha-nombre">—</th>
-                  <td colSpan={HORAS_TURNO.length} className="grilla-vacio">No hay canchas para mostrar.</td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
