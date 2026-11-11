@@ -2,10 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
-import { Card, Badge } from '../../components/ui';
+import { Badge } from '../../components/ui';
 import { ToastContainer, useToast } from '../../components/ui/Toast';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
-import { Calendar, RefreshCw } from 'lucide-react';
+import { Calendar, History, RefreshCw } from 'lucide-react';
 
 interface Reserva {
   id: number;
@@ -139,34 +139,31 @@ export function MisReservasPage() {
     }
   }
 
-  if (!session) {
+  const sinSesion = !session;
+
+  if (sinSesion) {
     return (
-      <main className="pantalla">
-        <div className="contenedor">
-          <Card className="caja-vacia">
-            <h1 className="titulo">Mis Reservas</h1>
-            <p className="texto-sec">Iniciá sesión para ver tus reservas.</p>
-            <Link to="/login" state={{ desde: '/mis-reservas' }} className="boton boton-primario" style={{ marginTop: '0.75rem' }}>
-              Iniciar sesión
-            </Link>
-          </Card>
+      <main className="pagina-cliente">
+        <div className="tarjeta caja-vacia" style={{ maxWidth: '30rem', margin: '3rem auto' }}>
+          <h1 className="titulo">Mis reservas</h1>
+          <p className="texto-sec">Iniciá sesión para ver tus reservas.</p>
+          <Link to="/login" state={{ desde: '/mis-reservas' }} className="boton boton-primario" style={{ marginTop: '0.75rem' }}>
+            Iniciar sesión
+          </Link>
         </div>
       </main>
     );
   }
 
   const Tarjeta = ({ r, cancelable }: { r: Reserva; cancelable: boolean }) => (
-    <div className="tarjeta-plana" style={{ padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-      <div className="icono-circulo" style={{ width: '2.5rem', height: '2.5rem' }}>
-        <Calendar size={18} />
+    <div className="item-turno">
+      <div className="item-turno-icono">
+        <Calendar size={16} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 650 }}>{r.cancha}</div>
-        <div className="texto-sec" style={{ fontSize: '0.8rem' }}>
-          {r.deporte} · {fechaLegible(r)} · {r.hora_inicio.slice(0, 5)}–{r.hora_fin.slice(0, 5)}
-        </div>
-        <div className="texto-sec" style={{ fontSize: '0.8rem' }}>
-          {precio(r.precio_total)}
+        <div className="item-turno-nombre">{r.cancha}</div>
+        <div className="item-turno-meta">
+          {r.deporte} · {fechaLegible(r)} · {r.hora_inicio.slice(0, 5)}–{r.hora_fin.slice(0, 5)} · {precio(r.precio_total)}
           {r.monto_seña > 0 && ` · seña ${precio(r.monto_seña)}`}
         </div>
       </div>
@@ -179,7 +176,7 @@ export function MisReservasPage() {
           disabled={cancelando === r.id}
           onClick={() => setConfirmarCancelacion(r)}
           className="boton boton-ghost"
-          style={{ color: 'var(--peligro)' }}
+          style={{ color: 'var(--peligro)', padding: '0.35rem 0.7rem' }}
         >
           {cancelando === r.id ? 'Cancelando…' : 'Cancelar'}
         </button>
@@ -192,33 +189,33 @@ export function MisReservasPage() {
     : undefined;
 
   return (
-    <main className="pantalla">
-      <div className="contenedor">
-        <ToastContainer toasts={toasts} onCerrar={cerrar} />
-        <ConfirmDialog
-          open={!!confirmarCancelacion}
-          titulo="Cancelar reserva"
-          descripcion={
-            cancelandoReserva
-              ? `${cancelandoReserva}. Perdés el turno y no se puede deshacer. ¿Confirmás?`
-              : undefined
-          }
-          confirmarTexto="Sí, cancelarla"
-          onConfirmar={() => void confirmarCancelacionReserva()}
-          onCancelar={() => setConfirmarCancelacion(null)}
-          peligro
-        />
+    <main className="pagina-cliente">
+      <ToastContainer toasts={toasts} onCerrar={cerrar} />
+      <ConfirmDialog
+        open={!!confirmarCancelacion}
+        titulo="Cancelar reserva"
+        descripcion={
+          cancelandoReserva
+            ? `${cancelandoReserva}. Perdés el turno y no se puede deshacer. ¿Confirmás?`
+            : undefined
+        }
+        confirmarTexto="Sí, cancelarla"
+        onConfirmar={() => void confirmarCancelacionReserva()}
+        onCancelar={() => setConfirmarCancelacion(null)}
+        peligro
+      />
 
-        {/* Encabezado */}
-        <div className="fila-entre" style={{ marginBottom: '1.1rem' }}>
-          <div>
-            <h1 className="titulo" style={{ marginBottom: '0.1rem' }}>Mis Reservas</h1>
-            <p className="subtitulo" style={{ margin: 0 }}>Tus próximos turnos y tu historial.</p>
-          </div>
-          <button type="button" className="boton boton-outline" onClick={() => void cargar(true)} disabled={refrescando}>
-            <RefreshCw size={15} /> {refrescando ? 'Actualizando…' : 'Actualizar'}
-          </button>
+      {/* Encabezado unificado */}
+      <header className="pagina-encabezado">
+        <div>
+          <span className="pagina-eyebrow">Mi cuenta · Mis reservas</span>
+          <h1 className="pagina-titulo">Mis reservas</h1>
+          <p className="pagina-sub">Tus próximos turnos y tu historial, de un vistazo.</p>
         </div>
+        <button type="button" className="boton boton-outline" onClick={() => void cargar(true)} disabled={refrescando}>
+          <RefreshCw size={15} /> {refrescando ? 'Actualizando…' : 'Actualizar'}
+        </button>
+      </header>
 
         {error && (
           <div className="alerta-error" role="alert">
@@ -234,87 +231,96 @@ export function MisReservasPage() {
         {/* ===== Primera carga: skeletons ===== */}
         {cargando && !datos && (
           <>
-            <div className="grilla-tarjetas" style={{ marginBottom: '1.5rem' }}>
+            <div className="grilla-stats-4" style={{ marginBottom: '0.9rem' }}>
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="tarjeta" style={{ padding: '1rem' }}>
+                <div key={i} className="stat-card">
                   <div className="skeleton skeleton-texto" style={{ width: '60%' }} />
                   <div className="skeleton" style={{ height: '1.6rem', width: '45%' }} />
                 </div>
               ))}
             </div>
-            {Array.from({ length: 2 }).map((_, i) => (
-              <div key={i} className="tarjeta-plana" style={{ padding: '0.9rem 1rem', marginBottom: '0.6rem', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                <div className="skeleton" style={{ width: '2.5rem', height: '2.5rem', borderRadius: '9999px' }} />
-                <div style={{ flex: 1 }}>
-                  <div className="skeleton skeleton-texto" style={{ width: '40%' }} />
-                  <div className="skeleton skeleton-texto" style={{ width: '65%' }} />
+            <div className="grilla-2-col">
+              {[0, 1].map((col) => (
+                <div key={col} className="panel" aria-hidden>
+                  <div className="panel-header">
+                    <div className="skeleton skeleton-texto" style={{ width: '40%', marginBottom: 0 }} />
+                  </div>
+                  <div className="panel-body">
+                    {Array.from({ length: 2 }).map((_, i) => (
+                      <div key={i} className="skeleton" style={{ height: '3.5rem' }} />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </>
         )}
 
         {/* ===== Estadísticas ===== */}
         {estadisticas && (
-          <div className="grilla-tarjetas" style={{ marginBottom: '1.5rem' }}>
-            <Card>
-              <div className="texto-debil">Veces jugado</div>
-              <div style={{ fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.03em' }}>{estadisticas.veces_jugado}</div>
-            </Card>
-            <Card>
-              <div className="texto-debil">Gasto total</div>
-              <div style={{ fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.03em' }}>{precio(estadisticas.gasto_total)}</div>
-            </Card>
-            <Card>
-              <div className="texto-debil">Disciplina favorita</div>
-              <div style={{ fontSize: '1.05rem', fontWeight: 700 }}>{estadisticas.disciplina_favorita ?? '—'}</div>
-            </Card>
-            <Card>
-              <div className="texto-debil">Cancelaciones</div>
-              <div style={{ fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.03em' }}>{estadisticas.cancelaciones}</div>
-            </Card>
+          <div className="grilla-stats-4" style={{ marginBottom: '0.9rem' }}>
+            <div className="stat-card">
+              <div className="stat-label">Veces jugado</div>
+              <div className="stat-valor">{estadisticas.veces_jugado}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Gasto total</div>
+              <div className="stat-valor">{precio(estadisticas.gasto_total)}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Disciplina favorita</div>
+              <div className="stat-valor-chico">{estadisticas.disciplina_favorita ?? '—'}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Cancelaciones</div>
+              <div className="stat-valor">{estadisticas.cancelaciones}</div>
+            </div>
           </div>
         )}
 
-        {/* ===== Próximos turnos ===== */}
+        {/* ===== Próximos turnos + Historial (2 paneles) ===== */}
         {datos && (
-          <>
-            <section style={{ marginBottom: '1.5rem' }}>
-              <h2 className="titulo" style={{ fontSize: '1.1rem' }}>Próximos turnos</h2>
-              {datos.proximas.length === 0 ? (
-                <Card className="caja-vacia">
-                  <p className="texto-sec" style={{ margin: 0 }}>No tenés turnos próximos.</p>
-                  <Link to="/reservar" className="boton boton-primario" style={{ marginTop: '0.75rem' }}>
-                    Reservar uno
-                  </Link>
-                </Card>
-              ) : (
-                <div className="stack">
-                  {datos.proximas.map((r) => (
-                    <Tarjeta key={r.id} r={r} cancelable />
-                  ))}
-                </div>
-              )}
+          <div className="grilla-2-col">
+            <section className="panel" aria-labelledby="proximos-titulo">
+              <div className="panel-header">
+                <span className="panel-titulo" id="proximos-titulo">Próximos turnos</span>
+                <Link to="/reservar" className="boton boton-ghost" style={{ fontSize: '0.8rem', padding: '0.3rem 0.6rem' }}>
+                  + Reservar
+                </Link>
+              </div>
+              <div className="panel-body">
+                {datos.proximas.length === 0 ? (
+                  <div className="panel-vacio">
+                    <Calendar size={22} style={{ color: 'var(--primario-2)' }} />
+                    <p style={{ margin: 0 }}>No tenés turnos próximos.</p>
+                    <Link to="/reservar" className="boton boton-primario" style={{ fontSize: '0.85rem', padding: '0.45rem 1rem' }}>
+                      Reservar uno
+                    </Link>
+                  </div>
+                ) : (
+                  datos.proximas.map((r) => <Tarjeta key={r.id} r={r} cancelable />)
+                )}
+              </div>
             </section>
 
-            {/* ===== Historial ===== */}
-            <section>
-              <h2 className="titulo" style={{ fontSize: '1.1rem' }}>Historial</h2>
-              {datos.historial.length === 0 ? (
-                <Card className="caja-vacia">
-                  <p className="texto-sec" style={{ margin: 0 }}>Todavía no jugaste nada.</p>
-                </Card>
-              ) : (
-                <div className="stack">
-                  {datos.historial.map((r) => (
-                    <Tarjeta key={r.id} r={r} cancelable={false} />
-                  ))}
-                </div>
-              )}
+            <section className="panel" aria-labelledby="historial-titulo">
+              <div className="panel-header">
+                <span className="panel-titulo" id="historial-titulo">Historial</span>
+                <span className="texto-debil">{datos.historial.length} turno{datos.historial.length !== 1 ? 's' : ''}</span>
+              </div>
+              <div className="panel-body">
+                {datos.historial.length === 0 ? (
+                  <div className="panel-vacio">
+                    <History size={22} style={{ color: 'var(--primario-2)' }} />
+                    <p style={{ margin: 0 }}>Todavía no jugaste ningún turno.</p>
+                  </div>
+                ) : (
+                  datos.historial.map((r) => <Tarjeta key={r.id} r={r} cancelable={false} />)
+                )}
+              </div>
             </section>
-          </>
+          </div>
         )}
-      </div>
-    </main>
+      </main>
   );
 }

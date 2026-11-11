@@ -163,50 +163,47 @@ export function ReservarPage() {
   });
 
   return (
-    <main className="pantalla" style={{ paddingTop: '1.5rem' }}>
-      <div className="contenedor-ancho">
-        {/* Encabezado */}
-        <div className="fila-entre" style={{ marginBottom: '1.1rem' }}>
-          <div>
-            <h1 className="titulo" style={{ fontSize: '1.65rem', marginBottom: '0.15rem' }}>
-              Reservá tu cancha
-            </h1>
-            <p className="subtitulo" style={{ margin: 0 }}>
-              Elegí disciplina, cancha y horario — todo en un solo vistazo.
-            </p>
-          </div>
+    <main className="pagina-cliente">
+      {/* Encabezado unificado */}
+      <header className="pagina-encabezado">
+        <div>
+          <span className="pagina-eyebrow">Mi cuenta · Reservar</span>
+          <h1 className="pagina-titulo">Reservá tu cancha</h1>
+          <p className="pagina-sub">Disciplina, cancha y horario — todo en un solo vistazo.</p>
         </div>
+      </header>
 
-        {error && <div className="alerta-error" role="alert">{error}</div>}
+      {error && <div className="alerta-error" role="alert">{error}</div>}
 
-        {confirmada ? (
-          <Card className="caja-vacia">
-            <div className="icono-circulo" style={{ margin: '0 auto 0.75rem' }}>
-              <CheckCircle2 size={28} />
-            </div>
-            <h3 style={{ margin: '0 0 0.25rem' }}>¡Reserva #{confirmada.id} confirmada!</h3>
-            <p className="texto-sec">
-              {canchaSel ? `${canchaSel.nombre} · ` : ''}Si la reserva tiene seña, abonala en el complejo para dejarla confirmada.
-            </p>
-            <div className="fila" style={{ justifyContent: 'center', marginTop: '0.85rem' }}>
-              <Link to="/mis-reservas" className="boton boton-primario">
-                Ver mis reservas
-              </Link>
-              <button type="button" className="boton boton-outline" onClick={() => setConfirmada(null)}>
-                Hacer otra reserva
-              </button>
-            </div>
-          </Card>
-        ) : (
-          <div className="reserva-layout">
-            {/* ===== Columna 1: Disciplina + Cancha ===== */}
-            <div className="stack">
+      {confirmada ? (
+        <Card className="caja-vacia">
+          <div className="icono-circulo" style={{ margin: '0 auto 0.75rem' }}>
+            <CheckCircle2 size={28} />
+          </div>
+          <h3 style={{ margin: '0 0 0.25rem' }}>¡Reserva #{confirmada.id} confirmada!</h3>
+          <p className="texto-sec">
+            {canchaSel ? `${canchaSel.nombre} · ` : ''}Si la reserva tiene seña, abonala en el complejo para dejarla confirmada.
+          </p>
+          <div className="fila" style={{ justifyContent: 'center', marginTop: '0.85rem' }}>
+            <Link to="/mis-reservas" className="boton boton-primario">
+              Ver mis reservas
+            </Link>
+            <button type="button" className="boton boton-outline" onClick={() => setConfirmada(null)}>
+              Hacer otra reserva
+            </button>
+          </div>
+        </Card>
+      ) : (
+        <div className="grilla-reserva">
+          {/* ===== Columna de contenido: disciplina/cancha + fecha ===== */}
+          <div className="stack">
+            <div className="grilla-2-eq">
               <Card>
                 <div className="paso-header">
                   <span className="paso-num">1</span>
                   <h2 className="titulo" style={{ fontSize: '1rem', margin: 0 }}>Disciplina</h2>
                 </div>
-                <div className="fila">
+                <div className="fila" style={{ gap: '0.45rem' }}>
                   {deportes.length === 0 && <p className="texto-debil">Cargando disciplinas…</p>}
                   {deportes.map((d) => (
                     <button
@@ -328,9 +325,10 @@ export function ReservarPage() {
                 </div>
               )}
             </Card>
+          </div>
 
-            {/* ===== Columna 3: Resumen (sticky) ===== */}
-            <aside className="reserva-rail">
+          {/* ===== Resumen (rail sticky) ===== */}
+          <aside className="reserva-rail">
               <Card className="resumen-card">
                 <div className="paso-header" style={{ marginBottom: '0.85rem' }}>
                   <h2 className="titulo" style={{ fontSize: '1rem', margin: 0 }}>Resumen</h2>
@@ -401,9 +399,8 @@ export function ReservarPage() {
                 </p>
               </Card>
             </aside>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </main>
   );
 }

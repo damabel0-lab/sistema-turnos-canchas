@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
-import { Card, Badge } from '../../components/ui';
+import { Badge } from '../../components/ui';
 import { ToastContainer, useToast } from '../../components/ui/Toast';
 import { Dumbbell, Waves, RefreshCw, Info, CalendarDays } from 'lucide-react';
 
@@ -108,106 +108,121 @@ export function MisAbonosPage() {
     }
 
     return (
-      <Card key={servicio}>
-        <div className="fila" style={{ gap: '0.6rem', marginBottom: '0.5rem' }}>
-          <span className="metrica-icono verde"><Icono size={19} /></span>
-          <h2 className="titulo" style={{ fontSize: '1.05rem', margin: 0 }}>{nombre}</h2>
-        </div>
-        <p className="subtitulo" style={{ margin: '0 0 0.85rem', fontSize: '0.88rem' }}>
-          Mensualidad, uso libre de horarios.
-        </p>
-        <div style={{ fontSize: '1.5rem', fontWeight: 850, letterSpacing: '-0.03em', marginBottom: '0.75rem' }}>
-          {precioMensual ? precio(precioMensual) : 'Consultar'}
-          <span className="texto-debil" style={{ fontSize: '0.75rem', fontWeight: 600 }}> / mes</span>
+      <div key={servicio} className="pedido-card">
+        <div className="pedido-card-top">
+          <span className="pedido-icono"><Icono size={22} /></span>
+          <div>
+            <div className="pedido-nombre">{nombre}</div>
+            <div className="pedido-detalle">Mensualidad · uso libre</div>
+          </div>
+          <div className="pedido-precio">
+            <div className="pedido-precio-valor">{precioMensual ? precio(precioMensual) : 'Consultar'}</div>
+            <div className="pedido-precio-sub">por mes</div>
+          </div>
         </div>
         {boton}
-      </Card>
+      </div>
     );
   };
 
   const abonosVisibles = abonos.filter((a) => a.estado !== 'cancelado');
 
   return (
-    <main className="pantalla" style={{ paddingTop: '1.25rem' }}>
-      <div className="contenedor">
-        <ToastContainer toasts={toasts} onCerrar={cerrar} />
+    <main className="pagina-cliente">
+      <ToastContainer toasts={toasts} onCerrar={cerrar} />
 
-        <div className="fila-entre" style={{ marginBottom: '1.1rem' }}>
-          <div>
-            <h1 className="titulo" style={{ marginBottom: '0.1rem' }}>Mis abonos</h1>
-            <p className="subtitulo" style={{ margin: 0 }}>Mensualidades de gimnasio y pileta — uso libre.</p>
-          </div>
-          <button type="button" className="boton boton-outline" onClick={() => void cargar()}>
-            <RefreshCw size={15} /> Actualizar
-          </button>
+      {/* Encabezado unificado */}
+      <header className="pagina-encabezado">
+        <div>
+          <span className="pagina-eyebrow">Mi cuenta · Mis abonos</span>
+          <h1 className="pagina-titulo">Mis abonos</h1>
+          <p className="pagina-sub">Mensualidades de gimnasio y pileta — uso libre, sin clases ni cupos.</p>
         </div>
+        <button type="button" className="boton boton-outline" onClick={() => void cargar()}>
+          <RefreshCw size={15} /> Actualizar
+        </button>
+      </header>
 
-        {error && (
-          <div className="alerta-error" role="alert">
-            {error}
-            <div style={{ marginTop: '0.6rem' }}>
-              <button type="button" className="boton boton-outline" onClick={() => void cargar()}>
-                Reintentar
-              </button>
+      {error && (
+        <div className="alerta-error" role="alert">
+          {error}
+          <div style={{ marginTop: '0.6rem' }}>
+            <button type="button" className="boton boton-outline" onClick={() => void cargar()}>
+              Reintentar
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="grilla-2-col">
+        {/* ===== Columna 1: pedir mensualidad ===== */}
+        <div className="stack">
+          <span className="panel-titulo" style={{ padding: '0 0.15rem' }}>Pedir mensualidad</span>
+          <div className="pedido-grid">
+            {renderSolicitudCard('gym', gymHabilitado, precioGym)}
+            {renderSolicitudCard('pileta', piletaHabilitada, precioPileta)}
+            {!gymHabilitado && !piletaHabilitada && (
+              <div className="panel-vacio" style={{ border: '1px solid var(--border)', borderRadius: 'var(--radio-lg)' }}>
+                {!config ? 'Cargando…' : 'El complejo no ofrece mensualidades por ahora.'}
+              </div>
+            )}
+          </div>
+
+          {/* ¿Cómo se activa? */}
+          <div className="tarjeta-plana" style={{ padding: '0.8rem 0.95rem' }}>
+            <div className="fila" style={{ gap: '0.45rem', marginBottom: '0.35rem' }}>
+              <Info size={15} style={{ color: 'var(--primario-2)' }} />
+              <span className="panel-titulo">¿Cómo se activa?</span>
             </div>
+            <p className="texto-sec" style={{ margin: 0, fontSize: '0.83rem', lineHeight: 1.55 }}>
+              Pedila desde acá → pasá por recepción y pagarla → te llega una <strong>notificación</strong> cuando esté activa.
+              Desde ese momento tenés uso libre durante el mes.
+            </p>
           </div>
-        )}
-
-        {/* Pedir mensualidad */}
-        <h2 className="titulo" style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--texto-3)', marginBottom: '0.5rem' }}>
-          Pedir mensualidad
-        </h2>
-        <div className="metricas" style={{ marginBottom: '1.5rem', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
-          {renderSolicitudCard('gym', gymHabilitado, precioGym)}
-          {renderSolicitudCard('pileta', piletaHabilitada, precioPileta)}
-          {!gymHabilitado && !piletaHabilitada && !config && (
-            <Card className="caja-vacia"><p className="texto-sec" style={{ margin: 0 }}>Cargando…</p></Card>
-          )}
-          {!gymHabilitado && !piletaHabilitada && config && (
-            <Card className="caja-vacia"><p className="texto-sec" style={{ margin: 0 }}>El complejo no ofrece mensualidades por ahora.</p></Card>
-          )}
         </div>
 
-        {/* Tus mensualidades */}
-        <h2 className="titulo" style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--texto-3)', marginBottom: '0.5rem' }}>
-          Tus mensualidades
-        </h2>
-        {abonosVisibles.length === 0 ? (
-          <Card className="caja-vacia">
-            <p className="texto-sec" style={{ margin: 0 }}>Todavía no tenés mensualidades.</p>
-            <p className="texto-debil" style={{ marginTop: '0.5rem' }}>Pedí una arriba y pasá por recepción a confirmarla.</p>
-          </Card>
-        ) : (
-          <div className="stack">
-            {abonosVisibles.map((a) => {
-              const Icono = iconoServicio(a.servicio);
-              const nombre = nombreServicio(a.servicio);
-              const activa = a.estado === 'activo';
-              return (
-                <div key={a.id} className="tarjeta-plana" style={{ padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div className="icono-circulo" style={{ width: '2.5rem', height: '2.5rem', flexShrink: 0 }}>
-                    <Icono size={18} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700 }}>{nombre ?? 'Mensualidad'}</div>
-                    <div className="texto-sec" style={{ fontSize: '0.8rem' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                        <CalendarDays size={12} /> Hasta {fechaCorta(a.fecha_vencimiento)}
-                      </span>
-                      {' · '}{precio(a.monto_pagado)}
-                    </div>
-                    {!activa && a.estado === 'solicitado' && (
-                      <div className="texto-debil" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.25rem' }}>
-                        <Info size={12} /> Pendiente de pago — pasá por recepción a activarla
-                      </div>
-                    )}
-                  </div>
-                  <Badge variant={activa ? 'success' : 'warning'}>{activa ? 'Activa' : 'Pendiente'}</Badge>
-                </div>
-              );
-            })}
+        {/* ===== Columna 2: tus mensualidades ===== */}
+        <section className="panel" aria-labelledby="mensualidades-titulo">
+          <div className="panel-header">
+            <span className="panel-titulo" id="mensualidades-titulo">Tus mensualidades</span>
+            <span className="texto-debil">{abonosVisibles.length}</span>
           </div>
-        )}
+          <div className="panel-body">
+            {abonosVisibles.length === 0 ? (
+              <div className="panel-vacio">
+                <CalendarDays size={22} style={{ color: 'var(--primario-2)' }} />
+                <p style={{ margin: 0 }}>Todavía no tenés mensualidades.</p>
+                <p className="texto-debil" style={{ margin: 0 }}>Pedí una a la izquierda y pasá por recepción a confirmarla.</p>
+              </div>
+            ) : (
+              abonosVisibles.map((a) => {
+                const Icono = iconoServicio(a.servicio);
+                const nombre = nombreServicio(a.servicio);
+                const activa = a.estado === 'activo';
+                return (
+                  <div key={a.id} className="item-turno">
+                    <div className="item-turno-icono">
+                      <Icono size={18} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="item-turno-nombre">
+                        {nombre ?? 'Mensualidad'}
+                        <span className="texto-debil" style={{ fontWeight: 500 }}> · {precio(a.monto_pagado)}</span>
+                      </div>
+                      <div className="item-turno-meta">
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <CalendarDays size={12} /> Hasta {fechaCorta(a.fecha_vencimiento)}
+                        </span>
+                        {!activa && a.estado === 'solicitado' && ' · pendiente de pago en recepción'}
+                      </div>
+                    </div>
+                    <Badge variant={activa ? 'success' : 'warning'}>{activa ? 'Activa' : 'Pendiente'}</Badge>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </section>
       </div>
     </main>
   );
