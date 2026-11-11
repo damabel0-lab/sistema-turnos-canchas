@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api } from '../../lib/api';
-import { Card } from '../../components/ui';
 import { ToastContainer, useToast } from '../../components/ui/Toast';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
-import { Users, RefreshCw } from 'lucide-react';
+import { BadgePercent, Trash2, RefreshCw, Plus } from 'lucide-react';
 
 interface Beneficio {
   id: number;
@@ -72,73 +71,98 @@ export function BeneficiosPage() {
 
   return (
     <div className="admin-page">
-      <div className="contenedor">
-        <div className="fila-entre" style={{ marginBottom: '1rem' }}>
-          <h1 className="titulo"><span className="fila"><Users size={20} /> Beneficios de socios</span></h1>
-          <button className="boton boton-outline" onClick={() => void cargar()}>
-            <RefreshCw size={16} /> Actualizar
-          </button>
+      <ToastContainer toasts={toasts} onCerrar={cerrar} />
+      <ConfirmDialog
+        open={!!borrarBeneficio}
+        titulo="Eliminar beneficio"
+        descripcion={
+          borrarBeneficio
+            ? `"${borrarBeneficio.nombre_beneficio}" (${borrarBeneficio.descuento_porcentaje}% en ${borrarBeneficio.aplica_en}) se eliminará para todos los socios. ¿Confirmás?`
+            : undefined
+        }
+        confirmarTexto="Eliminar"
+        onConfirmar={() => void borrar()}
+        onCancelar={() => setBorrarBeneficio(null)}
+        peligro
+      />
+
+      {/* Encabezado */}
+      <header className="pagina-encabezado">
+        <div>
+          <span className="pagina-eyebrow">Operación › Socios</span>
+          <h1 className="pagina-titulo">Beneficios de socios</h1>
+          <p className="pagina-sub">Descuentos que se aplican automáticamente al reservar para clientes con membresía.</p>
         </div>
-        <ToastContainer toasts={toasts} onCerrar={cerrar} />
-        <ConfirmDialog
-          open={!!borrarBeneficio}
-          titulo="Eliminar beneficio"
-          descripcion={
-            borrarBeneficio
-              ? `"${borrarBeneficio.nombre_beneficio}" (${borrarBeneficio.descuento_porcentaje}% en ${borrarBeneficio.aplica_en}) se eliminará para todos los socios. ¿Confirmás?`
-              : undefined
-          }
-          confirmarTexto="Eliminar"
-          onConfirmar={() => void borrar()}
-          onCancelar={() => setBorrarBeneficio(null)}
-          peligro
-        />
+        <button type="button" className="boton boton-outline" onClick={() => void cargar()}>
+          <RefreshCw size={15} /> Actualizar
+        </button>
+      </header>
 
-        {error && <div className="alerta-error" role="alert">{error}</div>}
+      {error && <div className="alerta-error" role="alert">{error}</div>}
 
-        <h2 className="titulo" style={{ fontSize: '1.1rem' }}>Catálogo de beneficios</h2>
-        <Card>
-          <form onSubmit={crear} className="stack">
-            <label className="label">Nombre del beneficio
-              <input required value={nuevo.nombre_beneficio} onChange={(e) => setNuevo({ ...nuevo, nombre_beneficio: e.target.value })} className="input" />
-            </label>
-            <label className="label">Descuento (%)
-              <input required type="number" min={0} max={100} step={1} value={nuevo.descuento_porcentaje} onChange={(e) => setNuevo({ ...nuevo, descuento_porcentaje: e.target.value })} className="input" />
-            </label>
-            <label className="label">Aplica en
-              <select value={nuevo.aplica_en} onChange={(e) => setNuevo({ ...nuevo, aplica_en: e.target.value })} className="input">
-                <option value="cancha">Cancha</option>
-                <option value="gimnasio">Gimnasio</option>
-                <option value="pileta">Pileta</option>
-                <option value="otro">Otro</option>
-              </select>
-            </label>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="submit" className="boton boton-primario">Crear beneficio</button>
-            </div>
-          </form>
-        </Card>
-
-        <h2 className="titulo" style={{ fontSize: '1.1rem', marginTop: '1.5rem' }}>Beneficios activos</h2>
-        {beneficios.length === 0 ? (
-          <Card className="caja-vacia"><p className="texto-sec">No hay beneficios todavía.</p></Card>
-        ) : (
-          <div className="stack">
-            {beneficios.map((b) => (
-              <Card key={b.id} className="fila-entre">
-                <div>
-                  <div style={{ fontWeight: 600 }}>{b.nombre_beneficio}</div>
-                  <div className="texto-sec" style={{ fontSize: '0.85rem' }}>
-                    {b.descuento_porcentaje}% de descuento en {b.aplica_en}
-                  </div>
-                </div>
-                <button type="button" onClick={() => setBorrarBeneficio(b)} className="boton boton-ghost" style={{ color: 'var(--peligro)' }}>
-                  Borrar
-                </button>
-              </Card>
-            ))}
+      <div className="grilla-2-col" style={{ gap: '0.9rem' }}>
+        {/* ===== Formulario de creación ===== */}
+        <aside className="panel" style={{ alignSelf: 'start' }}>
+          <div className="panel-header"><span className="panel-titulo">Nuevo beneficio</span></div>
+          <div className="panel-body">
+            <form onSubmit={crear} className="stack">
+              <label className="label">Nombre del beneficio
+                <input required value={nuevo.nombre_beneficio} onChange={(e) => setNuevo({ ...nuevo, nombre_beneficio: e.target.value })} className="input" placeholder="Ej: 10% off Socios" />
+              </label>
+              <label className="label">Descuento (%)
+                <input required type="number" min={0} max={100} step={1} value={nuevo.descuento_porcentaje} onChange={(e) => setNuevo({ ...nuevo, descuento_porcentaje: e.target.value })} className="input" placeholder="10" />
+              </label>
+              <label className="label">Aplica en
+                <select value={nuevo.aplica_en} onChange={(e) => setNuevo({ ...nuevo, aplica_en: e.target.value })} className="input">
+                  <option value="cancha">Cancha</option>
+                  <option value="gimnasio">Gimnasio</option>
+                  <option value="pileta">Pileta</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </label>
+              <button type="submit" className="boton boton-primario boton-block"><Plus size={15} /> Crear beneficio</button>
+            </form>
           </div>
-        )}
+        </aside>
+
+        {/* ===== Activos ===== */}
+        <section className="panel" aria-labelledby="activos-titulo">
+          <div className="panel-header">
+            <span className="panel-titulo" id="activos-titulo">Beneficios activos</span>
+            <span className="texto-debil">{beneficios.length} total</span>
+          </div>
+          <div className="panel-body">
+            {beneficios.length === 0 ? (
+              <div className="panel-vacio">
+                <BadgePercent size={22} style={{ color: 'var(--primario-2)' }} />
+                <p style={{ margin: 0 }}>Todavía no creaste beneficios.</p>
+                <p className="texto-debil" style={{ margin: 0 }}>Creá el primero.</p>
+              </div>
+            ) : (
+              beneficios.map((b) => (
+                <div key={b.id} className="item-turno">
+                  <div className="item-turno-icono"><BadgePercent size={16} /></div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="item-turno-nombre">{b.nombre_beneficio}</div>
+                    <div className="item-turno-meta">
+                      <strong style={{ color: 'var(--primario-2)' }}>{b.descuento_porcentaje}%</strong>
+                      {' '}de descuento en {b.aplica_en}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setBorrarBeneficio(b)}
+                    className="boton boton-ghost"
+                    style={{ color: 'var(--peligro)', padding: '0.35rem 0.6rem' }}
+                    aria-label={`Eliminar beneficio ${b.nombre_beneficio}`}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
       </div>
     </div>
   );

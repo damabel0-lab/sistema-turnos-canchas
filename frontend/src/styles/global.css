@@ -1444,6 +1444,33 @@ body {
   }
 }
 
+/* ===== REPORTE: barras de distribución ===== */
+.reporte-barra-item {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.reporte-barra-track {
+  height: 0.5rem;
+  background: var(--bg-surface-3);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.reporte-barra {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primario-2), var(--primario));
+  border-radius: 9999px;
+  transition: width 0.5s ease;
+}
+
+/* ===== PANEL ENTRADAS ===== */
+.egreso-input-fila {
+  display: flex;
+  gap: 0.4rem;
+}
+.egreso-input-fila > * { flex: 1; }
+
 /* ===== ACCESOS RÁPIDOS ===== */
 .acceso-rapido {
   display: flex;
