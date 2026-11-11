@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
+import { ToastContainer, useToast } from '../../components/ui/Toast';
 import { Card, Button, Input } from '../../components/ui';
 import { MapPin, Loader2, CheckCircle2 } from 'lucide-react';
 
@@ -45,6 +46,7 @@ function sumarUnaHora(hhmm: string): string {
 
 export function ReservarPage() {
   const { session } = useAuth();
+  const { toasts, mostrar, cerrar } = useToast();
 
   const [deportes, setDeportes] = useState<Deporte[]>([]);
   const [canchas, setCanchas] = useState<Cancha[]>([]);
@@ -139,10 +141,19 @@ export function ReservarPage() {
       setHoras((prev) =>
         prev.map((h) => (h.hora === horaSel ? { ...h, estado: 'ocupada' as const } : h))
       );
+      mostrar('¡Reserva confirmada!', 'success');
       setHoraSel(null);
       setCotizacion(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo crear la reserva');
+      const mensaje = e instanceof Error ? e.message : 'No se pudo crear la reserva';
+      const esOcupada = /reservado|ocupada|bloquead/i.test(mensaje);
+      setError(mensaje);
+      if (esOcupada) {
+        mostrar('Ese horario ya fue reservado o bloqueado. Elegí otro horario.', 'danger');
+        setHoraSel(null);
+        setCotizacion(null);
+      }
+      // Refrescar la grilla: marcar slots tomados correctamente aunque la página estuviera vieja
       if (canchaId) {
         api<EstadoHora[]>(`/reservas/disponibilidad?cancha_id=${canchaId}&fecha=${fecha}`)
           .then(setHoras)
@@ -164,6 +175,7 @@ export function ReservarPage() {
 
   return (
     <main className="pagina-cliente">
+      <ToastContainer toasts={toasts} onCerrar={cerrar} />
       {/* Encabezado unificado */}
       <header className="pagina-encabezado">
         <div>

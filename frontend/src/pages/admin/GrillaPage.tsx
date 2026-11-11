@@ -17,6 +17,7 @@ import {
   Trophy,
   ChevronLeft,
   ChevronRight,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface ItemGrilla {
@@ -59,6 +60,20 @@ export function GrillaPage() {
   const { toasts, mostrar, cerrar } = useToast();
 
   const [carga, setCarga] = useState({ nombre: '', telefono: '', deporte: '', cancha_id: '', hora: '10:15' });
+
+  /** Si el slot elegido (cancha + hora) ya está ocupado en la grilla, lo exponemos para avisar y bloquear */
+  const slotOcupado = useMemo(() => {
+    if (!carga.cancha_id || !carga.hora) return null;
+    const fila = filas.find((f) => f.cancha_id === Number(carga.cancha_id));
+    const item = fila?.items.find((i) => i.tipo === 'reserva' && i.hora === carga.hora);
+    if (!item) return null;
+    return {
+      reserva_id: item.reserva_id ?? 0,
+      cliente: item.cliente ?? 'Sin nombre',
+      estado: item.estado ?? '',
+      monto: item.monto ?? 0,
+    };
+  }, [carga.cancha_id, carga.hora, filas]);
   const [sel, setSel] = useState<{ reserva_id: number; cliente?: string; estado?: string; monto?: number } | null>(null);
   const [metodo, setMetodo] = useState('efectivo');
   const [bloqueo, setBloqueo] = useState({ deporte: '', cancha_id: '', desde: '08:00', hasta: '09:00', motivo: '' });
@@ -469,7 +484,33 @@ export function GrillaPage() {
                 {HORAS_TURNO.map((h) => (<option key={h} value={h}>{h}</option>))}
               </select>
             </label>
-            <button type="submit" className="boton boton-primario boton-block" disabled={!carga.nombre.trim() || !carga.telefono.trim() || !carga.deporte || !carga.cancha_id}><Plus size={15} /> Anotar turno</button>
+            {slotOcupado && (
+              <div className="alerta-warning" role="alert">
+                <AlertTriangle size={17} />
+                <div>
+                  <strong>Ese horario ya está reservado</strong>
+                  <div className="texto-sec" style={{ fontSize: '0.82rem', marginTop: '0.1rem' }}>
+                    {slotOcupado.cliente} · ${slotOcupado.monto.toLocaleString('es-AR')} · {slotOcupado.estado === 'pendiente_seña' ? 'pendiente de seña' : slotOcupado.estado}
+                  </div>
+                  <button
+                    type="button"
+                    className="boton boton-ghost"
+                    style={{ padding: '0.2rem 0.45rem', fontSize: '0.78rem', marginTop: '0.35rem' }}
+                    onClick={() =>
+                      setSel({
+                        reserva_id: slotOcupado.reserva_id,
+                        cliente: slotOcupado.cliente,
+                        estado: slotOcupado.estado,
+                        monto: slotOcupado.monto,
+                      })
+                    }
+                  >
+                    Ver ese turno →
+                  </button>
+                </div>
+              </div>
+            )}
+            <button type="submit" className="boton boton-primario boton-block" disabled={!carga.nombre.trim() || !carga.telefono.trim() || !carga.deporte || !carga.cancha_id || !!slotOcupado}><Plus size={15} /> Anotar turno</button>
           </form>
         </section>
 

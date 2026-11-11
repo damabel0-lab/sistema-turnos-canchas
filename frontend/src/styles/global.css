@@ -2001,6 +2001,18 @@ body {
   margin-bottom: 1rem;
 }
 
+.alerta-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--advertencia) 45%, transparent);
+  background: color-mix(in srgb, var(--advertencia) 12%, transparent);
+  color: var(--advertencia);
+  border-radius: var(--radio);
+  padding: 0.6rem 0.75rem;
+  font-size: 0.85rem;
+}
+
 .paso-header {
   display: flex;
   align-items: center;
