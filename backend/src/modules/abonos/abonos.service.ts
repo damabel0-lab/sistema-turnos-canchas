@@ -45,6 +45,20 @@ export async function venderAbono(datos: VenderAbono) {
   if (!(datos.clases_totales > 0)) throw new HttpError(400, 'Las clases totales deben ser > 0');
   if (!(datos.monto_pagado >= 0)) throw new HttpError(400, 'El monto debe ser >= 0');
 
+  // No permitir más de un abono activo para la misma disciplina (opcional para el dueño)
+  if (datos.disciplina_id) {
+    const { data: existentes } = await supabaseAdmin
+      .from('abonos')
+      .select('id')
+      .eq('usuario_id', datos.usuario_id)
+      .eq('disciplina_id', datos.disciplina_id)
+      .eq('activo', true)
+      .limit(1);
+    if (existentes && existentes.length > 0) {
+      throw new HttpError(409, 'El usuario ya tiene un abono activo para esta disciplina');
+    }
+  }
+
   const { data, error } = await supabaseAdmin
     .from('abonos')
     .insert({
