@@ -102,3 +102,35 @@ setupRouter.post(
     res.json({ ok: true });
   }),
 );
+
+// PATCH /admin/setup -> actualizar valores individuales (upsert) sin tocar otros
+setupRouter.patch(
+  '/',
+  h(async (req, res) => {
+    const body = req.body ?? {};
+    if (typeof body !== 'object' || Array.isArray(body)) {
+      res.status(400).json({ error: 'Body debe ser un objeto JSON' });
+      return;
+    }
+
+    const pares: Array<{ categoria: string; clave: string; valor: string }> = [];
+    for (const [categoria, valores] of Object.entries(body)) {
+      if (typeof valores !== 'object' || Array.isArray(valores)) continue;
+      for (const [clave, valor] of Object.entries(valores as Record<string, unknown>)) {
+        pares.push({ categoria, clave, valor: JSON.stringify(valor) });
+      }
+    }
+
+    for (const par of pares) {
+      const { error } = await supabaseAdmin
+        .from('configuracion_valores')
+        .upsert(
+          { categoria: par.categoria, clave: par.clave, valor: par.valor, actualizado_en: new Date().toISOString() },
+          { onConflict: 'categoria,clave', ignoreDuplicates: false },
+        );
+      if (error) throw new HttpError(400, error.message);
+    }
+
+    res.json({ ok: true });
+  }),
+);
