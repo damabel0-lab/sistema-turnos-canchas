@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../../config/supabase.js';
 import { HttpError } from '../../middleware/error.js';
+import { leerHorasComplejo } from '../../config/complejoHoras.js';
 
 /**
  * Caja: movimientos y cortes por día / semana / mes.
@@ -10,8 +11,12 @@ import { HttpError } from '../../middleware/error.js';
 export interface FiltroCaja {
   /** YYYY-MM-DD. Si no viene, se usa hoy */
   fecha?: string;
-  /** dia | semana | mes (partiendo de "fecha", o de hoy) */
-  periodo?: 'dia' | 'semana' | 'mes';
+  /** dia | semana | mes (partiendo de "fecha", o de hoy).
+   *  Para `dia` se usa el horario operativo del complejo (apertura → apertura siguiente). */
+  periodo?: 'dia' | 'semana' | 'mes' | 'anio' | 'historico';
+  /** Si vienen desde/hasta, tienen prioridad (formato YYYY-MM-DD). */
+  desde?: string;
+  hasta?: string;
 }
 
 export interface Movimiento {
@@ -53,22 +58,49 @@ export async function resumenCaja(filtro: FiltroCaja): Promise<ResumenCaja> {
     throw new HttpError(400, 'fecha inválida (YYYY-MM-DD)');
   }
 
-  const desde = new Date(base);
-  desde.setHours(0, 0, 0, 0);
-
-  const hasta = new Date(desde);
   const periodo = filtro.periodo ?? 'dia';
-  if (periodo === 'dia') hasta.setDate(hasta.getDate() + 1);
-  else if (periodo === 'semana') hasta.setDate(hasta.getDate() + 7);
-  else if (periodo === 'mes') hasta.setMonth(hasta.getMonth() + 1);
-  else throw new HttpError(400, 'periodo debe ser dia, semana o mes');
 
-  const { data, error } = await supabaseAdmin
+  /** Apertura del complejo leída de la configuración (define tu "día" si abre hasta medianoche) */
+  const { apertura } = await leerHorasComplejo();
+  const horaApertura: number = apertura;
+
+  const desde = new Date(base);
+  if (filtro.desde) {
+    const d = new Date(`${filtro.desde}T00:00:00`);
+    if (Number.isNaN(d.getTime())) throw new HttpError(400, 'desde inválido (YYYY-MM-DD)');
+    desde.setTime(d.getTime());
+  } else {
+    desde.setHours(horaApertura, 0, 0, 0);
+  }
+
+  let hasta = new Date(desde);
+  if (filtro.hasta) {
+    const h = new Date(`${filtro.hasta}T00:00:00`);
+    if (Number.isNaN(h.getTime())) throw new HttpError(400, 'hasta inválido (YYYY-MM-DD)');
+    hasta.setTime(h.getTime());
+    hasta.setDate(hasta.getDate() + 1); // fin de día inclusive
+  } else if (periodo === 'dia') {
+    hasta.setDate(hasta.getDate() + 1); // apertura -> apertura del día siguiente
+  } else if (periodo === 'semana') {
+    hasta.setDate(hasta.getDate() + 7);
+  } else if (periodo === 'mes') {
+    hasta.setMonth(hasta.getMonth() + 1);
+  } else if (periodo === 'anio') {
+    hasta.setFullYear(hasta.getFullYear() + 1);
+  } else if (periodo === 'historico') {
+    hasta = new Date(); // no usa "hasta" — la query no altera el rango, simplemente no filtra "hasta" abajo
+  } else {
+    throw new HttpError(400, 'periodo debe ser dia, semana, mes, anio o historico');
+  }
+
+  const query = supabaseAdmin
     .from('movimientos_caja')
     .select('id, fecha_hora, tipo_movimiento, monto, metodo_pago, descripcion, reserva_id')
-    .gte('fecha_hora', desde.toISOString())
-    .lt('fecha_hora', hasta.toISOString())
-    .order('fecha_hora', { ascending: false });
+    .gte('fecha_hora', desde.toISOString());
+
+  const { data, error } = periodo === 'historico'
+    ? await query.order('fecha_hora', { ascending: false })
+    : await query.lt('fecha_hora', hasta.toISOString()).order('fecha_hora', { ascending: false });
   if (error) throw new HttpError(500, error.message);
 
   const movimientos = (data ?? []) as unknown as Movimiento[];
