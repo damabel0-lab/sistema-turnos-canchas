@@ -60,6 +60,13 @@ export function BarraSesion() {
       <Link to="/mis-reservas">Mis reservas</Link>
       <Link to="/mis-abonos">Mis abonos</Link>
       {ofreceTorneos && <Link to="/torneos">Torneos</Link>}
+      {esStaff && (
+        <>
+          <span className="nav-separador" aria-hidden />
+          <Link to="/admin/dashboard" className="nav-link-staff">Panel</Link>
+          <Link to="/admin/configuracion" className="nav-link-staff">Configuración</Link>
+        </>
+      )}
       <div className="nav-derecha">
         <ThemeToggle />
         <Link
@@ -74,11 +81,6 @@ export function BarraSesion() {
         <span className="texto-sec" style={{ fontSize: '0.85rem', maxWidth: '10rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {perfil ? `${perfil.nombre} ${perfil.apellido}` : session.user.email}
         </span>
-        {esStaff && (
-          <Link to="/admin/dashboard" className="boton boton-outline" style={{ fontSize: '0.8rem', padding: '0.42rem 0.85rem' }}>
-            Panel
-          </Link>
-        )}
         <button type="button" className="boton boton-ghost" onClick={() => void salir()}>
           Salir
         </button>

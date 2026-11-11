@@ -661,6 +661,20 @@ body {
   align-self: center;
 }
 
+.nav-barra a.nav-link-staff {
+  color: var(--primario-2);
+  font-weight: 700;
+  background: var(--primario-soft);
+  border: 1px solid color-mix(in srgb, var(--primario) 35%, transparent);
+  padding: 0.32rem 0.7rem;
+  border-radius: var(--radio-sm);
+}
+
+.nav-barra a.nav-link-staff:hover {
+  background: var(--primario-soft-2);
+  color: var(--primario-2);
+}
+
 .nav-barra a {
   color: var(--texto-2);
   text-decoration: none;
