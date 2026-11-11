@@ -363,7 +363,9 @@ export async function grillaDelDia(fecha: string): Promise<FilaGrilla[]> {
   const aperturaGrilla = apertura * 60;
   const cierreAjustadoNum = cierreAjustado;
   const slots: number[] = [];
-  for (let s = aperturaGrilla + MINUTO_INICIO_TURNO; s + DURACION_TURNO_MINUTOS <= cierreAjustadoNum; s += 60) {
+  // Último turno permitido: empieza a más tardar 45 minutos antes del cierre (termina 15 min después).
+  const MARGEN_CIERRE_MINUTOS = 45;
+  for (let s = aperturaGrilla + MINUTO_INICIO_TURNO; s <= cierreAjustadoNum - MARGEN_CIERRE_MINUTOS; s += 60) {
     slots.push(s);
   }
 
@@ -465,7 +467,7 @@ export async function crearReserva(entrada: NuevaReserva) {
   if (!esInicioTurno(inicioMin)) {
     throw new HttpError(400, `La hora de inicio debe ser a los :${String(MINUTO_INICIO_TURNO).padStart(2, '0')}`);
   }
-  if (adjInicio < aperturaMin || adjFin > cierreAjustado) {
+  if (adjInicio < aperturaMin || adjFin > cierreAjustado + 15) {
     throw new HttpError(400, mensajeHorario);
   }
 
@@ -589,7 +591,9 @@ export async function disponibilidad(canchaId: number, fecha: string): Promise<E
   const aMinAdjust = (t: string) => ajustarAlDia(aMinutos(t), aperturaMin);
   const minutosApertura = aperturaMin;
 
-  for (let inicioMin = minutosApertura + MINUTO_INICIO_TURNO; inicioMin + DURACION_TURNO_MINUTOS <= minutosCierre; inicioMin += 60) {
+  // Último turno permitido: empieza a más tardar 45 minutos antes del cierre (termina 15 min después).
+  const MARGEN_CIERRE_MINUTOS = 45;
+  for (let inicioMin = minutosApertura + MINUTO_INICIO_TURNO; inicioMin <= minutosCierre - MARGEN_CIERRE_MINUTOS; inicioMin += 60) {
     const finMin = inicioMin + DURACION_TURNO_MINUTOS;
     const hora = fmtMinuto(inicioMin);
     const finHora = fmtMinuto(finMin);
@@ -701,7 +705,7 @@ export async function proyectarTurnosFijos(entrada: TurnoFijoEntrada) {
   if (!esInicioTurno(adjInicio)) {
     throw new HttpError(400, `La hora debe arrancar a los :${String(MINUTO_INICIO_TURNO).padStart(2, '0')}`);
   }
-  if (adjInicio < aperturaMin || adjInicio + DURACION_TURNO_MINUTOS > cierreAjustado) {
+  if (adjInicio < aperturaMin || adjInicio + DURACION_TURNO_MINUTOS > cierreAjustado + 15) {
     throw new HttpError(400, mensajeHorario);
   }
 

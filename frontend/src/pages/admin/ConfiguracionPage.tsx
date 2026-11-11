@@ -579,7 +579,9 @@ export function ConfiguracionPage() {
                 </label>
                 <label className="label">Horario de apertura<input type="time" value={horaApertura} onChange={(e) => setHoraApertura(e.target.value)} className="input" /></label>
                 <label className="label">Horario de cierre<input type="time" value={horaCierre} onChange={(e) => setHoraCierre(e.target.value)} className="input" /></label>
-                <p className="texto-debil" style={{ marginTop: '-0.25rem', marginBottom: '0.25rem' }}>Si el cierre es antes de la apertura, se interpreta del día siguiente (ej: 20:00 → 01:00).</p>
+                <p className="texto-debil" style={{ marginTop: '-0.25rem', marginBottom: '0.25rem' }}>
+                  Si el cierre es antes de la apertura, se interpreta del día siguiente. El último turno arranca 45 minutos antes del cierre y termina 15 después.
+                </p>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.75rem' }}>
                   <button className="boton boton-secondary" onClick={() => void guardarSetup({ metadatos: { nombre, tipo: tipoComplejo, hora_apertura: Number(horaApertura.split(':')[0] || '0'), hora_cierre: Number(horaCierre.split(':')[0] || '0') }, torneos: { ofrece_torneos: ofreceTorneos } })}>
                     Guardar cambios

@@ -92,7 +92,7 @@ export function GrillaPage() {
           ? (config.hora_cierre === 0 ? 24 * 60 : (config.hora_cierre + 24) * 60)
           : config.hora_cierre * 60;
         const slots: string[] = [];
-        for (let min = config.hora_apertura * 60 + 15; min + 60 <= ajusteCierre; min += 60) {
+        for (let min = config.hora_apertura * 60 + 15; min <= ajusteCierre - 45; min += 60) {
           const m = ((min % 1440) + 1440) % 1440;
           slots.push(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`);
         }
