@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api } from '../../lib/api';
-import { Card, Button } from '../../components/ui';
+import { Card } from '../../components/ui';
 import { ChevronDown, ChevronRight, Plus, Edit3, Trash2, CalendarClock, Building2, ShieldCheck, Dumbbell, Users } from 'lucide-react';
+import { ToastContainer, useToast } from '../../components/ui/Toast';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 
 interface Deporte {
   id: number;
@@ -60,10 +62,10 @@ const emptyDeporte = (): DeporteForm => ({
 });
 
 export function ConfiguracionPage() {
-  const [tab, setTab] = useState<'deportes' | 'datos' | 'politicas' | 'amenidades' | 'socios'>('deportes');
+  const [tab, setTab] = useState<'deportes' | 'datos' | 'politicas' | 'gym' | 'socios'>('deportes');
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [mensaje, setMensaje] = useState<string | null>(null);
+  const { toasts, mostrar, cerrar } = useToast();
 
   // Deportes y canchas
   const [deportes, setDeportes] = useState<Deporte[]>([]);
@@ -72,6 +74,7 @@ export function ConfiguracionPage() {
   const [editandoCancha, setEditandoCancha] = useState<Cancha | null>(null);
   const [agregandoCancha, setAgregandoCancha] = useState<Deporte | null>(null);
   const [agregandoDeporte, setAgregandoDeporte] = useState(false);
+  const [confirmarEliminar, setConfirmarEliminar] = useState<{ tipo: 'deporte' | 'cancha'; id: number; nombre: string } | null>(null);
 
   const [canchaForm, setCanchaForm] = useState<CanchaForm>(emptyCancha());
   const [deporteForm, setDeporteForm] = useState<DeporteForm>(emptyDeporte());
@@ -108,12 +111,10 @@ export function ConfiguracionPage() {
       setDeportes(dep);
       setCanchas(can);
 
-      // Expandir todo por defecto
       const init: Record<number, boolean> = {};
       dep.forEach((d) => (init[d.id] = true));
       setExpandidos(init);
 
-      // Cargar setup
       const meta = setup.valores?.metadatos ?? {};
       const pol = setup.valores?.politicas ?? {};
       const am = setup.valores?.amenidades ?? {};
@@ -177,7 +178,6 @@ export function ConfiguracionPage() {
   async function guardarCancha(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    setMensaje(null);
     try {
       const body = {
         nombre: canchaForm.nombre.trim(),
@@ -193,14 +193,14 @@ export function ConfiguracionPage() {
           body: JSON.stringify(body),
         });
         setCanchas((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
-        setMensaje('Cancha actualizada ✅');
+        mostrar('Cancha actualizada.', 'success');
       } else {
         const created = await api<Cancha>('/canchas', {
           method: 'POST',
           body: JSON.stringify(body),
         });
         setCanchas((prev) => [...prev, created]);
-        setMensaje('Cancha creada ✅');
+        mostrar('Cancha creada correctamente.', 'success');
       }
 
       setAgregandoCancha(null);
@@ -214,7 +214,6 @@ export function ConfiguracionPage() {
   async function agregarDeporteSubmit() {
     if (!deporteForm.nombre.trim()) return;
     setError(null);
-    setMensaje(null);
     try {
       const created = await api<Deporte>('/deportes', {
         method: 'POST',
@@ -228,37 +227,42 @@ export function ConfiguracionPage() {
       setExpandidos((prev) => ({ ...prev, [created.id]: true }));
       setAgregandoDeporte(false);
       setDeporteForm(emptyDeporte());
-      setMensaje('Deporte agregado ✅');
+      mostrar('Deporte agregado correctamente.', 'success');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo crear el deporte');
     }
   }
 
-  async function eliminarDeporte(id: number) {
-    if (!confirm('¿Eliminar este deporte?')) return;
-    try {
-      await api(`/deportes/${id}`, { method: 'DELETE' });
-      setDeportes((prev) => prev.filter((d) => d.id !== id));
-      setMensaje('Deporte eliminado ✅');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo eliminar');
-    }
+  async function eliminarDeporte(id: number, nombre: string) {
+    setConfirmarEliminar({ tipo: 'deporte', id, nombre });
   }
 
-  async function eliminarCancha(id: number) {
-    if (!confirm('¿Eliminar esta cancha?')) return;
+  async function eliminarCancha(id: number, nombre: string) {
+    setConfirmarEliminar({ tipo: 'cancha', id, nombre });
+  }
+
+  async function confirmarEliminacion() {
+    if (!confirmarEliminar) return;
+    const { tipo, id } = confirmarEliminar;
     try {
-      await api(`/canchas/${id}`, { method: 'DELETE' });
-      setCanchas((prev) => prev.filter((c) => c.id !== id));
-      setMensaje('Cancha eliminada ✅');
+      if (tipo === 'deporte') {
+        await api(`/deportes/${id}`, { method: 'DELETE' });
+        setDeportes((prev) => prev.filter((d) => d.id !== id));
+        mostrar('Deporte eliminado.', 'success');
+      } else {
+        await api(`/canchas/${id}`, { method: 'DELETE' });
+        setCanchas((prev) => prev.filter((c) => c.id !== id));
+        mostrar('Cancha eliminada.', 'success');
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo eliminar');
+      mostrar(err instanceof Error ? err.message : 'No se pudo eliminar', 'danger');
+    } finally {
+      setConfirmarEliminar(null);
     }
   }
 
   async function guardarSetup(parcial?: Record<string, unknown>) {
     setError(null);
-    setMensaje(null);
     try {
       const payload = parcial ?? {
         metadatos: {
@@ -288,7 +292,7 @@ export function ConfiguracionPage() {
         body: JSON.stringify(payload),
       });
 
-      setMensaje('Configuración guardada ✅');
+      mostrar('Cambios guardados.', 'success');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo guardar');
     }
@@ -315,13 +319,28 @@ export function ConfiguracionPage() {
     { id: 'deportes', label: 'Deportes y Canchas', icon: CalendarClock },
     { id: 'datos', label: 'Datos del complejo', icon: Building2 },
     { id: 'politicas', label: 'Políticas', icon: ShieldCheck },
-    { id: 'amenidades', label: 'Gym y Pileta', icon: Dumbbell },
+    { id: 'gym', label: 'Gym y Pileta', icon: Dumbbell },
     { id: 'socios', label: 'Socios', icon: Users },
   ];
 
   return (
     <main className="pantalla">
       <div className="contenedor-ancho">
+        <ToastContainer toasts={toasts} onCerrar={cerrar} />
+        <ConfirmDialog
+          open={!!confirmarEliminar}
+          titulo="Eliminar registro"
+          descripcion={
+            confirmarEliminar
+              ? `¿Confirmás eliminar "${confirmarEliminar.nombre}"? Esta acción no se puede deshacer.`
+              : undefined
+          }
+          confirmarTexto="Eliminar"
+          onConfirmar={confirmarEliminacion}
+          onCancelar={() => setConfirmarEliminar(null)}
+          peligro
+        />
+
         {/* Encabezado */}
         <div className="fila-entre" style={{ marginBottom: '1rem' }}>
           <div>
@@ -334,7 +353,6 @@ export function ConfiguracionPage() {
         </div>
 
         {error && <p style={{ color: '#dc2626', marginBottom: '0.75rem' }}>{error}</p>}
-        {mensaje && <p style={{ color: '#10b981', marginBottom: '0.75rem' }}>{mensaje}</p>}
 
         {/* Layout sidebar + contenido */}
         <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '1rem' }}>
@@ -430,7 +448,7 @@ export function ConfiguracionPage() {
                             <button
                               className="boton boton-ghost"
                               style={{ padding: '0.3rem', color: '#dc2626' }}
-                              onClick={() => eliminarDeporte(deporte.id)}
+                              onClick={() => eliminarDeporte(deporte.id, deporte.nombre)}
                               aria-label="Eliminar deporte"
                             >
                               <Trash2 size={14} />
@@ -517,7 +535,7 @@ export function ConfiguracionPage() {
                                       <button
                                         className="boton boton-ghost"
                                         style={{ padding: '0.3rem', color: '#dc2626' }}
-                                        onClick={() => eliminarCancha(cancha.id)}
+                                        onClick={() => eliminarCancha(cancha.id, cancha.nombre)}
                                         aria-label="Eliminar cancha"
                                       >
                                         <Trash2 size={12} />
@@ -550,9 +568,9 @@ export function ConfiguracionPage() {
                 <label className="label">Horario de apertura<input type="time" value={horaApertura} onChange={(e) => setHoraApertura(e.target.value)} className="input" /></label>
                 <label className="label">Horario de cierre<input type="time" value={horaCierre} onChange={(e) => setHoraCierre(e.target.value)} className="input" /></label>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.75rem' }}>
-                  <Button variant="secondary" onClick={() => void guardarSetup({ metadatos: { nombre, tipo: tipoComplejo, hora_apertura: Number(horaApertura.split(':')[0] || '0'), hora_cierre: Number(horaCierre.split(':')[0] || '0') } })}>
+                  <button className="boton boton-secondary" onClick={() => void guardarSetup({ metadatos: { nombre, tipo: tipoComplejo, hora_apertura: Number(horaApertura.split(':')[0] || '0'), hora_cierre: Number(horaCierre.split(':')[0] || '0') } })}>
                     Guardar cambios
-                  </Button>
+                  </button>
                 </div>
               </Card>
             )}
@@ -574,41 +592,82 @@ export function ConfiguracionPage() {
                   Seña obligatoria por defecto
                 </label>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.75rem' }}>
-                  <Button variant="secondary" onClick={() => void guardarSetup({ politicas: { cancelacion_minima_horas: Number(cancelacionHoras), descuento_turno_fijo_porcentaje: Number(descuentoTurnoFijo), seña_obligatoria: señaObligatoria } })}>
+                  <button className="boton boton-secondary" onClick={() => void guardarSetup({ politicas: { cancelacion_minima_horas: Number(cancelacionHoras), descuento_turno_fijo_porcentaje: Number(descuentoTurnoFijo), seña_obligatoria: señaObligatoria } })}>
                     Guardar cambios
-                  </Button>
+                  </button>
                 </div>
               </Card>
             )}
 
-            {/* === AMENIDADES (GYM/PILETA) === */}
-            {tab === 'amenidades' && (
+            {/* === GYM Y PILETA (SEPARACIÓN Y CONFIGURACIÓN DETALLADA) === */}
+            {tab === 'gym' && (
               <Card>
                 <h3 className="titulo" style={{ fontSize: '1.1rem', marginBottom: '0.75rem' }}>Gimnasio y Pileta</h3>
-                <label className="label" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <input type="checkbox" checked={gym} onChange={(e) => setGym(e.target.checked)} />
-                  Gimnasio activo
-                </label>
-                {gym && (
-                  <label className="label">
-                    Precio mensual del gym (opcional)
-                    <input type="number" min={0} value={precioMensualGym} onChange={(e) => setPrecioMensualGym(e.target.value)} className="input" placeholder="Precio mensual" />
-                  </label>
-                )}
-                <label className="label" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.5rem' }}>
-                  <input type="checkbox" checked={pileta} onChange={(e) => setPileta(e.target.checked)} />
-                  Pileta activa
-                </label>
-                {pileta && (
-                  <label className="label" style={{ marginTop: '0.5rem' }}>
-                    Precio mensual de pileta (opcional)
-                    <input type="number" min={0} value={precioMensualPileta} onChange={(e) => setPrecioMensualPileta(e.target.value)} className="input" placeholder="Precio mensual" />
-                  </label>
-                )}
+
+                <div className="stack">
+                  {/* Gimnasio */}
+                  <div className="tarjeta-plana" style={{ padding: '0.75rem' }}>
+                    <div className="fila-entre" style={{ marginBottom: '0.5rem' }}>
+                      <h4 style={{ margin: 0 }}>Gimnasio</h4>
+                      <label className="label" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: 0 }}>
+                        <input type="checkbox" checked={gym} onChange={(e) => setGym(e.target.checked)} />
+                        Activo
+                      </label>
+                    </div>
+                    {gym && (
+                      <>
+                        <label className="label">
+                          Precio mensual del gimnasio (opcional)
+                          <input
+                            type="number"
+                            min={0}
+                            value={precioMensualGym}
+                            onChange={(e) => setPrecioMensualGym(e.target.value)}
+                            className="input"
+                            placeholder="Ej: 15000"
+                          />
+                        </label>
+                        <p className="texto-sec" style={{ fontSize: '0.8rem' }}>
+                          Este valor se usará como referencia para el abono mensual del gym.
+                        </p>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Pileta */}
+                  <div className="tarjeta-plana" style={{ padding: '0.75rem' }}>
+                    <div className="fila-entre" style={{ marginBottom: '0.5rem' }}>
+                      <h4 style={{ margin: 0 }}>Pileta</h4>
+                      <label className="label" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: 0 }}>
+                        <input type="checkbox" checked={pileta} onChange={(e) => setPileta(e.target.checked)} />
+                        Activa
+                      </label>
+                    </div>
+                    {pileta && (
+                      <>
+                        <label className="label">
+                          Precio mensual de pileta (opcional)
+                          <input
+                            type="number"
+                            min={0}
+                            value={precioMensualPileta}
+                            onChange={(e) => setPrecioMensualPileta(e.target.value)}
+                            className="input"
+                            placeholder="Ej: 12000"
+                          />
+                        </label>
+                        <p className="texto-sec" style={{ fontSize: '0.8rem' }}>
+                          Este valor se usará como referencia para el abono mensual de pileta.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.75rem' }}>
-                  <Button variant="secondary" onClick={() => void guardarSetup({ amenidades: { gym, pileta, precio_mensual_gym: gym && precioMensualGym ? Number(precioMensualGym) : undefined, precio_mensual_pileta: pileta && precioMensualPileta ? Number(precioMensualPileta) : undefined } })}>
+                  <button className="boton boton-secondary" onClick={() => void guardarSetup({ amenidades: { gym, pileta, precio_mensual_gym: gym && precioMensualGym ? Number(precioMensualGym) : undefined, precio_mensual_pileta: pileta && precioMensualPileta ? Number(precioMensualPileta) : undefined } })}>
                     Guardar cambios
-                  </Button>
+                  </button>
                 </div>
               </Card>
             )}
@@ -622,16 +681,16 @@ export function ConfiguracionPage() {
                   Ofrecer socios con descuentos
                 </label>
                 <div style={{ marginTop: '1rem' }}>
-                  <h4 style={{ fontSize: '0.9rem' }}>Configuración de beneficios</h4>
+                  <h4 style={{ fontSize: '0.9rem' }}>Beneficios configurables</h4>
                   <p className="texto-sec">
                     Acá se configurarán los beneficios para socios (porcentaje de descuento, límites, etc.).
                     Esta sección se conectará con la tabla beneficios_socios cuando esté implementada por completo.
                   </p>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.75rem' }}>
-                  <Button variant="secondary" onClick={() => void guardarSetup({ socios: { ofrece_socios: ofreceSocios } })}>
+                  <button className="boton boton-secondary" onClick={() => void guardarSetup({ socios: { ofrece_socios: ofreceSocios } })}>
                     Guardar cambios
-                  </Button>
+                  </button>
                 </div>
               </Card>
             )}
