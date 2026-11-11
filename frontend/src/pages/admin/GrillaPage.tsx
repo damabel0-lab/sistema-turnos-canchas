@@ -3,6 +3,7 @@ import { api } from '../../lib/api';
 import { ToastContainer, useToast } from '../../components/ui/Toast';
 import { Badge } from '../../components/ui';
 import {
+  Goal,
   Plus,
   MapPin,
   RefreshCw,
@@ -278,70 +279,81 @@ export function GrillaPage() {
             <span className="leyenda-chip"><span className="leyenda-punto bloqueo" /> Bloqueo</span>
           </div>
         </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table className="grilla-dia">
-            <thead>
-              <tr>
-                <th scope="col" className="grilla-hora-col">Hora</th>
-                {filas.map((f) => (
-                  <th key={f.cancha_id} scope="col" className="grilla-cancha-head">
-                    {f.cancha}
-                    {f.deporte && <small>{f.deporte}</small>}
-                  </th>
-                ))}
-                {filas.length === 0 && <th scope="col" className="grilla-cancha-head">—</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {HORAS_TURNO.map((hora, idx) => (
-                <tr key={hora} className={idx % 2 === 0 ? 'grilla-fila-par' : undefined}>
-                  <th scope="row" className="grilla-hora-celda">
-                    <span className="grilla-hora-num">{hora.slice(0, 2)}<small>:{hora.slice(3)}</small></span>
-                    <span className="grilla-hora-dur">1 h</span>
-                  </th>
-                  {filas.map((f) => {
-                    const item = f.items.find((i) => i.hora === hora);
-                    if (!item) {
-                      return (
-                        <td key={f.cancha_id} className="grilla-slot-libre" aria-label="Libre">
-                          <span>libre</span>
-                        </td>
-                      );
-                    }
-                    if (item.tipo === 'bloqueo') {
-                      return (
-                        <td key={f.cancha_id} className="grilla-slot-celda">
-                          <div className="grilla-celda grilla-bloqueo" title={`Bloqueada: ${item.motivo ?? ''}`}>
-                            <Lock size={12} />
-                            <span className="grilla-celda-cliente">Bloqueo</span>
+        <div className="grilla-canchas">
+          {filas.length === 0 ? (
+            <div className="panel-vacio">No hay canchas para mostrar.</div>
+          ) : (
+            filas.map((f) => {
+              const reservasCount = f.items.filter((i) => i.tipo === 'reserva').length;
+              const ocupacion = Math.round((reservasCount / Math.max(HORAS_TURNO.length, 1)) * 100);
+              const libre = Math.max(HORAS_TURNO.length - reservasCount, 0);
+              return (
+                <section key={f.cancha_id} className="cal-card" aria-label={`Cancha ${f.cancha}`}>
+                  {/* Encabezado de la cancha */}
+                  <div className="cal-card-head">
+                    <div className="fila" style={{ gap: '0.5rem', minWidth: 0 }}>
+                      <span className="cal-cancha-icono">
+                        <Goal size={16} />
+                      </span>
+                      <div style={{ minWidth: 0 }}>
+                        <div className="cal-cancha-nombre">{f.cancha}</div>
+                        <div className="cal-cancha-deporte">{f.deporte ?? '—'}</div>
+                      </div>
+                    </div>
+                    <div className="cal-card-resumen">
+                      <span className="cal-chip-count">{reservasCount} turno{reservasCount !== 1 ? 's' : ''}</span>
+                      {libre > 0 && <span className="cal-chip-libre">{libre} libre{libre !== 1 ? 's' : ''}</span>}
+                    </div>
+                  </div>
+
+                  {/* Barra de ocupación */}
+                  <div className="cal-ocup-track" role="progressbar" aria-valuenow={ocupacion} aria-valuemin={0} aria-valuemax={100} title={`${ocupacion}% de ocupación`}>
+                    <div className="cal-ocup-fill" style={{ width: `${ocupacion}%` }} />
+                  </div>
+
+                  {/* Grilla de horarios */}
+                  <div className="cal-slots">
+                    {HORAS_TURNO.map((h) => {
+                      const item = f.items.find((i) => i.hora === h);
+                      if (!item) {
+                        return (
+                          <div key={h} className="cal-slot libre" title={`${h} · Libre`}>
+                            <span className="cal-slot-hora">{h}</span>
                           </div>
-                        </td>
-                      );
-                    }
-                    const estado = item.estado ?? 'pendiente_seña';
-                    return (
-                      <td key={f.cancha_id} className="grilla-slot-celda">
+                        );
+                      }
+                      if (item.tipo === 'bloqueo') {
+                        return (
+                          <div key={h} className="cal-slot bloqueo" title={`${h} · Bloqueada${item.motivo ? `: ${item.motivo}` : ''}`}>
+                            <Lock size={10} />
+                            <span className="cal-slot-hora">{h}</span>
+                          </div>
+                        );
+                      }
+                      const estado = item.estado ?? 'pendiente_seña';
+                      return (
                         <button
+                          key={h}
                           type="button"
-                          className={`grilla-celda grilla-celda-grande ${estado}`}
+                          className={`cal-slot ${estado}`}
+                          disabled={!item.reserva_id}
                           onClick={() => {
                             if (item.reserva_id) {
                               setSel({ reserva_id: item.reserva_id, cliente: item.cliente, estado: item.estado, monto: item.monto });
                             }
                           }}
-                          title={`${item.cliente ?? 'Cliente'} · ${estado} · ${precio(item.monto ?? 0)}`}
+                          title={`${h} · ${item.cliente ?? 'Reserva'} · ${estado} · ${precio(item.monto ?? 0)}`}
                         >
-                          <span className="grilla-celda-cliente">{item.cliente ?? 'Reserva'}</span>
-                          <span className="grilla-celda-monto">{precio(item.monto ?? 0)}</span>
+                          <span className="cal-slot-hora">{h}</span>
+                          <span className="cal-slot-cliente">{item.cliente ?? 'Reserva'}</span>
                         </button>
-                      </td>
-                    );
-                  })}
-                  {filas.length === 0 && <td className="grilla-slot-libre">—</td>}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                      );
+                    })}
+                  </div>
+                </section>
+              );
+            })
+          )}
         </div>
       </section>
 

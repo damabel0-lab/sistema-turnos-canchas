@@ -1191,191 +1191,184 @@ body {
 .leyenda-punto.completada { background: var(--info); }
 .leyenda-punto.bloqueo { background: var(--texto-3); }
 
-/* ===== Agenda del día: vista calendario (hora = fila, cancha = columna) ===== */
-.grilla-dia {
-  border-collapse: separate;
-  border-spacing: 0;
-  width: 100%;
-  min-width: 420px;
-  font-size: 0.82rem;
+/* ===== Agenda del día: tarjeta por cancha con mini-grilla calendario ===== */
+.grilla-canchas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 0.8rem;
+  padding: 0.7rem;
 }
 
-.grilla-dia th,
-.grilla-dia td {
+.cal-card {
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radio-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.cal-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.55rem 0.7rem;
+  background: color-mix(in srgb, var(--bg-surface) 60%, transparent);
   border-bottom: 1px solid var(--border);
 }
 
-.grilla-dia thead th {
-  background: var(--bg-surface-2);
-  padding: 0.55rem 0.75rem;
-  font-size: 0.78rem;
+.cal-cancha-icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 0.6rem;
+  background: var(--primario-soft);
+  color: var(--primario-2);
+  flex-shrink: 0;
+}
+
+.cal-cancha-nombre {
   font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--texto-2);
-  text-align: left;
-  white-space: nowrap;
-}
-
-.grilla-hora-col {
-  width: 4.5rem;
-}
-
-.grilla-cancha-head {
-  display: table-cell;
-}
-
-.grilla-cancha-head small {
-  display: block;
-  font-weight: 500;
-  font-size: 0.68rem;
-  color: var(--texto-3);
-  text-transform: none;
-  letter-spacing: 0;
-}
-
-.grilla-hora-celda {
-  padding: 0.3rem 0.75rem;
-  text-align: left !important;
-  vertical-align: middle;
-  background: var(--bg-surface);
-  white-space: nowrap;
-}
-
-.grilla-hora-num {
-  font-size: 0.92rem;
-  font-weight: 850;
-  letter-spacing: -0.02em;
-  color: var(--texto);
-}
-
-.grilla-hora-num small {
-  font-size: 0.66rem;
-  color: var(--texto-3);
-  font-weight: 700;
-}
-
-.grilla-hora-dur {
-  display: block;
-  font-size: 0.62rem;
-  font-weight: 700;
-  color: var(--texto-3);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.grilla-fila-par td,
-.grilla-fila-par th {
-  background: var(--bg-surface-2);
-}
-
-.grilla-slot-libre {
-  padding: 0.3rem 0.75rem;
-  height: 3.1rem;
-  vertical-align: middle;
-  color: var(--texto-3);
-  font-size: 0.78rem;
-  font-style: italic;
-}
-
-.grilla-slot-libre span {
-  opacity: 0.75;
-}
-
-.grilla-slot-celda {
-  padding: 0.3rem 0.45rem;
-  vertical-align: middle;
-  height: 3.1rem;
-}
-
-.grilla-celda-grande {
-  min-width: 88px;
-  flex-direction: row !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  gap: 0.6rem !important;
-  height: 2.5rem;
-  padding-left: 0.6rem !important;
-  padding-right: 0.6rem !important;
-}
-
-.grilla-celda-grande .grilla-celda-monto {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: inherit;
-  opacity: 0.9;
-}
-
-.grilla-celda {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.1rem;
-  width: 100%;
-  min-width: 96px;
-  padding: 0.32rem 0.45rem;
-  border-radius: 0.55rem;
-  border: 1px solid var(--border);
-  background: var(--bg-surface-2);
-  color: var(--texto);
-  font-family: inherit;
-  cursor: pointer;
-  text-align: left;
-  transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
-}
-
-.grilla-celda:hover {
-  transform: translateY(-1px);
-  border-color: var(--primario);
-  box-shadow: var(--sombra-sm);
-}
-
-.grilla-celda-cliente {
-  font-size: 0.76rem;
-  font-weight: 700;
-  max-width: 140px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 0.9rem;
   letter-spacing: -0.01em;
+  line-height: 1.1;
 }
 
-.grilla-celda-monto {
-  font-size: 0.68rem;
+.cal-cancha-deporte {
+  font-size: 0.7rem;
   color: var(--texto-2);
   font-weight: 600;
 }
 
-.grilla-celda.confirmada {
-  background: color-mix(in srgb, var(--exito) 18%, transparent);
-  border-color: color-mix(in srgb, var(--exito) 38%, transparent);
+.cal-card-resumen {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+  flex-shrink: 0;
 }
 
-.grilla-celda.pendiente_seña {
-  background: color-mix(in srgb, var(--advertencia) 18%, transparent);
+.cal-chip-count {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--primario-2);
+  background: var(--primario-soft);
+  border-radius: 9999px;
+  padding: 0.15rem 0.5rem;
+}
+
+.cal-chip-libre {
+  font-size: 0.64rem;
+  font-weight: 600;
+  color: var(--texto-3);
+}
+
+.cal-ocup-track {
+  height: 0.22rem;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.cal-ocup-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primario-2), var(--primario));
+  transition: width 0.4s ease;
+}
+
+.cal-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(102px, 1fr));
+  gap: 0.25rem;
+  padding: 0.5rem;
+}
+
+.cal-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.05rem;
+  min-height: 2.75rem;
+  padding: 0.25rem 0.2rem;
+  border-radius: 0.55rem;
+  border: 1px solid transparent;
+  font-family: inherit;
+  text-align: center;
+  line-height: 1.15;
+  overflow: hidden;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+}
+
+.cal-slot-hora {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.cal-slot-cliente {
+  font-size: 0.64rem;
+  font-weight: 600;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.9;
+}
+
+.cal-slot.libre {
+  background: transparent;
+  border-color: var(--border);
+  border-style: dashed;
+  color: var(--texto-3);
+}
+
+.cal-slot.confirmada {
+  background: color-mix(in srgb, var(--exito) 20%, transparent);
+  border-color: color-mix(in srgb, var(--exito) 40%, transparent);
+  color: var(--exito);
+  cursor: pointer;
+}
+
+.cal-slot.pendiente_seña {
+  background: color-mix(in srgb, var(--advertencia) 20%, transparent);
   border-color: color-mix(in srgb, var(--advertencia) 40%, transparent);
+  color: var(--advertencia);
+  cursor: pointer;
 }
 
-.grilla-celda.completada {
-  background: color-mix(in srgb, var(--info) 13%, transparent);
+.cal-slot.completada {
+  background: color-mix(in srgb, var(--info) 15%, transparent);
   border-color: color-mix(in srgb, var(--info) 32%, transparent);
-  opacity: 0.85;
+  color: var(--info);
+  opacity: 0.9;
+  cursor: pointer;
 }
 
-.grilla-celda.grilla-bloqueo {
+.cal-slot.confirmada:hover,
+.cal-slot.pendiente_seña:hover,
+.cal-slot.completada:hover {
+  transform: translateY(-1px) scale(1.03);
+  box-shadow: var(--sombra-sm);
+  border-color: inherit;
+}
+
+.cal-slot.bloqueo {
   background: repeating-linear-gradient(
     -45deg,
     var(--bg-surface-3),
-    var(--bg-surface-3) 6px,
-    color-mix(in srgb, var(--bg-surface-3) 85%, var(--texto-3)) 6px,
-    color-mix(in srgb, var(--bg-surface-3) 85%, var(--texto-3)) 12px
+    var(--bg-surface-3) 5px,
+    color-mix(in srgb, var(--bg-surface-3) 82%, var(--texto-3)) 5px,
+    color-mix(in srgb, var(--bg-surface-3) 82%, var(--texto-3)) 10px
   );
   color: var(--texto-3);
-  cursor: default;
-  gap: 0.35rem;
-  align-items: center;
-  flex-direction: row;
-  height: 2.5rem;
+  border-color: var(--border);
+}
+
+.cal-slot.bloqueo .cal-slot-cliente {
+  font-size: 0.62rem;
 }
 
 .grilla-celda.grilla-bloqueo .grilla-celda-cliente {
