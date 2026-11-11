@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { api } from '../../lib/api';
 import { ToastContainer, useToast } from '../../components/ui/Toast';
+import { SelectOpciones, type GrupoSelect } from '../../components/ui/SelectOpciones';
 import { Badge } from '../../components/ui';
 import {
   Goal,
@@ -99,6 +100,27 @@ export function GrillaPage() {
     }
     return [...map.entries()].sort(([a], [b]) => a.localeCompare(b, 'es'));
   }, [filas]);
+
+  /** Opciones de cancha agrupadas por deporte (para los selects del admin) */
+  const gruposCancha = useMemo<GrupoSelect[]>(
+    () =>
+      grupos.map(([label, canchas]) => ({
+        label,
+        opciones: canchas.map((f) => ({ valor: String(f.cancha_id), label: f.cancha })),
+      })),
+    [grupos],
+  );
+
+  const opcionesHoras = useMemo<GrupoSelect[]>(
+    () => [
+      {
+        label: `Horarios (${HORAS_TURNO.length} turnos de 1 h)`,
+        opciones: HORAS_TURNO.map((h) => ({ valor: h, label: h })),
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [HORAS_TURNO.length, HORAS_TURNO.join('|')],
+  );
 
   function mover(id: string, dir: 1 | -1) {
     const el = carrilesRefs.current[id];
@@ -441,17 +463,24 @@ export function GrillaPage() {
             <label className="label">Nombre<input required value={carga.nombre} onChange={(e) => setCarga({ ...carga, nombre: e.target.value })} className="input" placeholder="Juan Pérez" /></label>
             <label className="label">Teléfono<input required value={carga.telefono} onChange={(e) => setCarga({ ...carga, telefono: e.target.value })} className="input" placeholder="+54 9 11 0000-0000" /></label>
             <label className="label">Cancha
-              <select required value={carga.cancha_id} onChange={(e) => setCarga({ ...carga, cancha_id: e.target.value })} className="input">
-                <option value="">Elegir…</option>
-                {filas.map((f) => (<option key={f.cancha_id} value={f.cancha_id}>{f.cancha}</option>))}
-              </select>
+              <SelectOpciones
+                valor={carga.cancha_id}
+                onChange={(v) => setCarga({ ...carga, cancha_id: v })}
+                grupos={gruposCancha}
+                placeholder="Elegir deporte → cancha…"
+                ariaLabel="Elegir cancha por deporte"
+              />
             </label>
             <label className="label">Hora (1 h)
-              <select value={carga.hora} onChange={(e) => setCarga({ ...carga, hora: e.target.value })} className="input">
-                {HORAS_TURNO.map((h) => (<option key={h} value={h}>{h}</option>))}
-              </select>
+              <SelectOpciones
+                valor={carga.hora}
+                onChange={(v) => setCarga({ ...carga, hora: v })}
+                grupos={opcionesHoras}
+                placeholder="Elegir horario…"
+                ariaLabel="Elegir hora"
+              />
             </label>
-            <button type="submit" className="boton boton-primario boton-block"><Plus size={15} /> Anotar turno</button>
+            <button type="submit" className="boton boton-primario boton-block" disabled={!carga.nombre.trim() || !carga.telefono.trim() || !carga.cancha_id}><Plus size={15} /> Anotar turno</button>
           </form>
         </section>
 
@@ -465,10 +494,13 @@ export function GrillaPage() {
             <label className="label">Teléfono<input required value={turnoFijo.telefono} onChange={(e) => setTurnoFijo({ ...turnoFijo, telefono: e.target.value })} className="input" placeholder="+54 9 11 0000-0000" /></label>
             <div className="grid-2" style={{ gap: '0.5rem' }}>
               <label className="label">Cancha
-                <select required value={turnoFijo.cancha_id} onChange={(e) => setTurnoFijo({ ...turnoFijo, cancha_id: e.target.value })} className="input">
-                  <option value="">Elegir…</option>
-                  {filas.map((f) => (<option key={f.cancha_id} value={f.cancha_id}>{f.cancha}</option>))}
-                </select>
+                <SelectOpciones
+                  valor={turnoFijo.cancha_id}
+                  onChange={(v) => setTurnoFijo({ ...turnoFijo, cancha_id: v })}
+                  grupos={gruposCancha}
+                  placeholder="Elegir deporte → cancha…"
+                  ariaLabel="Elegir cancha por deporte"
+                />
               </label>
               <label className="label">Día
                 <select required value={turnoFijo.dia_semana} onChange={(e) => setTurnoFijo({ ...turnoFijo, dia_semana: e.target.value })} className="input">
@@ -479,16 +511,19 @@ export function GrillaPage() {
             </div>
             <div className="grid-2" style={{ gap: '0.5rem' }}>
               <label className="label">Hora
-                <select required value={turnoFijo.hora} onChange={(e) => setTurnoFijo({ ...turnoFijo, hora: e.target.value })} className="input">
-                  <option value="">Elegir…</option>
-                  {HORAS_TURNO.map((h) => (<option key={h} value={h}>{h}</option>))}
-                </select>
+                <SelectOpciones
+                  valor={turnoFijo.hora}
+                  onChange={(v) => setTurnoFijo({ ...turnoFijo, hora: v })}
+                  grupos={opcionesHoras}
+                  placeholder="Elegir horario…"
+                  ariaLabel="Elegir hora"
+                />
               </label>
               <label className="label">Semanas
                 <input required type="number" min={1} max={52} value={turnoFijo.semanas} onChange={(e) => setTurnoFijo({ ...turnoFijo, semanas: e.target.value })} className="input" />
               </label>
             </div>
-            <button type="submit" className="boton boton-primario boton-block"><Repeat size={15} /> Crear turno fijo</button>
+            <button type="submit" className="boton boton-primario boton-block" disabled={!turnoFijo.nombre.trim() || !turnoFijo.telefono.trim() || !turnoFijo.cancha_id || !turnoFijo.dia_semana || !turnoFijo.hora}><Repeat size={15} /> Crear turno fijo</button>
           </form>
         </section>
 
@@ -499,10 +534,13 @@ export function GrillaPage() {
           </div>
           <form onSubmit={guardarBloqueo} className="panel-body">
             <label className="label">Cancha
-              <select required value={bloqueo.cancha_id} onChange={(e) => setBloqueo({ ...bloqueo, cancha_id: e.target.value })} className="input">
-                <option value="">Elegir…</option>
-                {filas.map((f) => (<option key={f.cancha_id} value={f.cancha_id}>{f.cancha}</option>))}
-              </select>
+              <SelectOpciones
+                valor={bloqueo.cancha_id}
+                onChange={(v) => setBloqueo({ ...bloqueo, cancha_id: v })}
+                grupos={gruposCancha}
+                placeholder="Elegir deporte → cancha…"
+                ariaLabel="Elegir cancha por deporte"
+              />
             </label>
             <div className="grid-2" style={{ gap: '0.5rem' }}>
               <label className="label">Desde<input type="time" value={bloqueo.desde} onChange={(e) => setBloqueo({ ...bloqueo, desde: e.target.value })} className="input" /></label>
@@ -511,7 +549,7 @@ export function GrillaPage() {
             <label className="label">Motivo
               <input required value={bloqueo.motivo} placeholder="Lluvia, mantenimiento, evento…" onChange={(e) => setBloqueo({ ...bloqueo, motivo: e.target.value })} className="input" />
             </label>
-            <button type="submit" className="boton boton-danger boton-block"><Lock size={15} /> Bloquear</button>
+            <button type="submit" className="boton boton-danger boton-block" disabled={!bloqueo.cancha_id || !bloqueo.motivo.trim()}><Lock size={15} /> Bloquear</button>
           </form>
         </section>
       </div>
