@@ -41,7 +41,7 @@ export interface NuevoTorneo {
 export async function listarTorneos() {
   const { data, error } = await supabaseAdmin
     .from('torneos')
-    .select('*')
+    .select('*, deportes(nombre)')
     .order('fecha_inicio', { ascending: false });
   if (error) throw new HttpError(500, error.message);
   return data ?? [];
@@ -50,7 +50,7 @@ export async function listarTorneos() {
 export async function listarTorneosActivos() {
   const { data, error } = await supabaseAdmin
     .from('torneos')
-    .select('*')
+    .select('*, deportes(nombre)')
     .eq('activo', true)
     .order('fecha_inicio', { ascending: true });
   if (error) throw new HttpError(500, error.message);
@@ -95,7 +95,7 @@ export interface TorneoActual {
 export async function obtenerTorneoConConteos(torneoId: number): Promise<TorneoActual> {
   const { data: torneo, error: eT } = await supabaseAdmin
     .from('torneos')
-    .select('*')
+    .select('*, deportes(nombre)')
     .eq('id', torneoId)
     .single();
   if (eT || !torneo) throw new HttpError(404, 'Torneo no encontrado');

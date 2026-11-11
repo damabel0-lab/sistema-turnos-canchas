@@ -56,9 +56,11 @@ interface TorneoActivo {
   modalidad: 'individual' | 'equipos';
   formato: 'todos_contra_todos' | 'eliminacion_directa';
   cupo_equipos: number | null;
+  jugadores_por_equipo: number | null;
   cuota_inscripcion: number | null;
   reglamento: string | null;
   estado: 'inscripcion' | 'en_curso' | 'finalizado' | 'cancelado';
+  deportes?: { nombre: string } | null;
 }
 
 export function TorneosClientePage() {
@@ -222,6 +224,8 @@ export function TorneosClientePage() {
                       <div className="fila" style={{ gap: '0.4rem', flexWrap: 'wrap' }}>
                         <span className="badge badge-neutro">{t.modalidad === 'equipos' ? 'Equipos' : 'Individual'}</span>
                         <span className="badge badge-neutro">{t.formato === 'todos_contra_todos' ? 'Todos vs Todos' : 'Eliminación directa'}</span>
+                        {t.deportes?.nombre && <span className="badge badge-info">{t.deportes.nombre}</span>}
+                        {t.jugadores_por_equipo != null && <span className="badge badge-success">{t.jugadores_por_equipo}v{t.jugadores_por_equipo}</span>}
                       </div>
                       <div className="fila-entre" style={{ borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
                         <span className="texto-sec" style={{ fontSize: '0.8rem' }}><CalendarDays size={12} style={{ verticalAlign: '-0.1em' }} /> {fecha}</span>
@@ -258,6 +262,10 @@ export function TorneosClientePage() {
                       <Badge variant="info">{torneoSeleccionado.modalidad === 'equipos' ? 'Equipos' : 'Individual'}</Badge>
                       <Badge variant="neutral">{torneoSeleccionado.formato === 'todos_contra_todos' ? 'Todos vs todos' : 'Eliminación directa'}</Badge>
                       <Badge variant={torneoSeleccionado.estado === 'en_curso' ? 'success' : 'warning'}>{torneoSeleccionado.estado === 'en_curso' ? 'En curso' : 'Inscripción'}</Badge>
+                      {torneoSeleccionado.deportes?.nombre && <Badge variant="info">{torneoSeleccionado.deportes.nombre}</Badge>}
+                      {torneoSeleccionado.jugadores_por_equipo != null && (
+                        <Badge variant="success">{`${torneoSeleccionado.jugadores_por_equipo}v${torneoSeleccionado.jugadores_por_equipo}`}</Badge>
+                      )}
                     </div>
                     <div className="fila" style={{ gap: '0.4rem' }}>
                       <CalendarDays size={14} style={{ color: 'var(--texto-2)' }} />
@@ -317,7 +325,7 @@ export function TorneosClientePage() {
               {/* ===== Inscriptos + fixture ===== */}
               <div className="stack" style={{ gap: '0.9rem' }}>
                 {/* Inscriptos */}
-                <section className="panel">
+                <section className="panel panel-con-altura">
                   <div className="panel-header"><span className="panel-titulo">Inscriptos</span><span className="texto-debil">{inscripciones.length}</span></div>
                   <div className="panel-body" style={{ gap: '0.35rem' }}>
                     {inscripciones.length === 0 ? (
@@ -338,7 +346,7 @@ export function TorneosClientePage() {
 
                 {/* Fixture */}
                 {partidos.length > 0 && (
-                  <section className="panel">
+                  <section className="panel panel-con-altura">
                     <div className="panel-header"><span className="panel-titulo">Fixture</span></div>
                     <div className="panel-body" style={{ gap: '0.35rem' }}>
                       {partidos.map((p) => (
@@ -358,7 +366,7 @@ export function TorneosClientePage() {
 
                 {/* Tabla */}
                 {tabla.length > 0 && (
-                  <section className="panel">
+                  <section className="panel panel-con-altura">
                     <div className="panel-header"><span className="panel-titulo">Tabla de posiciones</span></div>
                     <div className="panel-body" style={{ padding: '0.5rem 0.75rem' }}>
                       <table className="tabla" style={{ width: '100%' }}>

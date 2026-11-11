@@ -32,10 +32,12 @@ interface Torneo {
   activo: boolean;
   modalidad: 'individual' | 'equipos';
   formato: 'todos_contra_todos' | 'eliminacion_directa';
+  jugadores_por_equipo: number | null;
   cupo_equipos: number | null;
   cuota_inscripcion: number | null;
   reglamento: string | null;
   estado: 'inscripcion' | 'en_curso' | 'finalizado' | 'cancelado';
+  deportes?: { nombre: string } | null;
 }
 
 interface EquipoVista {
@@ -276,7 +278,15 @@ export function TorneosPage() {
                     <div className="item-turno-icono"><Trophy size={16} /></div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div className="item-turno-nombre">{t.nombre}</div>
-                      <div className="item-turno-meta">{t.modalidad === 'equipos' ? 'Equipos' : 'Individual'} · {t.formato === 'todos_contra_todos' ? 'Todos vs Todos' : 'Eliminación directa'} · {t.estado === 'en_curso' ? 'En curso' : t.estado === 'finalizado' ? 'Finalizado' : 'Inscripción'}</div>
+                      <div className="item-turno-meta">
+                        {t.deportes?.nombre ? `${t.deportes.nombre} · ` : ''}
+                        {t.modalidad === 'equipos' ? 'Equipos' : 'Individual'} · {t.formato === 'todos_contra_todos' ? 'Todos vs Todos' : 'Eliminación directa'} · {t.estado === 'en_curso' ? 'En curso' : t.estado === 'finalizado' ? 'Finalizado' : 'Inscripción'}
+                      </div>
+                      {t.jugadores_por_equipo != null && (
+                        <div className="texto-debil" style={{ fontSize: '0.78rem' }}>
+                          {t.jugadores_por_equipo} v {t.jugadores_por_equipo}
+                        </div>
+                      )}
                     </div>
                     <ChevronRight size={15} style={{ color: activo ? 'var(--primario-2)' : 'var(--texto-3)' }} />
                   </button>
