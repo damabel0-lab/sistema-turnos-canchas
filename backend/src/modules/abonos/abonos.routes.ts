@@ -10,6 +10,10 @@ import {
   consumirClase,
   listarAbonosVencidos,
   cerrarAbonosVencidos,
+  solicitarAbono,
+  listarSolicitudes,
+  aprobarSolicitud,
+  rechazarSolicitud,
 } from './abonos.service.js';
 
 export const abonosRouter = Router();
@@ -30,6 +34,41 @@ abonosRouter.get(
   '/mis',
   h(async (req: AuthedRequest, res) => {
     res.json(await listarAbonosDelUsuario(req.userId!));
+  }),
+);
+
+// POST /abonos/solicitud -> el cliente pide la mensualidad desde la app
+abonosRouter.post(
+  '/solicitud',
+  h(async (req: AuthedRequest, res) => {
+    res.status(201).json(await solicitarAbono(req.userId!, (req.body ?? {}).servicio));
+  }),
+);
+
+// GET /abonos/solicitudes -> solicitudes pendientes de activación (staff)
+abonosRouter.get(
+  '/solicitudes',
+  requireStaff,
+  h(async (_req, res) => {
+    res.json(await listarSolicitudes());
+  }),
+);
+
+// POST /abonos/solicitudes/:id/aprobar -> staff activa tras cobrar en el mostrador
+abonosRouter.post(
+  '/solicitudes/:id/aprobar',
+  requireStaff,
+  h(async (req, res) => {
+    res.json(await aprobarSolicitud(Number(req.params.id), req.body ?? {}));
+  }),
+);
+
+// POST /abonos/solicitudes/:id/rechazar -> staff rechaza la solicitud
+abonosRouter.post(
+  '/solicitudes/:id/rechazar',
+  requireStaff,
+  h(async (req, res) => {
+    res.json(await rechazarSolicitud(Number(req.params.id)));
   }),
 );
 

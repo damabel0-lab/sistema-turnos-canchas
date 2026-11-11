@@ -75,7 +75,9 @@ CREATE TABLE public.abonos (
   fecha_inicio date NOT NULL,
   fecha_vencimiento date NOT NULL,
   monto_pagado numeric NOT NULL,
-  activo boolean DEFAULT true
+  activo boolean DEFAULT true,
+  servicio character varying CHECK (servicio IN ('gym', 'pileta')),
+  estado character varying NOT NULL DEFAULT 'activo' CHECK (estado IN ('solicitado', 'activo', 'cancelado'))
 );
 
 -- ---------- RESERVAS ----------
