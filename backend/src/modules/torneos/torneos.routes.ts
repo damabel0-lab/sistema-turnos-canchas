@@ -10,7 +10,7 @@ import {
   crearEquipoConCapitan,
   cancelarInscripcionIndividual,
   cancelarEquipo,
-  generarFixtureAllVsAll,
+  generarFixture,
   listarPartidos,
   cargarResultadoPartido,
   tablaPosiciones,
@@ -110,12 +110,12 @@ torneosRouter.get(
 
 /* ===== Fixture y tabla ===== */
 
-// POST /torneos/:id/fixture -> generar (staff)
+// POST /torneos/:id/fixture -> generar eliminatoria o todos_contra_todos
 torneosRouter.post(
   '/:id/fixture',
   requireStaff,
   h(async (req, res) => {
-    res.json(await generarFixtureAllVsAll(Number(req.params.id)));
+    res.json(await generarFixture(Number(req.params.id)));
   }),
 );
 

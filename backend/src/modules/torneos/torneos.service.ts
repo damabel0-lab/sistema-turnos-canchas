@@ -208,6 +208,42 @@ export async function listarInscripciones(torneoId: number) {
 
 /* ===== Fixture ===== */
 
+/** Participantes del torneo (equipos + inscripciones individuales, normalizados como equipos) */
+async function obtenerParticipantes(torneoId: number) {
+  const { data: inscriptos } = await supabaseAdmin
+    .from('inscripciones_torneo')
+    .select('usuario_id')
+    .eq('torneo_id', torneoId);
+  const individualIds = (inscriptos ?? []).map((r) => r.usuario_id);
+
+  const { data: equipoList } = await supabaseAdmin
+    .from('equipos_torneo')
+    .select('id, nombre_equipo, capitan_id')
+    .eq('torneo_id', torneoId)
+    .order('id');
+
+  let participantes: Array<{ id: number; nombre_equipo: string }> = [];
+  if (equipoList && equipoList.length >= 2) {
+    participantes = equipoList.map((e) => ({ id: e.id, nombre_equipo: e.nombre_equipo }));
+  } else if (individualIds.length >= 2) {
+    const { data: usuarios } = await supabaseAdmin
+      .from('usuarios')
+      .select('id, nombre, apellido')
+      .in('id', individualIds);
+    for (const u of usuarios ?? []) {
+      const { data: eq, error: eEq } = await supabaseAdmin
+        .from('equipos_torneo')
+        .insert({ torneo_id: torneoId, nombre_equipo: `${u.nombre} ${u.apellido}`.trim(), capitan_id: u.id })
+        .select('id, nombre_equipo, capitan_id')
+        .single();
+      if (eq) participantes.push(eq);
+    }
+  } else {
+    throw new HttpError(400, 'Necesitás al menos 2 participantes para generar el fixture');
+  }
+  return participantes;
+}
+
 /** Genera el fixture (todos contra todos) respetando N equipos (bye si son impares). */
 export async function generarFixtureAllVsAll(torneoId: number) {
   const { data: torneo, error: eT } = await supabaseAdmin
@@ -219,43 +255,8 @@ export async function generarFixtureAllVsAll(torneoId: number) {
   if (torneo.formato !== 'todos_contra_todos') throw new HttpError(400, 'Formato no soportado por el generador automático — usá todos_contra_todos');
   if (torneo.estado !== 'inscripcion') throw new HttpError(400, 'El torneo ya empezó');
 
-  // Participantes = equipos + inscriptos individuales
-  const { data: inscriptos } = await supabaseAdmin
-    .from('inscripciones_torneo')
-    .select('usuario_id')
-    .eq('torneo_id', torneoId);
-  const individualIds = (inscriptos ?? []).map((r) => r.usuario_id);
-
-  const { data: equipoList } = await supabaseAdmin
-    .from('equipos_torneo')
-    .select('id, nombre_equipo')
-    .eq('torneo_id', torneoId);
-  const equiposIds = (equipoList ?? []).map((r) => r.id);
-
-  let participantes: number[] = [];
-  if (equipoList && equipoList.length >= 2) {
-    participantes = equipoList.map((e) => e.id);
-  } else if (individualIds.length >= 2) {
-    // Para individual, cada inscripto se trata como un equipo-virtual "cabezam"-inscripto
-    // Almacena como equipo con id = usuario_id para fijar todas las reservas
-    // — simplificación: para individual traemos usuarios y creamos equipos temporalmente
-    const { data: usuarios } = await supabaseAdmin
-      .from('usuarios')
-      .select('id, nombre, apellido')
-      .in('id', individualIds);
-    const creados: Array<{ id: number }> = [];
-    for (const u of usuarios ?? []) {
-      const { data: eq, error: eEq } = await supabaseAdmin
-        .from('equipos_torneo')
-        .insert({ torneo_id: torneoId, nombre_equipo: `${u.nombre} ${u.apellido}`.trim(), capitan_id: u.id })
-        .select('id')
-        .single();
-      if (eq) creados.push(eq);
-    }
-    participantes = creados.map((e) => e.id);
-  } else {
-    throw new HttpError(400, 'Necesitás al menos 2 participantes para generar el fixture');
-  }
+  const participantes = await obtenerParticipantes(torneoId);
+  const ids = participantes.map((p) => p.id);
 
   // Limpiar fixture anterior si existe
   await supabaseAdmin.from('partidos_torneo').delete().eq('torneo_id', torneoId);
@@ -267,12 +268,12 @@ export async function generarFixtureAllVsAll(torneoId: number) {
     equipo_visitante_id: number;
     fase: string;
   }> = [];
-  for (let i = 0; i < participantes.length; i++) {
-    for (let j = i + 1; j < participantes.length; j++) {
+  for (let i = 0; i < ids.length; i++) {
+    for (let j = i + 1; j < ids.length; j++) {
       partidos.push({
         torneo_id: torneoId,
-        equipo_local_id: participantes[i],
-        equipo_visitante_id: participantes[j],
+        equipo_local_id: ids[i],
+        equipo_visitante_id: ids[j],
         fase: 'Grupos',
       });
     }
@@ -285,6 +286,50 @@ export async function generarFixtureAllVsAll(torneoId: number) {
 
   await supabaseAdmin.from('torneos').update({ estado: 'en_curso' }).eq('id', torneoId);
   return { generadas: partidos.length };
+}
+
+export async function generarFixtureEliminatoria(torneoId: number) {
+  const { data: torneo, error: eT } = await supabaseAdmin
+    .from('torneos')
+    .select('id, estado, formato')
+    .eq('id', torneoId)
+    .single();
+  if (eT || !torneo) throw new HttpError(404, 'Torneo no encontrado');
+  if (torneo.formato !== 'eliminacion_directa') throw new HttpError(400, 'Formato no soportado');
+  if (torneo.estado !== 'inscripcion') throw new HttpError(400, 'El torneo ya empezó');
+
+  const participantes = await obtenerParticipantes(torneoId);
+
+  await supabaseAdmin.from('partidos_torneo').delete().eq('torneo_id', torneoId);
+
+  const { construirBracketLocal } = await import('./bracket.service.js');
+  const slots = await construirBracketLocal(participantes);
+
+  if (slots.length > 0) {
+    const { error } = await supabaseAdmin.from('partidos_torneo').insert(
+      slots.map((s) => ({
+        torneo_id: torneoId,
+        equipo_local_id: s.local_id,
+        equipo_visitante_id: s.visitante_id,
+        fase: s.fase,
+      })),
+    );
+    if (error) throw new HttpError(500, error.message);
+  }
+
+  await supabaseAdmin.from('torneos').update({ estado: 'en_curso' }).eq('id', torneoId);
+  return { generadas: slots.length };
+}
+
+/** Dispatch al generador según formato */
+export async function generarFixture(torneoId: number) {
+  const { data: torneo } = await supabaseAdmin
+    .from('torneos')
+    .select('formato')
+    .eq('id', torneoId)
+    .single();
+  if (torneo?.formato === 'eliminacion_directa') return generarFixtureEliminatoria(torneoId);
+  return generarFixtureAllVsAll(torneoId);
 }
 
 export interface PartidoTorneo {
@@ -329,6 +374,13 @@ export async function cargarResultadoPartido(
   golesVisitante: number,
   jugado: boolean,
 ) {
+  const { data: partido } = await supabaseAdmin
+    .from('partidos_torneo')
+    .select('torneo_id, fase')
+    .eq('id', partidoId)
+    .single();
+  if (!partido) throw new HttpError(404, 'Partido no encontrado');
+
   const { data, error } = await supabaseAdmin
     .from('partidos_torneo')
     .update({ goles_local: golesLocal, goles_visitante: golesVisitante, jugado })
@@ -336,6 +388,12 @@ export async function cargarResultadoPartido(
     .select()
     .single();
   if (error) throw new HttpError(400, error.message);
+
+  // Si el torneo es eliminatoria directa y la ronda se completó, auto-crear la siguiente fase
+  if (jugado) {
+    const { autoAvanzarBracket } = await import('./bracket.service.js');
+    await autoAvanzarBracket(partido.torneo_id, partido.fase);
+  }
   return data;
 }
 
