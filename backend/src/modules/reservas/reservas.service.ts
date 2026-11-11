@@ -328,6 +328,8 @@ export interface NuevaReserva {
   estado?: 'pendiente_seña' | 'confirmada';
   /** Para la carga manual del admin: cliente sin cuenta */
   cliente_nombre?: string | null;
+  /** Marca si esta reserva se proyectó automáticamente como turno fijo semanal */
+  es_turno_fijo?: boolean;
 }
 
 /**
@@ -419,6 +421,7 @@ export async function crearReserva(entrada: NuevaReserva) {
       monto_seña: monto_seña ?? 0,
       metodo_pago: (entrada.metodo_pago ?? null) as never,
       estado: entrada.estado ?? 'pendiente_seña',
+      es_turno_fijo: entrada.es_turno_fijo ?? false,
     })
     .select()
     .single();
@@ -594,6 +597,7 @@ export async function proyectarTurnosFijos(entrada: TurnoFijoEntrada) {
         monto_seña: entrada.monto_seña,
         metodo_pago: entrada.metodo_pago,
         estado: entrada.estado,
+        es_turno_fijo: true,
       });
       creadas.push({ fecha: fechaStr, reserva_id: reserva.id });
     } catch (err) {
