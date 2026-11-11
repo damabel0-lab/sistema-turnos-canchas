@@ -63,6 +63,58 @@ export async function recordatorioTurno(usuarioId: string, turno: {
   });
 }
 
+/** Detectar reservas próximas (hoy/mañana) y crear recordatorios automáticos si no existen */
+export async function procesarRecordatoriosProximos() {
+  const hoy = new Date().toISOString().slice(0, 10);
+  const mañana = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  const { data: reservas, error } = await supabaseAdmin
+    .from('reservas')
+    .select('id, usuario_id, fecha, hora_inicio, canchas(nombre)')
+    .in('fecha', [hoy, mañana])
+    .eq('estado', 'confirmada');
+  if (error) throw new HttpError(500, error.message);
+
+  const creadas: Array<{ reserva_id: number; usuario_id: string }> = [];
+  const errores: Array<{ reserva_id: number; error: string }> = [];
+
+  for (const r of reservas ?? []) {
+    const usuarioId = r.usuario_id as string;
+    if (!usuarioId) continue;
+
+    // Evitar duplicar recordatorios: buscar si ya existe uno similar para esta reserva
+    const canchaNombre = (r.canchas as unknown as { nombre: string })?.nombre ?? 'cancha';
+    const inicioTexto = r.hora_inicio ? String(r.hora_inicio).slice(0, 5) : '';
+
+    const { data: existentes } = await supabaseAdmin
+      .from('notificaciones')
+      .select('id')
+      .eq('usuario_id', usuarioId)
+      .eq('tipo', 'recordatorio')
+      .ilike('cuerpo', `%Reserva #${r.id}%`)
+      .limit(1);
+
+    if (!existentes || existentes.length === 0) {
+      try {
+        await crearNotificacion({
+          usuario_id: usuarioId,
+          tipo: 'recordatorio',
+          titulo: 'Recordatorio de turno',
+          cuerpo: `Mañana ${mañana === hoy ? 'hoy' : 'mañana'} a las ${inicioTexto} tenés reserva #${r.id} en ${canchaNombre}.`,
+        });
+        creadas.push({ reserva_id: r.id, usuario_id: usuarioId });
+      } catch (err) {
+        errores.push({
+          reserva_id: r.id,
+          error: err instanceof Error ? err.message : 'Error desconocido',
+        });
+      }
+    }
+  }
+
+  return { creadas: creadas.length, errores, total_reservas: reservas?.length ?? 0 };
+}
+
 /** Aviso masivo de suspensión (lluvia, evento, etc.) */
 export async function avisoSuspension(usuarioIds: string[], motivo: string) {
   const rows = usuarioIds.map((uid) => ({

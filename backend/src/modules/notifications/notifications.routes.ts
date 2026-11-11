@@ -6,6 +6,7 @@ import {
   crearNotificacion,
   recordatorioTurno,
   avisoSuspension,
+  procesarRecordatoriosProximos,
 } from './notifications.service.js';
 
 export const notificacionesRouter = Router();
@@ -32,26 +33,15 @@ notificacionesRouter.patch(
   }),
 );
 
-// POST /notificaciones/recordatorio -> crear recordatorio manual (staff)
+// POST /notificaciones/procesar-recordatorios -> detectar reservas próximas y enviar recordatorios (staff)
 notificacionesRouter.post(
-  '/recordatorio',
+  '/procesar-recordatorios',
   h(async (req, res) => {
-    const { usuario_id, fecha, hora, cancha } = req.body ?? {};
-    await recordatorioTurno(usuario_id, { fecha, hora, cancha });
-    res.status(201).json({ ok: true });
-  }),
-);
-
-// POST /notificaciones/suspension -> aviso masivo (staff)
-notificacionesRouter.post(
-  '/suspension',
-  h(async (req, res) => {
-    const { usuario_ids, motivo } = req.body ?? {};
-    if (!Array.isArray(usuario_ids) || !motivo) {
-      res.status(400).json({ error: 'usuario_ids y motivo son obligatorios' });
+    const rol = (req as any).rol;
+    if (rol !== 'super_admin' && rol !== 'recepcionista') {
+      res.status(403).json({ error: 'Requiere rol de staff' });
       return;
     }
-    await avisoSuspension(usuario_ids, motivo);
-    res.json({ ok: true });
+    res.json(await procesarRecordatoriosProximos());
   }),
 );
