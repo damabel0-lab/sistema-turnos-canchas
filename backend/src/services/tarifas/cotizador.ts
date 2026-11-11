@@ -129,8 +129,14 @@ export async function cotizar(entrada: CotizacionEntrada): Promise<Cotizacion> {
     if (pct) descuentoSocio = Math.round(subtotal * (Number(pct) / 100));
   }
 
-  // Descuento de turno fijo (parámetro del caller)
-  const pctTurnoFijo = Math.min(Math.max(entrada.descuento_turno_fijo ?? 0, 0), 100);
+  // Descuento de turno fijo (parámetro del caller o del entorno)
+  const pctTurnoFijoEnv = process.env.DESCUENTO_TURNO_FIJO_PORCENTAJE
+    ? Number(process.env.DESCUENTO_TURNO_FIJO_PORCENTAJE)
+    : 0;
+  const pctTurnoFijo = Math.min(
+    Math.max(entrada.descuento_turno_fijo ?? pctTurnoFijoEnv, 0),
+    100,
+  );
   const descuentoTurnoFijo = Math.round((subtotal - descuentoSocio) * (pctTurnoFijo / 100));
 
   const precioTotal = subtotal - descuentoSocio - descuentoTurnoFijo;
