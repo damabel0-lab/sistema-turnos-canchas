@@ -55,6 +55,9 @@ export function ComplejoPublicoPage() {
   const hora = (h: number) => `${String(h).padStart(2, '0')}:00`;
   const esComplejo = config?.tipo === 'complejo_deportivo';
   const titulo = config?.nombre ?? 'Nuestro complejo';
+  const subtitulo = esComplejo
+    ? 'Todo lo deportivo en un mismo lugar — información abierta a todos los visitantes.'
+    : 'Canchas individuales — horarios, precios y turnos.';
 
   return (
     <main className="pantalla" style={{ paddingTop: '1.5rem' }}>
@@ -70,7 +73,7 @@ export function ComplejoPublicoPage() {
             <h1 className="titulo" style={{ fontSize: '1.9rem', marginBottom: '0.2rem' }}>
               {titulo}
             </h1>
-            <p className="subtitulo" style={{ margin: 0 }}>Información general del complejo, abierta a todos los visitantes.</p>
+            <p className="subtitulo" style={{ margin: 0 }}>{subtitulo}</p>
           </div>
           <Link to="/reservar" className="boton boton-primario" style={{ whiteSpace: 'nowrap' }}>
             Reservar <ArrowRight size={16} />

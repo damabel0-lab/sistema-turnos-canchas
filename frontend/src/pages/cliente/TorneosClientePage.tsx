@@ -36,15 +36,23 @@ export function TorneosClientePage() {
   const [torneoSeleccionado, setTorneoSeleccionado] = useState<number | null>(null);
   const [equipos, setEquipos] = useState<Equipo[]>([]);
   const [partidos, setPartidos] = useState<Partido[]>([]);
+  const [ofreceTorneos, setOfreceTorneos] = useState(true);
+
+  useEffect(() => {
+    api<{ ofrece_torneos?: boolean }>('/config')
+      .then((d) => setOfreceTorneos(d.ofrece_torneos !== false))
+      .catch(() => { /* sin config, mostramos torneos */ });
+  }, []);
 
   const cargarTorneos = useCallback(async () => {
+    if (!ofreceTorneos) return;
     try {
       setTorneos(await api<Torneo[]>('/torneos/activos'));
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error cargando torneos');
     }
-  }, []);
+  }, [ofreceTorneos]);
 
   useEffect(() => {
     void cargarTorneos();
@@ -99,11 +107,25 @@ export function TorneosClientePage() {
     })
     .sort((a, b) => b.puntos - a.puntos || b.dg - a.dg || b.gf - a.gf);
 
+  if (!ofreceTorneos) {
+    return (
+      <main className="pantalla">
+        <div className="contenedor">
+          <Card className="caja-vacia">
+            <Trophy size={28} style={{ margin: '0 auto 0.75rem', color: 'var(--texto-3)' }} />
+            <h1 className="titulo">Torneos</h1>
+            <p className="texto-sec" style={{ margin: 0 }}>Este complejo no ofrece torneos por ahora.</p>
+          </Card>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="pantalla">
       <div className="contenedor">
         <h1 className="titulo">Torneos</h1>
-        {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
+        {error && <div className="alerta-error" role="alert">{error}</div>}
 
         <section style={{ marginBottom: '1.5rem' }}>
           <h2 className="titulo" style={{ fontSize: '1.1rem' }}>Torneos activos</h2>

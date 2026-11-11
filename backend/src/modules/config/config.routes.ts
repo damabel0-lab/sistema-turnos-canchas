@@ -54,6 +54,7 @@ configRouter.get(
     const pol = config.politicas ?? {};
     const am = config.amenidades ?? {};
     const soc = config.socios ?? {};
+    const tor = config.torneos ?? {};
 
     const num = (fuente: Record<string, unknown>, clave: string, fallback: number): number => {
       const v = fuente[clave];
@@ -91,6 +92,8 @@ configRouter.get(
       },
       // Socios
       ofrece_socios: bool(soc, 'ofrece_socios', false),
+      // Torneos
+      ofrece_torneos: bool(tor, 'ofrece_torneos', true),
     });
   }),
 );

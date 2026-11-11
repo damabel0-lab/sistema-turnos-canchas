@@ -30,6 +30,7 @@ interface SetupResponse {
     politicas?: { cancelacion_minima_horas?: number; descuento_turno_fijo_porcentaje?: number; seña_obligatoria?: boolean };
     amenidades?: { gym?: boolean; pileta?: boolean; precio_mensual_gym?: number; precio_mensual_pileta?: number };
     socios?: { ofrece_socios?: boolean };
+    torneos?: { ofrece_torneos?: boolean };
   };
 }
 
@@ -99,6 +100,9 @@ export function ConfiguracionPage() {
   // Socios
   const [ofreceSocios, setOfreceSocios] = useState(false);
 
+  // Torneos
+  const [ofreceTorneos, setOfreceTorneos] = useState(true);
+
   const cargar = useCallback(async () => {
     setCargando(true);
     setError(null);
@@ -119,6 +123,7 @@ export function ConfiguracionPage() {
       const pol = setup.valores?.politicas ?? {};
       const am = setup.valores?.amenidades ?? {};
       const soc = setup.valores?.socios ?? {};
+      const tor = setup.valores?.torneos ?? {};
 
       setNombre(meta.nombre ?? '');
       setTipoComplejo(meta.tipo ?? 'fraccionado');
@@ -133,6 +138,7 @@ export function ConfiguracionPage() {
       setPrecioMensualGym(String(am.precio_mensual_gym ?? ''));
       setPrecioMensualPileta(String(am.precio_mensual_pileta ?? ''));
       setOfreceSocios(soc.ofrece_socios ?? false);
+      setOfreceTorneos(tor.ofrece_torneos ?? true);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error cargando datos');
     } finally {
@@ -285,6 +291,9 @@ export function ConfiguracionPage() {
         },
         socios: {
           ofrece_socios: ofreceSocios,
+        },
+        torneos: {
+          ofrece_torneos: ofreceTorneos,
         },
       };
 
@@ -564,10 +573,14 @@ export function ConfiguracionPage() {
                     <option value="complejo_deportivo">Complejo deportivo</option>
                   </select>
                 </label>
+                <label className="label" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <input type="checkbox" checked={ofreceTorneos} onChange={(e) => setOfreceTorneos(e.target.checked)} />
+                  Ofrecemos torneos abiertos
+                </label>
                 <label className="label">Horario de apertura<input type="time" value={horaApertura} onChange={(e) => setHoraApertura(e.target.value)} className="input" /></label>
                 <label className="label">Horario de cierre<input type="time" value={horaCierre} onChange={(e) => setHoraCierre(e.target.value)} className="input" /></label>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.75rem' }}>
-                  <button className="boton boton-secondary" onClick={() => void guardarSetup({ metadatos: { nombre, tipo: tipoComplejo, hora_apertura: Number(horaApertura.split(':')[0] || '0'), hora_cierre: Number(horaCierre.split(':')[0] || '0') } })}>
+                  <button className="boton boton-secondary" onClick={() => void guardarSetup({ metadatos: { nombre, tipo: tipoComplejo, hora_apertura: Number(horaApertura.split(':')[0] || '0'), hora_cierre: Number(horaCierre.split(':')[0] || '0') }, torneos: { ofrece_torneos: ofreceTorneos } })}>
                     Guardar cambios
                   </button>
                 </div>

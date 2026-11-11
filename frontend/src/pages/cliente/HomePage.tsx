@@ -147,13 +147,15 @@ function HomeCliente({ nombre }: { nombre: string }) {
   const [proximas, setProximas] = useState<ReservaMia[]>([]);
   const [stats, setStats] = useState<EstadisticasMias | null>(null);
   const [cargando, setCargando] = useState(true);
+  const [ofreceTorneos, setOfreceTorneos] = useState(true);
 
   useEffect(() => {
     let cancelado = false;
     Promise.allSettled([
       api<{ proximas: ReservaMia[] }>('/reservas/mias'),
       api<EstadisticasMias>('/reservas/mias/estadisticas'),
-    ]).then(([reservasRes, statsRes]) => {
+      api<{ ofrece_torneos?: boolean }>('/config'),
+    ]).then(([reservasRes, statsRes, configRes]) => {
       if (cancelado) return;
       if (reservasRes.status === 'fulfilled') {
         const ahora = new Date();
@@ -164,6 +166,7 @@ function HomeCliente({ nombre }: { nombre: string }) {
         setProximas(futuras);
       }
       if (statsRes.status === 'fulfilled') setStats(statsRes.value);
+      if (configRes.status === 'fulfilled') setOfreceTorneos(configRes.value.ofrece_torneos !== false);
       setCargando(false);
     });
     return () => {
@@ -261,7 +264,9 @@ function HomeCliente({ nombre }: { nombre: string }) {
           <AccionRapida to="/reservar" icon={CalendarClock} titulo="Reservar cancha" sub="Turnos de 1 h, :15 a :15" />
           <AccionRapida to="/mis-reservas" icon={CalendarDays} titulo="Mis reservas" sub="Próximos turnos e historial" />
           <AccionRapida to="/mis-abonos" icon={Ticket} titulo="Mis abonos" sub="Gym y pileta mensuales" />
-          <AccionRapida to="/torneos" icon={Trophy} titulo="Torneos" sub="Inscripciones y partidos" />
+          {ofreceTorneos && (
+            <AccionRapida to="/torneos" icon={Trophy} titulo="Torneos" sub="Inscripciones y partidos" />
+          )}
           <AccionRapida to="/notificaciones" icon={Bell} titulo="Notificaciones" sub="Avisos del complejo" />
           <AccionRapida to="/complejo" icon={Goal} titulo="El complejo" sub="Canchas, precios y horarios" />
         </div>
@@ -277,19 +282,19 @@ function HomeStaff() {
   const { perfil } = useAuth();
   const [resumen, setResumen] = useState<ResumenStaff | null>(null);
   const [cargando, setCargando] = useState(true);
+  const [ofreceTorneos, setOfreceTorneos] = useState(true);
 
   useEffect(() => {
     let cancelado = false;
-    api<ResumenStaff>('/dashboard/resumen')
-      .then((d) => {
-        if (!cancelado) setResumen(d);
-      })
-      .catch(() => {
-        /* si falla, igual mostramos los accesos */
-      })
-      .finally(() => {
-        if (!cancelado) setCargando(false);
-      });
+    Promise.allSettled([
+      api<ResumenStaff>('/dashboard/resumen'),
+      api<{ ofrece_torneos?: boolean }>('/config'),
+    ]).then(([resumenRes, configRes]) => {
+      if (cancelado) return;
+      if (resumenRes.status === 'fulfilled') setResumen(resumenRes.value);
+      if (configRes.status === 'fulfilled') setOfreceTorneos(configRes.value.ofrece_torneos !== false);
+      setCargando(false);
+    });
     return () => {
       cancelado = true;
     };
@@ -358,15 +363,15 @@ function HomeStaff() {
           <AccionRapida to="/admin/vender-abono" icon={Ticket} titulo="Vender abono" sub="Gym y pileta mensuales" />
           {esSuper ? (
             <AccionRapida to="/admin/caja" icon={Wallet} titulo="Caja" sub="Ingresos, egresos y CSV" />
-          ) : (
+          ) : ofreceTorneos ? (
             <AccionRapida to="/admin/torneos" icon={Trophy} titulo="Torneos" sub="Equipos y partidos" />
+          ) : (
+            <AccionRapida to="/admin/configuracion" icon={Goal} titulo="Configuración" sub="Deportes, canchas y políticas" />
           )}
           <AccionRapida to="/admin/socios" icon={Users} titulo="Socios" sub="Altas, directorio y beneficios" />
           {esSuper ? (
             <AccionRapida to="/admin/reportes" icon={BadgeDollarSign} titulo="Reportes" sub="Recaudación y estadísticas" />
-          ) : (
-            <AccionRapida to="/admin/configuracion" icon={Goal} titulo="Configuración" sub="Deportes, canchas y políticas" />
-          )}
+          ) : null}
         </div>
       </div>
     </main>

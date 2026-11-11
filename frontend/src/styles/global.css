@@ -435,6 +435,14 @@ body {
   box-shadow: var(--glow);
 }
 
+.nav-separador {
+  width: 1px;
+  height: 1.15rem;
+  background: var(--border-strong);
+  margin: 0 0.15rem;
+  align-self: center;
+}
+
 .nav-barra a {
   color: var(--texto-2);
   text-decoration: none;
