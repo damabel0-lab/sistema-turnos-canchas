@@ -36,6 +36,7 @@ export function BarraSesion() {
     return (
       <nav className="nav-barra">
         <Link to="/">Inicio</Link>
+        <Link to="/complejo">Complejo</Link>
         <Link to="/login">Iniciar sesión</Link>
       </nav>
     );
@@ -44,6 +45,7 @@ export function BarraSesion() {
   return (
     <nav className="nav-barra">
       <Link to="/">Inicio</Link>
+      <Link to="/complejo">Complejo</Link>
       <Link to="/mis-reservas">Mis reservas</Link>
       {perfil && (perfil.rol === 'super_admin' || perfil.rol === 'recepcionista') && (
         <Link to="/admin/grilla">Panel</Link>
