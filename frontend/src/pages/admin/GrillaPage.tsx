@@ -20,18 +20,15 @@ interface FilaGrilla {
   items: ItemGrilla[];
 }
 
-const hoy = () => new Date().toISOString().slice(0, 10);
-const HORA_APERTURA = 8;
-const HORA_CIERRE = 23;
-const MINUTOS_BLOQUE = 15;
+interface ConfigComplejo {
+  hora_apertura: number;
+  hora_cierre: number;
+  cancelacion_minima_horas: number;
+  descuento_turno_fijo_porcentaje: number;
+}
 
-const HORAS_TURNO = Array.from(
-  { length: ((HORA_CIERRE - HORA_APERTURA) * 60) / MINUTOS_BLOQUE },
-  (_, i) => {
-    const min = i * MINUTOS_BLOQUE;
-    return `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
-  }
-);
+const hoy = () => new Date().toISOString().slice(0, 10);
+const MINUTOS_BLOQUE = 15;
 
 const estadosReserva: Record<string, 'neutral' | 'success' | 'warning' | 'danger'> = {
   pendiente_seña: 'warning',
@@ -58,6 +55,21 @@ export function GrillaPage() {
   const [metodo, setMetodo] = useState('efectivo');
   const [bloqueo, setBloqueo] = useState({ cancha_id: '', desde: '08:00', hasta: '09:00', motivo: '' });
   const [turnoFijo, setTurnoFijo] = useState({ nombre: '', telefono: '', cancha_id: '', dia_semana: '', hora: '', semanas: '4' });
+  const [config, setConfig] = useState<ConfigComplejo | null>(null);
+
+  useEffect(() => {
+    api<ConfigComplejo>('/config').then(setConfig).catch((e) => setError(e.message));
+  }, []);
+
+  const HORAS_TURNO = config
+    ? Array.from(
+        { length: ((config.hora_cierre - config.hora_apertura) * 60) / MINUTOS_BLOQUE },
+        (_, i) => {
+          const min = i * MINUTOS_BLOQUE;
+          return `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+        },
+      )
+    : [];
 
   const DIAS_SEMANA = [
     { valor: 0, texto: 'Domingo' },
