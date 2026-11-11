@@ -75,7 +75,7 @@ export function HomePage() {
   const { session, perfil } = useAuth();
   if (!session) return <LandingPublica />;
   const esStaff = perfil?.rol === 'super_admin' || perfil?.rol === 'recepcionista';
-  return esStaff ? <HomeStaff /> : <HomeCliente nombre={perfil?.nombre ?? ''} />;
+  return esStaff ? <HomeStaff /> : <HomeCliente nombre={`${perfil?.nombre ?? ''} ${perfil?.apellido ?? ''}`.trim()} />;
 }
 
 /* ============================================================
@@ -173,7 +173,7 @@ function HomeCliente({ nombre }: { nombre: string }) {
 
   return (
     <main className="pantalla" style={{ paddingTop: '1.25rem' }}>
-      <div className="contenedor-ancho">
+      <div className="contenedor">
         {/* Saludo */}
         <div className="fila-entre" style={{ marginBottom: '1.1rem' }}>
           <div>
@@ -188,8 +188,6 @@ function HomeCliente({ nombre }: { nombre: string }) {
             Reservar <ArrowRight size={16} />
           </Link>
         </div>
-
-        {/* Próximos turnos */}
         <h2 className="titulo" style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--texto-3)', marginBottom: '0.5rem' }}>
           Tus próximos turnos
         </h2>
@@ -208,27 +206,28 @@ function HomeCliente({ nombre }: { nombre: string }) {
             </Link>
           </div>
         ) : (
-          <div className="stack" style={{ marginBottom: '1.25rem' }}>
-            {proximas.map((r) => (
-              <div key={r.id} className="tarjeta-plana" style={{ padding: '0.7rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <div className="icono-circulo" style={{ width: '2.5rem', height: '2.5rem', flexShrink: 0 }}>
-                  <CalendarDays size={18} />
-                </div>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontWeight: 700 }}>{r.cancha}</div>
-                  <div className="texto-sec" style={{ fontSize: '0.82rem', textTransform: 'capitalize' }}>
-                    {r.deporte} · {fechaCorta(r.fecha)} · {r.hora_inicio.slice(0, 5)}–{r.hora_fin.slice(0, 5)}
+          <>
+            <div className="proximas-grid">
+              {proximas.map((r) => (
+                <Link key={r.id} to="/mis-reservas" className="proximo-card">
+                  <div className="proximo-card-top">
+                    <span className="proximo-icono"><CalendarDays size={17} /></span>
+                    <span className={`badge ${r.estado === 'confirmada' ? 'badge-exito' : 'badge-advertencia'}`}>
+                      {r.estado === 'confirmada' ? 'Confirmada' : 'Pendiente seña'}
+                    </span>
                   </div>
-                </div>
-                <span className={`badge ${r.estado === 'confirmada' ? 'badge-exito' : 'badge-advertencia'}`}>
-                  {r.estado === 'confirmada' ? 'Confirmada' : 'Pendiente seña'}
-                </span>
-              </div>
-            ))}
-            <Link to="/mis-reservas" className="boton boton-ghost" style={{ justifySelf: 'start' }}>
+                  <div className="proximo-cancha">{r.cancha}</div>
+                  <div className="proximo-linea" style={{ textTransform: 'capitalize' }}>{r.deporte}</div>
+                  <div className="proximo-linea" style={{ textTransform: 'capitalize' }}>
+                    {fechaCorta(r.fecha)} · {r.hora_inicio.slice(0, 5)}–{r.hora_fin.slice(0, 5)}
+                  </div>
+                </Link>
+              ))}
+            </div>
+            <Link to="/mis-reservas" className="boton boton-ghost" style={{ marginBottom: '1.25rem' }}>
               Ver todas mis reservas <ArrowRight size={15} />
             </Link>
-          </div>
+          </>
         )}
 
         {/* Tus números */}
