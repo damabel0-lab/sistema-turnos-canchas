@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api } from '../../lib/api';
 import { Card } from '../../components/ui';
+import { ToastContainer, useToast } from '../../components/ui/Toast';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Users, RefreshCw } from 'lucide-react';
 
 interface Socio {
@@ -13,10 +15,11 @@ interface Socio {
 }
 
 export function SociosPage() {
+  const { toasts, mostrar, cerrar } = useToast();
   const [socios, setSocios] = useState<Socio[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [mensaje, setMensaje] = useState<string | null>(null);
   const [nuevo, setNuevo] = useState({ nombre: '', apellido: '', telefono: '' });
+  const [bajaSocio, setBajaSocio] = useState<Socio | null>(null);
 
   const cargar = useCallback(async () => {
     try {
@@ -34,7 +37,6 @@ export function SociosPage() {
   async function darDeAlta(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    setMensaje(null);
     try {
       await api('/socios', {
         method: 'POST',
@@ -44,7 +46,7 @@ export function SociosPage() {
           telefono: nuevo.telefono,
         }),
       });
-      setMensaje('Socio dado de alta ✅');
+      mostrar(`Socio ${nuevo.nombre} ${nuevo.apellido} dado de alta.`, 'success');
       setNuevo({ nombre: '', apellido: '', telefono: '' });
       await cargar();
     } catch (err) {
@@ -52,14 +54,17 @@ export function SociosPage() {
     }
   }
 
-  async function darDeBaja(id: string) {
-    if (!confirm('¿Dar de baja este socio?')) return;
+  async function darDeBaja() {
+    const socio = bajaSocio;
+    if (!socio) return;
     try {
-      await api(`/socios/${id}`, { method: 'DELETE' });
-      setMensaje('Socio dado de baja ✅');
+      await api(`/socios/${socio.id}`, { method: 'DELETE' });
+      setBajaSocio(null);
+      mostrar(`${socio.nombre} ${socio.apellido} dado de baja.`, 'success');
       await cargar();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo dar de baja');
+      setBajaSocio(null);
+      mostrar(err instanceof Error ? err.message : 'No se pudo dar de baja', 'danger');
     }
   }
 
@@ -72,8 +77,22 @@ export function SociosPage() {
             <RefreshCw size={16} /> Actualizar
           </button>
         </div>
-        {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
-        {mensaje && <p style={{ color: 'var(--exito)' }}>{mensaje}</p>}
+        <ToastContainer toasts={toasts} onCerrar={cerrar} />
+        <ConfirmDialog
+          open={!!bajaSocio}
+          titulo="Dar de baja socio"
+          descripcion={
+            bajaSocio
+              ? `${bajaSocio.nombre} ${bajaSocio.apellido} (${bajaSocio.telefono ?? 'sin teléfono'}) perderá los beneficios de socio. ¿Confirmás?`
+              : undefined
+          }
+          confirmarTexto="Dar de baja"
+          onConfirmar={() => void darDeBaja()}
+          onCancelar={() => setBajaSocio(null)}
+          peligro
+        />
+
+        {error && <div className="alerta-error" role="alert">{error}</div>}
 
         <h2 className="titulo" style={{ fontSize: '1.1rem' }}>Dar de alta socio</h2>
         <Card>
@@ -103,7 +122,7 @@ export function SociosPage() {
                     <div className="texto-sec" style={{ fontSize: '0.85rem' }}>{s.telefono ?? '—'}</div>
                   </div>
                 </div>
-                <button type="button" onClick={() => void darDeBaja(s.id)} className="boton boton-ghost" style={{ color: 'var(--peligro)' }}>
+                <button type="button" onClick={() => setBajaSocio(s)} className="boton boton-ghost" style={{ color: 'var(--peligro)' }}>
                   Baja
                 </button>
               </Card>

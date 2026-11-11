@@ -1647,6 +1647,33 @@ body {
   }
 }
 
+/* ===== SKELETON DE CARGA ===== */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-surface-2) 25%,
+    var(--bg-surface-3) 37%,
+    var(--bg-surface-2) 63%
+  );
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.35s ease infinite;
+  border-radius: var(--radio);
+}
+
+.skeleton-texto {
+  height: 0.8rem;
+  margin-bottom: 0.4rem;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}
+
 /* ===== ANIMACIONES ===== */
 @keyframes fade-in {
   from { opacity: 0; }

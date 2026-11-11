@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '../../lib/api';
+import { ToastContainer, useToast } from '../../components/ui/Toast';
 import { Card } from '../../components/ui';
 
 interface PasoProps {
@@ -29,7 +30,7 @@ interface CanchaNueva {
 export function ConfigurarPage() {
   const [paso, setPaso] = useState(0);
   const [guardando, setGuardando] = useState(false);
-  const [mensaje, setMensaje] = useState<string | null>(null);
+  const { toasts, mostrar, cerrar } = useToast();
   const [error, setError] = useState<string | null>(null);
 
   const [tipo, setTipo] = useState<'fraccionado' | 'complejo_deportivo'>('fraccionado');
@@ -101,7 +102,7 @@ export function ConfigurarPage() {
       }
     }
 
-    setMensaje('Complejo configurado ✅');
+    mostrar('Complejo configurado ', 'success');
     window.location.href = '/admin/dashboard';
   }
 
@@ -387,7 +388,7 @@ export function ConfigurarPage() {
             </button>
           )}
         </div>
-        {mensaje && <p style={{ color: 'var(--exito)', marginTop: '0.5rem' }}>{mensaje}</p>}
+        <ToastContainer toasts={toasts} onCerrar={cerrar} />
       </div>
     </main>
   );

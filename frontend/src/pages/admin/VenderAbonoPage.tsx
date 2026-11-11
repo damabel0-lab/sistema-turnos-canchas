@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api } from '../../lib/api';
+import { ToastContainer, useToast } from '../../components/ui/Toast';
 import { Card } from '../../components/ui';
 import { CreditCard, Plus } from 'lucide-react';
 
@@ -13,7 +14,7 @@ interface UsuarioSimple {
 export function VenderAbonoPage() {
   const [usuarios, setUsuarios] = useState<UsuarioSimple[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [mensaje, setMensaje] = useState<string | null>(null);
+  const { toasts, mostrar, cerrar } = useToast();
   const [form, setForm] = useState({
     usuario_id: '',
     disciplina_id: '',
@@ -37,7 +38,6 @@ export function VenderAbonoPage() {
   async function vender(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    setMensaje(null);
     try {
       await api('/abonos', {
         method: 'POST',
@@ -49,7 +49,7 @@ export function VenderAbonoPage() {
           monto_pagado: Number(form.monto_pagado),
         }),
       });
-      setMensaje('Abono vendido ✅');
+      mostrar('Abono vendido ', 'success');
       setForm({ usuario_id: '', disciplina_id: '', clases_totales: '', fecha_vencimiento: '', monto_pagado: '' });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo vender el abono');
@@ -61,7 +61,7 @@ export function VenderAbonoPage() {
       <div className="contenedor-estrecho">
         <h1 className="titulo"><span className="fila"><CreditCard size={20} /> Vender abono / pase</span></h1>
         {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
-        {mensaje && <p style={{ color: 'var(--exito)' }}>{mensaje}</p>}
+        <ToastContainer toasts={toasts} onCerrar={cerrar} />
 
         <Card>
           <form onSubmit={vender} className="stack">

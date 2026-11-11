@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api } from '../../lib/api';
+import { ToastContainer, useToast } from '../../components/ui/Toast';
 import { useAuth } from '../../hooks/useAuth';
 import { Card } from '../../components/ui';
 import { Trophy, RefreshCw } from 'lucide-react';
@@ -35,7 +36,7 @@ export function TorneosPage() {
   const { session } = useAuth();
   const [torneos, setTorneos] = useState<Torneo[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [mensaje, setMensaje] = useState<string | null>(null);
+  const { toasts, mostrar, cerrar } = useToast();
 
   const [nuevoTorneo, setNuevoTorneo] = useState({ nombre: '', fecha_inicio: '', fecha_fin: '', premio: '' });
   const [torneoId, setTorneoId] = useState<number | null>(null);
@@ -58,7 +59,6 @@ export function TorneosPage() {
   async function crearTorneo(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    setMensaje(null);
     try {
       await api('/torneos', {
         method: 'POST',
@@ -69,7 +69,7 @@ export function TorneosPage() {
           premio: nuevoTorneo.premio || null,
         }),
       });
-      setMensaje('Torneo creado ✅');
+      mostrar('Torneo creado ', 'success');
       setNuevoTorneo({ nombre: '', fecha_inicio: '', fecha_fin: '', premio: '' });
       await cargarTorneos();
     } catch (err) {
@@ -128,7 +128,7 @@ export function TorneosPage() {
       });
       const pt = await api<Partido[]>(`/torneos/${torneoId}/partidos`);
       setPartidos(pt);
-      setMensaje('Resultado cargado ✅');
+      mostrar('Resultado cargado ', 'success');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo cargar el resultado');
     }
@@ -154,7 +154,7 @@ export function TorneosPage() {
           </button>
         </div>
         {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
-        {mensaje && <p style={{ color: 'var(--exito)' }}>{mensaje}</p>}
+        <ToastContainer toasts={toasts} onCerrar={cerrar} />
 
         <h2 className="titulo" style={{ fontSize: '1.1rem' }}>Crear torneo</h2>
         <Card>

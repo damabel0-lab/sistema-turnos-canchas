@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api } from '../../lib/api';
+import { ToastContainer, useToast } from '../../components/ui/Toast';
 import { Card, Badge } from '../../components/ui';
 import { Clock, Plus, MapPin, RefreshCw } from 'lucide-react';
 
@@ -47,7 +48,7 @@ export function GrillaPage() {
   const [fecha, setFecha] = useState(hoy());
   const [filas, setFilas] = useState<FilaGrilla[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [mensaje, setMensaje] = useState<string | null>(null);
+  const { toasts, mostrar, cerrar } = useToast();
 
   const [carga, setCarga] = useState({ nombre: '', telefono: '', cancha_id: '', hora: '10:15' });
   const [sel, setSel] = useState<{ reserva_id: number; cliente?: string; estado?: string; monto?: number } | null>(null);
@@ -97,18 +98,17 @@ export function GrillaPage() {
   async function cambiarEstado(estado: 'confirmada' | 'completada' | 'cancelada') {
     if (!sel) return;
     setError(null);
-    setMensaje(null);
     try {
       await api(`/reservas/${sel.reserva_id}/estado`, {
         method: 'PATCH',
         body: JSON.stringify({ estado, metodo_pago: estado === 'confirmada' ? metodo : undefined }),
       });
       const textos: Record<string, string> = {
-        confirmada: 'Cobro registrado y reserva confirmada ✅',
-        completada: 'Reserva marcada como completada ✅',
+        confirmada: 'Cobro registrado y reserva confirmada ',
+        completada: 'Reserva marcada como completada ',
         cancelada: 'Reserva cancelada',
       };
-      setMensaje(`${textos[estado]} (#${sel.reserva_id})`);
+      mostrar(`${textos[estado]} (#${sel.reserva_id})`, 'success');
       setSel(null);
       await cargar();
     } catch (err) {
@@ -119,7 +119,6 @@ export function GrillaPage() {
   async function guardarManual(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    setMensaje(null);
     try {
       const [h, m] = carga.hora.split(':').map(Number);
       const totalFin = h * 60 + m + 60;
@@ -135,7 +134,7 @@ export function GrillaPage() {
           hora_fin: fin,
         }),
       });
-      setMensaje(`Turno #${r.id} anotado para ${carga.nombre} ✅`);
+      mostrar(`Turno #${r.id} anotado para ${carga.nombre}`, 'success');
       setCarga({ ...carga, nombre: '', telefono: '' });
       await cargar();
     } catch (err) {
@@ -146,7 +145,6 @@ export function GrillaPage() {
   async function guardarBloqueo(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    setMensaje(null);
     try {
       await api('/bloqueos', {
         method: 'POST',
@@ -157,7 +155,7 @@ export function GrillaPage() {
           motivo: bloqueo.motivo,
         }),
       });
-      setMensaje('Horario bloqueado ✅');
+      mostrar('Horario bloqueado', 'success');
       setBloqueo({ ...bloqueo, motivo: '' });
       await cargar();
     } catch (err) {
@@ -168,7 +166,6 @@ export function GrillaPage() {
   async function guardarTurnoFijo(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    setMensaje(null);
     try {
       const semanasValidas = Math.min(Math.max(Number(turnoFijo.semanas), 1), 52);
       const r = await api<{ total_creadas: number; total_solicitadas: number }>('/reservas/turno-fijo', {
@@ -183,7 +180,7 @@ export function GrillaPage() {
           estado: 'pendiente_seña',
         }),
       });
-      setMensaje(`Turnos fijos creados: ${r.total_creadas} de ${r.total_solicitadas} ✅`);
+      mostrar(`Turnos fijos creados: ${r.total_creadas} de ${r.total_solicitadas}`, 'success');
       setTurnoFijo({ ...turnoFijo, nombre: '', telefono: '' });
       await cargar();
     } catch (err) {
@@ -225,7 +222,7 @@ export function GrillaPage() {
           </div>
         </div>
         {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
-        {mensaje && <p style={{ color: 'var(--exito)' }}>{mensaje}</p>}
+        <ToastContainer toasts={toasts} onCerrar={cerrar} />
 
         <div className="fila" style={{ gap: '0.5rem', marginBottom: '1rem' }}>
           <div className="tarjeta-plana" style={{ padding: '0.5rem 0.75rem' }}>
@@ -235,7 +232,7 @@ export function GrillaPage() {
             <span style={{ fontWeight: 700 }}>⏳ ${porCobrar}</span> por cobrar
           </div>
           <div className="tarjeta-plana" style={{ padding: '0.5rem 0.75rem', background: 'color-mix(in srgb, var(--exito) 18%, transparent)', borderColor: 'color-mix(in srgb, var(--exito) 40%, transparent)' }}>
-            <span style={{ fontWeight: 700 }}>✅ ${cobrado}</span> cobrado
+            <span style={{ fontWeight: 700 }}> ${cobrado}</span> cobrado
           </div>
         </div>
 

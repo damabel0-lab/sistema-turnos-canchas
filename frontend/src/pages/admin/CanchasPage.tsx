@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api } from '../../lib/api';
+import { ToastContainer, useToast } from '../../components/ui/Toast';
 import { Card, Badge } from '../../components/ui';
 import { Clock, Search, RefreshCw } from 'lucide-react';
 
@@ -24,7 +25,7 @@ export function CanchasPage() {
   const [canchas, setCanchas] = useState<Cancha[]>([]);
   const [deportes, setDeportes] = useState<Deporte[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [mensaje, setMensaje] = useState<string | null>(null);
+  const { toasts, mostrar, cerrar } = useToast();
 
   const cargar = useCallback(async () => {
     try {
@@ -47,7 +48,6 @@ export function CanchasPage() {
   async function crearCancha(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    setMensaje(null);
     const form = new FormData(e.currentTarget);
     try {
       await api('/canchas', {
@@ -60,7 +60,7 @@ export function CanchasPage() {
         }),
       });
       e.currentTarget.reset();
-      setMensaje('Cancha creada ✅');
+      mostrar('Cancha creada ', 'success');
       await cargar();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al crear');
@@ -89,7 +89,7 @@ export function CanchasPage() {
           </button>
         </div>
         {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
-        {mensaje && <p style={{ color: 'var(--exito)' }}>{mensaje}</p>}
+        <ToastContainer toasts={toasts} onCerrar={cerrar} />
 
         <h2 className="titulo" style={{ fontSize: '1.1rem' }}>Listado</h2>
         {canchas.length === 0 ? (

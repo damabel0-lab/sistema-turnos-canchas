@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api } from '../../lib/api';
+import { ToastContainer, useToast } from '../../components/ui/Toast';
 import { Card } from '../../components/ui';
 import { DollarSign, List, RefreshCw, Download } from 'lucide-react';
 
@@ -29,7 +30,7 @@ export function CajaPage() {
   const [periodo] = useState<'dia' | 'semana' | 'mes'>('dia');
   const [datos, setDatos] = useState<Resumen | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [mensaje, setMensaje] = useState<string | null>(null);
+  const { toasts, mostrar, cerrar } = useToast();
 
   const cargar = useCallback(async () => {
     try {
@@ -48,7 +49,6 @@ export function CajaPage() {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
     setError(null);
-    setMensaje(null);
     try {
       await api('/caja/egresos', {
         method: 'POST',
@@ -58,7 +58,7 @@ export function CajaPage() {
           descripcion: String(form.get('descripcion')),
         }),
       });
-      setMensaje('Egreso registrado ✅');
+      mostrar('Egreso registrado ', 'success');
       e.currentTarget.reset();
       await cargar();
     } catch (err) {
@@ -109,7 +109,7 @@ export function CajaPage() {
           </div>
         </div>
         {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
-        {mensaje && <p style={{ color: 'var(--exito)' }}>{mensaje}</p>}
+        <ToastContainer toasts={toasts} onCerrar={cerrar} />
 
         {datos && (
           <>
