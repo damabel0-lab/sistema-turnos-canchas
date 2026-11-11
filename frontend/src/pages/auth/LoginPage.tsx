@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { Input } from '../../components/ui';
 import { Goal, CalendarCheck2, Wallet, Trophy, Eye, EyeOff } from 'lucide-react';
@@ -9,10 +9,15 @@ type Modo = 'entrar' | 'registrarse';
 export function LoginPage() {
   const { entrar, registrarse } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Adonde quería ir el usuario antes de loguearse (ej: /reservar). Solo rutas internas.
+  const estadoDesde = (location.state as { desde?: string } | null)?.desde;
+  const destino = estadoDesde && estadoDesde.startsWith('/') ? estadoDesde : '/';
   const [modo, setModo] = useState<Modo>('entrar');
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [verPassword, setVerPassword] = useState(false);
+  const vieneDeReservar = destino === '/reservar';
 
   async function enviar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -35,7 +40,7 @@ export function LoginPage() {
           telefono: String(form.get('telefono') ?? '') || undefined,
         });
       }
-      navigate('/');
+      navigate(destino, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error inesperado');
     } finally {
@@ -77,7 +82,13 @@ export function LoginPage() {
             {modo === 'entrar' ? 'Bienvenido de nuevo' : 'Creá tu cuenta'}
           </h1>
           <p className="subtitulo" style={{ marginBottom: '1.25rem' }}>
-            {modo === 'entrar' ? 'Ingresá para reservar y gestionar tu cuenta.' : 'Registrate para reservar tu turno.'}
+            {modo === 'entrar'
+              ? vieneDeReservar
+                ? 'Ingresá para completar tu reserva.'
+                : 'Ingresá para reservar y gestionar tu cuenta.'
+              : vieneDeReservar
+                ? 'Creá tu cuenta y reservá tu primer turno.'
+                : 'Registrate para reservar tu turno.'}
           </p>
 
           <form onSubmit={enviar} className="stack">

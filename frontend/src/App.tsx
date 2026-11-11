@@ -65,7 +65,14 @@ export function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/complejo" element={<ComplejoPublicoPage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/reservar" element={<ReservarPage />} />
+        <Route
+          path="/reservar"
+          element={
+            <RutaProtegida>
+              <ReservarPage />
+            </RutaProtegida>
+          }
+        />
         <Route path="/mis-reservas" element={<MisReservasPage />} />
         <Route path="/mis-abonos" element={<MisAbonosPage />} />
         <Route path="/torneos" element={<TorneosClientePage />} />
