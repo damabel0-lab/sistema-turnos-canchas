@@ -406,8 +406,6 @@ export function ConfiguracionPage() {
                         className="input"
                       >
                         <option value="cancha">Cancha</option>
-                        <option value="gimnasio">Gimnasio</option>
-                        <option value="pileta">Pileta</option>
                         <option value="otro">Otro</option>
                       </select>
                       <button type="submit" className="boton boton-primario">Agregar</button>
