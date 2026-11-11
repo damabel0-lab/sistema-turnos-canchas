@@ -5,10 +5,10 @@ import { cotizar, aMinutos } from '../../services/tarifas/cotizador.js';
 /**
  * Disponibilidad de una cancha para una fecha.
  * Devuelve las horas del día con su estado: libre / ocupada / bloqueada.
- * Horario de atención del complejo: 08:00 a 23:00 (ajustable).
+ * Horario de atención del complejo: por defecto 08:00 a 23:00 (ajustable por complejo vía env vars)
  */
-export const HORA_APERTURA = 8;
-export const HORA_CIERRE = 23;
+export const HORA_APERTURA = process.env.HORA_APERTURA_COMPLEJO ? Number(process.env.HORA_APERTURA_COMPLEJO) : 8;
+export const HORA_CIERRE = process.env.HORA_CIERRE_COMPLEJO ? Number(process.env.HORA_CIERRE_COMPLEJO) : 23;
 export const DURACION_TURNO_MINUTOS = 60;
 export const MINUTOS_BLOQUE = 15; // los turnos arrancan en cuartos de hora (00, 15, 30, 45)
 
