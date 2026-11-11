@@ -1146,6 +1146,202 @@ body {
   margin: 0;
 }
 
+/* ===== GRILLA DEL DÍA (agenda) ===== */
+.grilla-stats-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+
+@media (max-width: 700px) {
+  .grilla-stats-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.leyenda-grilla {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.leyenda-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--texto-2);
+  padding: 0.22rem 0.55rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+
+.leyenda-punto {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 0.2rem;
+}
+
+.leyenda-punto.confirmada { background: var(--exito); }
+.leyenda-punto.pendiente { background: var(--advertencia); }
+.leyenda-punto.completada { background: var(--info); }
+.leyenda-punto.bloqueo { background: var(--texto-3); }
+
+.grilla-tabla {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  font-size: 0.8rem;
+}
+
+.grilla-tabla th,
+.grilla-tabla td {
+  padding: 0.35rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+  vertical-align: middle;
+}
+
+.grilla-tabla thead th {
+  background: var(--bg-surface-2);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--texto-2);
+  padding: 0.45rem 0.4rem;
+  white-space: nowrap;
+}
+
+.grilla-tabla tbody tr:hover {
+  background: var(--bg-surface-2);
+}
+
+.grilla-tabla tbody tr:hover .grilla-cancha-nombre {
+  background: var(--bg-surface-2);
+}
+
+.grilla-cancha-nombre {
+  text-align: left !important;
+  min-width: 150px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  position: sticky;
+  left: 0;
+  background: var(--bg-surface);
+  z-index: 1;
+}
+
+.grilla-cancha-nombre small {
+  display: block;
+  font-weight: 500;
+  font-size: 0.68rem;
+  color: var(--texto-2);
+}
+
+.grilla-slot {
+  color: var(--texto-3);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.grilla-vacio {
+  color: var(--texto-2);
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.grilla-celda {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  width: 100%;
+  min-width: 100px;
+  padding: 0.32rem 0.45rem;
+  border-radius: 0.55rem;
+  border: 1px solid var(--border);
+  background: var(--bg-surface-2);
+  color: var(--texto);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+}
+
+.grilla-celda:hover {
+  transform: translateY(-1px);
+  border-color: var(--primario);
+  box-shadow: var(--sombra-sm);
+}
+
+.grilla-celda-cliente {
+  font-size: 0.73rem;
+  font-weight: 700;
+  max-width: 118px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+
+.grilla-celda-monto {
+  font-size: 0.66rem;
+  color: var(--texto-2);
+  font-weight: 600;
+}
+
+.grilla-celda.confirmada {
+  background: color-mix(in srgb, var(--exito) 15%, transparent);
+  border-color: color-mix(in srgb, var(--exito) 35%, transparent);
+}
+
+.grilla-celda.pendiente_seña {
+  background: color-mix(in srgb, var(--advertencia) 15%, transparent);
+  border-color: color-mix(in srgb, var(--advertencia) 40%, transparent);
+}
+
+.grilla-celda.completada {
+  background: color-mix(in srgb, var(--info) 12%, transparent);
+  border-color: color-mix(in srgb, var(--info) 30%, transparent);
+  opacity: 0.85;
+}
+
+.grilla-celda.grilla-bloqueo {
+  background: var(--bg-surface-3);
+  color: var(--texto-3);
+  cursor: default;
+  gap: 0.2rem;
+  align-items: center;
+  flex-direction: row;
+}
+
+.grilla-celda.grilla-bloqueo .grilla-celda-cliente {
+  font-size: 0.65rem;
+}
+
+.grilla-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .grilla-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .grilla-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ===== ACCESOS RÁPIDOS ===== */
 .acceso-rapido {
   display: flex;

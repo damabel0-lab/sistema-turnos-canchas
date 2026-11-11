@@ -1,8 +1,19 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api } from '../../lib/api';
 import { ToastContainer, useToast } from '../../components/ui/Toast';
-import { Card, Badge } from '../../components/ui';
-import { Clock, Plus, MapPin, RefreshCw } from 'lucide-react';
+import { Badge } from '../../components/ui';
+import {
+  Plus,
+  MapPin,
+  RefreshCw,
+  CalendarClock,
+  HandCoins,
+  BadgeCheck,
+  Phone,
+  Repeat,
+  Lock,
+  X,
+} from 'lucide-react';
 
 interface ItemGrilla {
   hora: string;
@@ -37,13 +48,6 @@ const estadosReserva: Record<string, 'neutral' | 'success' | 'warning' | 'danger
   cancelada: 'danger',
 };
 
-const coloresReserva: Record<string, string> = {
-  pendiente_seña: 'color-mix(in srgb, var(--advertencia) 18%, transparent)',
-  confirmada: 'color-mix(in srgb, var(--exito) 18%, transparent)',
-  completada: 'color-mix(in srgb, var(--info) 18%, transparent)',
-  bloqueo: 'var(--border)',
-};
-
 export function GrillaPage() {
   const [fecha, setFecha] = useState(hoy());
   const [filas, setFilas] = useState<FilaGrilla[]>([]);
@@ -61,7 +65,6 @@ export function GrillaPage() {
     api<ConfigComplejo>('/config').then(setConfig).catch((e) => setError(e.message));
   }, []);
 
-  // Turnos válidos (:15 a :15, 1 hora) — coincide con la disponibilidad del backend
   const HORAS_TURNO = config
     ? (() => {
         const slots: string[] = [];
@@ -104,8 +107,8 @@ export function GrillaPage() {
         body: JSON.stringify({ estado, metodo_pago: estado === 'confirmada' ? metodo : undefined }),
       });
       const textos: Record<string, string> = {
-        confirmada: 'Cobro registrado y reserva confirmada ',
-        completada: 'Reserva marcada como completada ',
+        confirmada: 'Cobro registrado y reserva confirmada',
+        completada: 'Reserva marcada como completada',
         cancelada: 'Reserva cancelada',
       };
       mostrar(`${textos[estado]} (#${sel.reserva_id})`, 'success');
@@ -205,95 +208,144 @@ export function GrillaPage() {
         .reduce((s, i) => s + (i.monto ?? 0), 0),
     0
   );
+  const precio = (n: number) => `$${n.toLocaleString('es-AR')}`;
 
   return (
     <div className="admin-page">
-      <div className="contenedor-ancho">
-        <div className="fila-entre" style={{ marginBottom: '0.75rem' }}>
-          <div>
-            <h1 className="titulo">Grilla del día</h1>
-            <p className="texto-sec">Controlá tus canchas en tiempo real</p>
-          </div>
-          <div className="fila">
-            <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="input" />
-            <button className="boton boton-outline" onClick={() => void cargar()}>
-              <RefreshCw size={16} /> Actualizar
-            </button>
+      <ToastContainer toasts={toasts} onCerrar={cerrar} />
+
+      {/* ===== Encabezado compacto ===== */}
+      <header className="pagina-encabezado">
+        <div>
+          <span className="pagina-eyebrow">PlayControl · Grilla</span>
+          <h1 className="pagina-titulo">Grilla del día</h1>
+          <p className="pagina-sub">Agenda y controles en tiempo real · turnos de 1 h (:15 a :15)</p>
+        </div>
+        <div className="fila" style={{ gap: '0.5rem' }}>
+          <input
+            type="date"
+            value={fecha}
+            onChange={(e) => setFecha(e.target.value)}
+            className="input"
+            style={{ width: 'auto' }}
+            aria-label="Fecha de la grilla"
+          />
+          <button type="button" className="boton boton-outline" onClick={() => void cargar()}>
+            <RefreshCw size={15} /> Actualizar
+          </button>
+        </div>
+      </header>
+
+      {error && (
+        <div className="alerta-error" role="alert">
+          {error}
+        </div>
+      )}
+
+      {/* ===== Stat strip ===== */}
+      <div className="grilla-stats-3">
+        <div className="metrica">
+          <div className="metrica-icono verde"><CalendarClock size={19} /></div>
+          <div className="metrica-label">Turnos de hoy</div>
+          <div className="metrica-valor">{totalReservas}</div>
+        </div>
+        <div className="metrica">
+          <div className="metrica-icono ambar"><HandCoins size={19} /></div>
+          <div className="metrica-label">Pendiente de cobro</div>
+          <div className="metrica-valor">{precio(porCobrar)}</div>
+        </div>
+        <div className="metrica">
+          <div className="metrica-icono verde"><BadgeCheck size={19} /></div>
+          <div className="metrica-label">Cobrado hoy</div>
+          <div className="metrica-valor">{precio(cobrado)}</div>
+        </div>
+      </div>
+
+      {/* ===== Agenda del día (protagonista) ===== */}
+      <section className="panel" style={{ marginBottom: '0.9rem' }}>
+        <div className="panel-header">
+          <span className="panel-titulo">Agenda del día</span>
+          <div className="leyenda-grilla" aria-label="Leyenda de la grilla">
+            <span className="leyenda-chip"><span className="leyenda-punto pendiente" /> Pendiente</span>
+            <span className="leyenda-chip"><span className="leyenda-punto confirmada" /> Confirmada</span>
+            <span className="leyenda-chip"><span className="leyenda-punto completada" /> Completada</span>
+            <span className="leyenda-chip"><span className="leyenda-punto bloqueo" /> Bloqueo</span>
           </div>
         </div>
-        {error && <p style={{ color: 'var(--peligro)' }}>{error}</p>}
-        <ToastContainer toasts={toasts} onCerrar={cerrar} />
-
-        <div className="fila" style={{ gap: '0.5rem', marginBottom: '1rem' }}>
-          <div className="tarjeta-plana" style={{ padding: '0.5rem 0.75rem' }}>
-            <span style={{ fontWeight: 700 }}>🕐 {totalReservas}</span> turnos
-          </div>
-          <div className="tarjeta-plana" style={{ padding: '0.5rem 0.75rem', background: 'color-mix(in srgb, var(--advertencia) 18%, transparent)', borderColor: 'color-mix(in srgb, var(--advertencia) 40%, transparent)' }}>
-            <span style={{ fontWeight: 700 }}>⏳ ${porCobrar}</span> por cobrar
-          </div>
-          <div className="tarjeta-plana" style={{ padding: '0.5rem 0.75rem', background: 'color-mix(in srgb, var(--exito) 18%, transparent)', borderColor: 'color-mix(in srgb, var(--exito) 40%, transparent)' }}>
-            <span style={{ fontWeight: 700 }}> ${cobrado}</span> cobrado
-          </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="grilla-tabla">
+            <thead>
+              <tr>
+                <th scope="col">Cancha</th>
+                {HORAS_TURNO.map((h) => (
+                  <th key={h} scope="col">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filas.map((f) => (
+                <tr key={f.cancha_id}>
+                  <th scope="row" className="grilla-cancha-nombre">
+                    {f.cancha}
+                    {f.deporte && <small>{f.deporte}</small>}
+                  </th>
+                  {HORAS_TURNO.map((h) => {
+                    const item = f.items.find((i) => i.hora === h);
+                    if (!item) {
+                      return <td key={h} className="grilla-slot" aria-label="Libre">·</td>;
+                    }
+                    if (item.tipo === 'bloqueo') {
+                      return (
+                        <td key={h}>
+                          <div className="grilla-celda grilla-bloqueo" title={`Bloqueada: ${item.motivo ?? ''}`}>
+                            <Lock size={11} />
+                            <span className="grilla-celda-cliente">Bloqueo</span>
+                          </div>
+                        </td>
+                      );
+                    }
+                    const estado = item.estado ?? 'pendiente_seña';
+                    return (
+                      <td key={h}>
+                        <button
+                          type="button"
+                          className={`grilla-celda ${estado}`}
+                          onClick={() => {
+                            if (item.reserva_id) {
+                              setSel({ reserva_id: item.reserva_id, cliente: item.cliente, estado: item.estado, monto: item.monto });
+                            }
+                          }}
+                          title={`${item.cliente ?? 'Cliente'} · ${estado} · ${precio(item.monto ?? 0)}`}
+                        >
+                          <span className="grilla-celda-cliente">{item.cliente ?? 'Reserva'}</span>
+                          <span className="grilla-celda-monto">{precio(item.monto ?? 0)}</span>
+                        </button>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+              {filas.length === 0 && (
+                <tr>
+                  <th scope="row" className="grilla-cancha-nombre">—</th>
+                  <td colSpan={HORAS_TURNO.length} className="grilla-vacio">No hay canchas para mostrar.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
+      </section>
 
-        {/* Turno fijo semanal */}
-        <Card>
-          <h3 className="titulo" style={{ fontSize: '1rem' }}><Clock size={16} /> Turno fijo semanal</h3>
-          <form onSubmit={guardarTurnoFijo} className="stack">
-            <label className="label">Nombre del cliente<input required value={turnoFijo.nombre} onChange={(e) => setTurnoFijo({ ...turnoFijo, nombre: e.target.value })} className="input" /></label>
-            <label className="label">Teléfono<input required value={turnoFijo.telefono} onChange={(e) => setTurnoFijo({ ...turnoFijo, telefono: e.target.value })} className="input" /></label>
-            <label className="label">Cancha
-              <select required value={turnoFijo.cancha_id} onChange={(e) => setTurnoFijo({ ...turnoFijo, cancha_id: e.target.value })} className="input">
-                <option value="">Elegir…</option>
-                {filas.map((f) => (<option key={f.cancha_id} value={f.cancha_id}>{f.cancha}</option>))}
-              </select>
-            </label>
-            <label className="label">Día
-              <select required value={turnoFijo.dia_semana} onChange={(e) => setTurnoFijo({ ...turnoFijo, dia_semana: e.target.value })} className="input">
-                <option value="">Elegir…</option>
-                {DIAS_SEMANA.map((d) => (<option key={d.valor} value={d.valor}>{d.texto}</option>))}
-              </select>
-            </label>
-            <label className="label">Hora
-              <select required value={turnoFijo.hora} onChange={(e) => setTurnoFijo({ ...turnoFijo, hora: e.target.value })} className="input">
-                <option value="">Elegir…</option>
-                {HORAS_TURNO.map((h) => (<option key={h} value={h}>{h}</option>))}
-              </select>
-            </label>
-            <label className="label">Semanas
-              <input required type="number" min={1} max={52} value={turnoFijo.semanas} onChange={(e) => setTurnoFijo({ ...turnoFijo, semanas: e.target.value })} className="input" />
-            </label>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="submit" className="boton boton-primario"><Plus size={16} /> Crear turno fijo</button>
-            </div>
-          </form>
-        </Card>
-
-        {/* Bloqueo de horarios */}
-        <Card>
-          <h3 className="titulo" style={{ fontSize: '1rem' }}><MapPin size={16} /> Bloquear horario</h3>
-          <form onSubmit={guardarBloqueo} className="stack">
-            <label className="label">Cancha
-              <select required value={bloqueo.cancha_id} onChange={(e) => setBloqueo({ ...bloqueo, cancha_id: e.target.value })} className="input">
-                <option value="">Elegir…</option>
-                {filas.map((f) => (<option key={f.cancha_id} value={f.cancha_id}>{f.cancha}</option>))}
-              </select>
-            </label>
-            <label className="label">Desde<input type="time" value={bloqueo.desde} onChange={(e) => setBloqueo({ ...bloqueo, desde: e.target.value })} className="input" /></label>
-            <label className="label">Hasta<input type="time" value={bloqueo.hasta} onChange={(e) => setBloqueo({ ...bloqueo, hasta: e.target.value })} className="input" /></label>
-            <label className="label">Motivo<input required value={bloqueo.motivo} placeholder="Lluvia, mantenimiento, evento" onChange={(e) => setBloqueo({ ...bloqueo, motivo: e.target.value })} className="input" /></label>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="submit" className="boton boton-danger"><Plus size={16} /> Bloquear</button>
-            </div>
-          </form>
-        </Card>
-
+      {/* ===== Herramientas (3 columnas) ===== */}
+      <div className="grilla-3">
         {/* Carga rápida */}
-        <Card>
-          <h3 className="titulo" style={{ fontSize: '1rem' }}><Plus size={16} /> Carga rápida (teléfono/presencial)</h3>
-          <form onSubmit={guardarManual} className="stack">
-            <label className="label">Nombre<input required value={carga.nombre} onChange={(e) => setCarga({ ...carga, nombre: e.target.value })} className="input" /></label>
-            <label className="label">Teléfono<input required value={carga.telefono} onChange={(e) => setCarga({ ...carga, telefono: e.target.value })} className="input" /></label>
+        <section className="panel" aria-labelledby="carga-titulo">
+          <div className="panel-header">
+            <span className="panel-titulo" id="carga-titulo"><Phone size={12} style={{ verticalAlign: '-0.1em', marginRight: '0.3rem' }} />Carga rápida (teléfono)</span>
+          </div>
+          <form onSubmit={guardarManual} className="panel-body">
+            <label className="label">Nombre<input required value={carga.nombre} onChange={(e) => setCarga({ ...carga, nombre: e.target.value })} className="input" placeholder="Juan Pérez" /></label>
+            <label className="label">Teléfono<input required value={carga.telefono} onChange={(e) => setCarga({ ...carga, telefono: e.target.value })} className="input" placeholder="+54 9 11 0000-0000" /></label>
             <label className="label">Cancha
               <select required value={carga.cancha_id} onChange={(e) => setCarga({ ...carga, cancha_id: e.target.value })} className="input">
                 <option value="">Elegir…</option>
@@ -305,69 +357,89 @@ export function GrillaPage() {
                 {HORAS_TURNO.map((h) => (<option key={h} value={h}>{h}</option>))}
               </select>
             </label>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="submit" className="boton boton-primario">Anotar turno</button>
-            </div>
+            <button type="submit" className="boton boton-primario boton-block"><Plus size={15} /> Anotar turno</button>
           </form>
-        </Card>
+        </section>
 
-        {/* Tabla de grilla */}
-        <Card plano>
-          <div style={{ overflowX: 'auto', padding: '0.75rem' }}>
-            <table className="tabla">
-              <thead>
-                <tr>
-                  <th>Cancha</th>
-                  {HORAS_TURNO.map((h) => (<th key={h} style={{ fontSize: '0.65rem', textAlign: 'center' }}>{h}</th>))}
-                </tr>
-              </thead>
-              <tbody>
-                {filas.map((f) => (
-                  <tr key={f.cancha_id}>
-                    <td style={{ position: 'sticky', left: 0, background: 'var(--bg-surface)' }}>
-                      {f.cancha}
-                      <br />
-                      <span className="texto-sec" style={{ fontSize: '0.7rem' }}>{f.deporte}</span>
-                    </td>
-                    {HORAS_TURNO.map((h) => {
-                      const item = f.items.find((i) => i.hora === h);
-                      const fondo = item ? (item.tipo === 'bloqueo' ? coloresReserva.bloqueo : coloresReserva[item.estado ?? 'pendiente_seña'] ?? coloresReserva.pendiente_seña) : 'var(--bg-surface)';
-                      const titulo = item ? (item.tipo === 'bloqueo' ? `Bloqueada: ${item.motivo}` : `${item.cliente} · $${item.monto} · ${item.estado}`) : 'Libre';
-                      return (
-                        <td
-                          key={h}
-                          title={titulo}
-                          onClick={() => {
-                            if (item?.tipo === 'reserva' && item.reserva_id) {
-                              setSel({ reserva_id: item.reserva_id, cliente: item.cliente, estado: item.estado, monto: item.monto });
-                            }
-                          }}
-                          style={{ background: fondo, minWidth: '3.5rem', fontSize: '0.7rem', textAlign: 'center', cursor: item?.tipo === 'reserva' ? 'pointer' : 'default' }}
-                        >
-                          {item?.cliente ?? ''}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {/* Turno fijo semanal */}
+        <section className="panel" aria-labelledby="fijo-titulo">
+          <div className="panel-header">
+            <span className="panel-titulo" id="fijo-titulo"><Repeat size={12} style={{ verticalAlign: '-0.1em', marginRight: '0.3rem' }} />Turno fijo semanal</span>
           </div>
-        </Card>
+          <form onSubmit={guardarTurnoFijo} className="panel-body">
+            <label className="label">Nombre del cliente<input required value={turnoFijo.nombre} onChange={(e) => setTurnoFijo({ ...turnoFijo, nombre: e.target.value })} className="input" placeholder="Juan Pérez" /></label>
+            <label className="label">Teléfono<input required value={turnoFijo.telefono} onChange={(e) => setTurnoFijo({ ...turnoFijo, telefono: e.target.value })} className="input" placeholder="+54 9 11 0000-0000" /></label>
+            <div className="grid-2" style={{ gap: '0.5rem' }}>
+              <label className="label">Cancha
+                <select required value={turnoFijo.cancha_id} onChange={(e) => setTurnoFijo({ ...turnoFijo, cancha_id: e.target.value })} className="input">
+                  <option value="">Elegir…</option>
+                  {filas.map((f) => (<option key={f.cancha_id} value={f.cancha_id}>{f.cancha}</option>))}
+                </select>
+              </label>
+              <label className="label">Día
+                <select required value={turnoFijo.dia_semana} onChange={(e) => setTurnoFijo({ ...turnoFijo, dia_semana: e.target.value })} className="input">
+                  <option value="">Elegir…</option>
+                  {DIAS_SEMANA.map((d) => (<option key={d.valor} value={d.valor}>{d.texto}</option>))}
+                </select>
+              </label>
+            </div>
+            <div className="grid-2" style={{ gap: '0.5rem' }}>
+              <label className="label">Hora
+                <select required value={turnoFijo.hora} onChange={(e) => setTurnoFijo({ ...turnoFijo, hora: e.target.value })} className="input">
+                  <option value="">Elegir…</option>
+                  {HORAS_TURNO.map((h) => (<option key={h} value={h}>{h}</option>))}
+                </select>
+              </label>
+              <label className="label">Semanas
+                <input required type="number" min={1} max={52} value={turnoFijo.semanas} onChange={(e) => setTurnoFijo({ ...turnoFijo, semanas: e.target.value })} className="input" />
+              </label>
+            </div>
+            <button type="submit" className="boton boton-primario boton-block"><Repeat size={15} /> Crear turno fijo</button>
+          </form>
+        </section>
 
-        {/* Panel de acciones */}
-        {sel && (
-          <Card>
-            <h3 className="titulo" style={{ fontSize: '1rem' }}>
+        {/* Bloquear horario */}
+        <section className="panel" aria-labelledby="bloqueo-titulo">
+          <div className="panel-header">
+            <span className="panel-titulo" id="bloqueo-titulo"><MapPin size={12} style={{ verticalAlign: '-0.1em', marginRight: '0.3rem' }} />Bloquear horario</span>
+          </div>
+          <form onSubmit={guardarBloqueo} className="panel-body">
+            <label className="label">Cancha
+              <select required value={bloqueo.cancha_id} onChange={(e) => setBloqueo({ ...bloqueo, cancha_id: e.target.value })} className="input">
+                <option value="">Elegir…</option>
+                {filas.map((f) => (<option key={f.cancha_id} value={f.cancha_id}>{f.cancha}</option>))}
+              </select>
+            </label>
+            <div className="grid-2" style={{ gap: '0.5rem' }}>
+              <label className="label">Desde<input type="time" value={bloqueo.desde} onChange={(e) => setBloqueo({ ...bloqueo, desde: e.target.value })} className="input" /></label>
+              <label className="label">Hasta<input type="time" value={bloqueo.hasta} onChange={(e) => setBloqueo({ ...bloqueo, hasta: e.target.value })} className="input" /></label>
+            </div>
+            <label className="label">Motivo
+              <input required value={bloqueo.motivo} placeholder="Lluvia, mantenimiento, evento…" onChange={(e) => setBloqueo({ ...bloqueo, motivo: e.target.value })} className="input" />
+            </label>
+            <button type="submit" className="boton boton-danger boton-block"><Lock size={15} /> Bloquear</button>
+          </form>
+        </section>
+      </div>
+
+      {/* ===== Panel de acciones (reserva seleccionada) ===== */}
+      {sel && (
+        <section className="panel" style={{ marginTop: '0.9rem' }} aria-label={`Reserva ${sel.reserva_id}`}>
+          <div className="panel-header">
+            <span className="panel-titulo">
               Reserva #{sel.reserva_id} · {sel.cliente}
               <Badge variant={estadosReserva[sel.estado ?? 'pendiente_seña'] ?? 'neutral'} style={{ marginLeft: '0.5rem' }}>
                 {sel.estado ?? ''}
               </Badge>
-            </h3>
-
+            </span>
+            <button type="button" className="dialog-cerrar" onClick={() => setSel(null)} aria-label="Cerrar">
+              <X size={15} />
+            </button>
+          </div>
+          <div className="panel-body" style={{ gridTemplateColumns: 'none' }}>
             {sel.estado === 'pendiente_seña' && (
               <div className="fila">
-                <label className="label" style={{ marginBottom: 0 }}>
+                <label className="label" style={{ marginBottom: 0, flex: '1 1 12rem' }}>
                   Método de pago
                   <select value={metodo} onChange={(e) => setMetodo(e.target.value)} className="input">
                     <option value="efectivo">Efectivo</option>
@@ -377,7 +449,7 @@ export function GrillaPage() {
                   </select>
                 </label>
                 <button type="button" className="boton boton-primario" onClick={() => void cambiarEstado('confirmada')}>
-                  Confirmar pago
+                  <BadgeCheck size={15} /> Confirmar pago
                 </button>
               </div>
             )}
@@ -391,12 +463,9 @@ export function GrillaPage() {
                 Cancelar reserva
               </button>
             )}
-            <button type="button" className="boton boton-ghost" onClick={() => setSel(null)} style={{ marginLeft: '0.5rem' }}>
-              Cerrar
-            </button>
-          </Card>
-        )}
-      </div>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
