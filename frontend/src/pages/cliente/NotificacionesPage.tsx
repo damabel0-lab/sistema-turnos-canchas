@@ -10,7 +10,7 @@ interface Notificacion {
   titulo: string;
   cuerpo: string;
   leida: boolean;
-  creada_en: string;
+  creado_en: string;
 }
 
 export function NotificacionesPage() {
@@ -106,7 +106,7 @@ export function NotificacionesPage() {
                 </div>
                 <div className="texto-sec" style={{ marginTop: '0.25rem' }}>{n.cuerpo}</div>
                 <div className="texto-sec" style={{ fontSize: '0.75rem', marginTop: '0.4rem' }}>
-                  {new Date(n.creada_en).toLocaleString('es-AR')}
+                  {new Date(n.creado_en).toLocaleString('es-AR')}
                 </div>
               </div>
             ))}

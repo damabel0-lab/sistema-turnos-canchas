@@ -8,7 +8,7 @@ export interface Notificacion {
   titulo: string;
   cuerpo: string;
   leida: boolean;
-  creada_en: string;
+  creado_en: string;
 }
 
 /** true si el error indica que la tabla notificaciones no existe en Supabase
@@ -28,7 +28,7 @@ export async function listarNotificaciones(usuarioId: string) {
     .from('notificaciones')
     .select('*')
     .eq('usuario_id', usuarioId)
-    .order('creada_en', { ascending: false });
+    .order('creado_en', { ascending: false });
   if (error) {
     if (esTablaNotificacionesFaltante(error)) {
       console.warn('Tabla notificaciones no existe — devolviendo lista vacía. Ejecutar docs/notificaciones.sql en Supabase.');
@@ -125,11 +125,12 @@ export async function procesarRecordatoriosProximos() {
 
     if (!existentes || existentes.length === 0) {
       try {
+        const esHoy = mañana === hoy;
         await crearNotificacion({
           usuario_id: usuarioId,
           tipo: 'recordatorio',
           titulo: 'Recordatorio de turno',
-          cuerpo: `Mañana ${mañana === hoy ? 'hoy' : 'mañana'} a las ${inicioTexto} tenés reserva #${r.id} en ${canchaNombre}.`,
+          cuerpo: `${esHoy ? 'Hoy' : 'Mañana'} a las ${inicioTexto} tenés reserva #${r.id} en ${canchaNombre}.`,
         });
         creadas.push({ reserva_id: r.id, usuario_id: usuarioId });
       } catch (err) {
