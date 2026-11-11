@@ -1,44 +1,108 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
+import { api } from '../../lib/api';
 import {
   Goal,
   CalendarDays,
   CalendarClock,
-  Trophy,
-  Wallet,
-  Users,
-  BarChart3,
   ArrowRight,
   CheckCircle2,
+  LayoutDashboard,
+  Grid3x3,
+  Ticket,
+  Wallet,
+  Trophy,
+  Users,
+  Bell,
+  BadgeDollarSign,
+  ClipboardList,
+  AlertTriangle,
+  type LucideIcon,
 } from 'lucide-react';
 
-const features = [
-  { icon: CalendarClock, titulo: 'Reservá en segundos', texto: 'Elegí disciplina, cancha y horario. Turnos fijos de 1 hora, sin vueltas.' },
-  { icon: CalendarDays, titulo: 'Grilla en vivo', texto: 'El complejo entero en una pantalla: libre, ocupada o bloqueada al instante.' },
-  { icon: Wallet, titulo: 'Caja y seña', texto: 'Señas, cobranzas, egresos y CSV exportable para tu contador.' },
-  { icon: Users, titulo: 'Socios y beneficios', texto: 'Descuentos por socio, abonos mensuales de gym y pileta.' },
-  { icon: Trophy, titulo: 'Torneos', texto: 'Creá el torneo, gestioná equipos y partidos desde el panel.' },
-  { icon: BarChart3, titulo: 'Reportes', texto: 'Recaudación del día, por disciplina y por origen. Datos, no pálpitos.' },
-];
+interface ReservaMia {
+  id: number;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  estado: string;
+  cancha: string;
+  deporte: string | null;
+}
+
+interface EstadisticasMias {
+  veces_jugado: number;
+  gasto_total: number;
+  disciplina_favorita: string | null;
+  cancelaciones: number;
+}
+
+interface ResumenStaff {
+  reservas_hoy: number;
+  pendientes_seña: number;
+  ingresos_dia: number;
+  abonos_por_vencer: number;
+}
+
+function fechaCorta(iso: string): string {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString('es-AR', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+  });
+}
+
+function precio(n: number): string {
+  return `$${n.toLocaleString('es-AR')}`;
+}
+
+/** Tarjeta de acción funcional (todo clickeable, nada decorativo) */
+function AccionRapida({ to, icon: Icon, titulo, sub }: { to: string; icon: LucideIcon; titulo: string; sub: string }) {
+  return (
+    <Link to={to} className="acceso-rapido">
+      <Icon size={22} />
+      <div>
+        <div className="acceso-rapido-titulo">{titulo}</div>
+        <div className="acceso-rapido-sub">{sub}</div>
+      </div>
+      <ArrowRight size={16} className="acceso-rapido-flecha" />
+    </Link>
+  );
+}
 
 export function HomePage() {
+  const { session, perfil } = useAuth();
+  if (!session) return <LandingPublica />;
+  const esStaff = perfil?.rol === 'super_admin' || perfil?.rol === 'recepcionista';
+  return esStaff ? <HomeStaff /> : <HomeCliente nombre={perfil?.nombre ?? ''} />;
+}
+
+/* ============================================================
+   PÚBLICO — landing compacta: cómo funciona + CTAs
+   ============================================================ */
+function LandingPublica() {
+  const pasos = [
+    { n: 1, titulo: 'Elegí el deporte', texto: 'Disciplina y cancha disponible.' },
+    { n: 2, titulo: 'Elegí el horario', texto: 'Fecha y turno libre (1 h, de :15 a :15).' },
+    { n: 3, titulo: 'Confirmá', texto: 'Reservá y a jugar. Seña opcional en el complejo.' },
+  ];
+
   return (
     <main className="pantalla" style={{ paddingTop: '1rem' }}>
-      {/* ===== HERO ===== */}
-      <header className="hero">
-        <div className="hero-texto">
+      <header className="hero" style={{ gridTemplateColumns: '1fr', textAlign: 'center', justifyItems: 'center', paddingBottom: '1.25rem' }}>
+        <div className="hero-texto" style={{ maxWidth: '44rem' }}>
           <span className="hero-badge">
-            <span className="live-dot" /> El complejo, bajo control
+            <Goal size={14} /> El complejo, bajo control
           </span>
           <h1 className="hero-titulo">
-            Reservá tu cancha.
-            <br />
-            <span className="hero-gradiente">Administrá tu club.</span>
+            Reservá tu cancha.<br />
+            <span className="hero-gradiente">Jugá hoy.</span>
           </h1>
-          <p className="hero-sub">
-            PlayControl es el sistema integral para complejos deportivos: turnos, caja,
-            socios, abonos y torneos en una sola plataforma.
+          <p className="hero-sub" style={{ marginLeft: 'auto', marginRight: 'auto' }}>
+            Reservá en segundos, gestioná tus turnos y participá en torneos — todo en un solo lugar.
           </p>
-          <div className="fila" style={{ gap: '0.75rem' }}>
+          <div className="fila" style={{ justifyContent: 'center', gap: '0.75rem' }}>
             <Link to="/reservar" className="boton boton-primario" style={{ padding: '0.75rem 1.5rem', fontSize: '0.95rem' }}>
               Reservar turno <ArrowRight size={17} />
             </Link>
@@ -46,65 +110,266 @@ export function HomePage() {
               Ver el complejo
             </Link>
           </div>
-          <div className="hero-puntos">
-            <span><CheckCircle2 size={14} /> Turnos de 1 h, de :15 a :15</span>
-            <span><CheckCircle2 size={14} /> Seña online opcional</span>
+          <div className="hero-puntos" style={{ justifyContent: 'center' }}>
+            <span><CheckCircle2 size={14} /> Turnos de 1 h</span>
             <span><CheckCircle2 size={14} /> Cancelación gratis 2 h antes</span>
-          </div>
-        </div>
-
-        {/* Panel preview (decorativo) */}
-        <div className="hero-panel" aria-hidden>
-          <div className="hero-panel-header">
-            <Goal size={15} /> Grilla del día
-            <span className="hero-panel-live"><span className="live-dot" /> En vivo</span>
-          </div>
-          <div className="hero-panel-grid">
-            {[
-              ['20:15', 'libre'], ['20:15', 'ocupada'], ['20:15', 'libre'],
-              ['20:15', 'libre'], ['21:15', 'ocupada'], ['21:15', 'bloqueo'],
-            ].map(([hora, estado], i) => (
-              <div key={i} className={`hero-celda ${estado}`}>{hora}</div>
-            ))}
-          </div>
-          <div className="hero-panel-foot">
-            <span>Cancha 1 · Fútbol 5</span>
-            <span className="hero-panel-badge">$35.000/h</span>
+            <span><CheckCircle2 size={14} /> Seña opcional</span>
           </div>
         </div>
       </header>
 
-      {/* ===== FEATURES ===== */}
+      {/* Cómo funciona */}
       <section>
-        <h2 className="titulo" style={{ fontSize: '1.15rem', margin: '0.5rem 0 1rem' }}>
-          Todo lo que pasa en el complejo, en un solo lugar
-        </h2>
-        <div className="grilla-tarjetas" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
-          {features.map((f) => {
-            const Icon = f.icon;
+        <h2 className="titulo" style={{ fontSize: '1.1rem', margin: '0.25rem 0 0.85rem' }}>Cómo funciona</h2>
+        <div className="metricas" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))' }}>
+          {pasos.map((p) => {
             return (
-              <div key={f.titulo} className="feature-card">
-                <span className="feature-icono">
-                  <Icon size={19} />
-                </span>
-                <h3 className="feature-titulo">{f.titulo}</h3>
-                <p className="feature-texto">{f.texto}</p>
-              </div>
+              <Link key={p.n} to="/reservar" className="acceso-rapido" style={{ textDecoration: 'none' }}>
+                <span className="paso-num" style={{ width: '2rem', height: '2rem', fontSize: '0.9rem' }}>{p.n}</span>
+                <div>
+                  <div className="acceso-rapido-titulo">{p.titulo}</div>
+                  <div className="acceso-rapido-sub">{p.texto}</div>
+                </div>
+                <ArrowRight size={16} className="acceso-rapido-flecha" />
+              </Link>
             );
           })}
         </div>
       </section>
+    </main>
+  );
+}
 
-      {/* ===== CTA FINAL ===== */}
-      <section className="hero-cta">
-        <div>
-          <h2 className="titulo" style={{ margin: 0 }}>¿Todavía estás reservando por teléfono?</h2>
-          <p className="subtitulo" style={{ margin: '0.35rem 0 0' }}>Sumate a PlayControl y dejá que el sistema labure por vos.</p>
+/* ============================================================
+   CLIENTE — home personal con datos reales
+   ============================================================ */
+function HomeCliente({ nombre }: { nombre: string }) {
+  const [proximas, setProximas] = useState<ReservaMia[]>([]);
+  const [stats, setStats] = useState<EstadisticasMias | null>(null);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    let cancelado = false;
+    Promise.allSettled([
+      api<{ proximas: ReservaMia[] }>('/reservas/mias'),
+      api<EstadisticasMias>('/reservas/mias/estadisticas'),
+    ]).then(([reservasRes, statsRes]) => {
+      if (cancelado) return;
+      if (reservasRes.status === 'fulfilled') {
+        const ahora = new Date();
+        const futuras = (reservasRes.value.proximas ?? [])
+          .filter((r) => r.estado === 'confirmada' || r.estado === 'pendiente_seña')
+          .filter((r) => new Date(`${r.fecha}T${r.hora_fin.slice(0, 5)}:00`) >= ahora)
+          .slice(0, 3);
+        setProximas(futuras);
+      }
+      if (statsRes.status === 'fulfilled') setStats(statsRes.value);
+      setCargando(false);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  return (
+    <main className="pantalla" style={{ paddingTop: '1.25rem' }}>
+      <div className="contenedor-ancho">
+        {/* Saludo */}
+        <div className="fila-entre" style={{ marginBottom: '1.1rem' }}>
+          <div>
+            <h1 className="titulo" style={{ fontSize: '1.6rem', marginBottom: '0.1rem' }}>
+              {nombre ? `¡Hola, ${nombre}!` : '¡Hola!'}
+            </h1>
+            <p className="subtitulo" style={{ margin: 0, textTransform: 'capitalize' }}>
+              {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </p>
+          </div>
+          <Link to="/reservar" className="boton boton-primario">
+            Reservar <ArrowRight size={16} />
+          </Link>
         </div>
-        <Link to="/reservar" className="boton boton-primario" style={{ padding: '0.75rem 1.5rem' }}>
-          Reservar mi próxima cancha <ArrowRight size={17} />
-        </Link>
-      </section>
+
+        {/* Próximos turnos */}
+        <h2 className="titulo" style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--texto-3)', marginBottom: '0.5rem' }}>
+          Tus próximos turnos
+        </h2>
+        {cargando ? (
+          <div className="stack" style={{ marginBottom: '1.25rem' }}>
+            {[0, 1].map((i) => (
+              <div key={i} className="skeleton" style={{ height: '4.5rem' }} />
+            ))}
+          </div>
+        ) : proximas.length === 0 ? (
+          <div className="tarjeta caja-vacia" style={{ marginBottom: '1.25rem', padding: '1.25rem' }}>
+            <CalendarDays size={26} style={{ color: 'var(--primario-2)', margin: '0 auto 0.5rem', display: 'block' }} />
+            <p className="texto-sec" style={{ margin: 0 }}>Todavía no tenés turnos reservados.</p>
+            <Link to="/reservar" className="boton boton-primario" style={{ marginTop: '0.75rem' }}>
+              Reservar mi primera cancha <ArrowRight size={16} />
+            </Link>
+          </div>
+        ) : (
+          <div className="stack" style={{ marginBottom: '1.25rem' }}>
+            {proximas.map((r) => (
+              <div key={r.id} className="tarjeta-plana" style={{ padding: '0.7rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div className="icono-circulo" style={{ width: '2.5rem', height: '2.5rem', flexShrink: 0 }}>
+                  <CalendarDays size={18} />
+                </div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontWeight: 700 }}>{r.cancha}</div>
+                  <div className="texto-sec" style={{ fontSize: '0.82rem', textTransform: 'capitalize' }}>
+                    {r.deporte} · {fechaCorta(r.fecha)} · {r.hora_inicio.slice(0, 5)}–{r.hora_fin.slice(0, 5)}
+                  </div>
+                </div>
+                <span className={`badge ${r.estado === 'confirmada' ? 'badge-exito' : 'badge-advertencia'}`}>
+                  {r.estado === 'confirmada' ? 'Confirmada' : 'Pendiente seña'}
+                </span>
+              </div>
+            ))}
+            <Link to="/mis-reservas" className="boton boton-ghost" style={{ justifySelf: 'start' }}>
+              Ver todas mis reservas <ArrowRight size={15} />
+            </Link>
+          </div>
+        )}
+
+        {/* Tus números */}
+        {stats && (
+          <>
+            <h2 className="titulo" style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--texto-3)', marginBottom: '0.5rem' }}>
+              Tus números
+            </h2>
+            <div className="metricas" style={{ marginBottom: '1.25rem', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))' }}>
+              <div className="metrica" style={{ padding: '0.8rem 1rem' }}>
+                <div className="metrica-label">Veces jugado</div>
+                <div className="metrica-valor" style={{ fontSize: '1.4rem' }}>{stats.veces_jugado}</div>
+              </div>
+              <div className="metrica" style={{ padding: '0.8rem 1rem' }}>
+                <div className="metrica-label">Gasto total</div>
+                <div className="metrica-valor" style={{ fontSize: '1.4rem' }}>{precio(stats.gasto_total)}</div>
+              </div>
+              <div className="metrica" style={{ padding: '0.8rem 1rem' }}>
+                <div className="metrica-label">Disciplina favorita</div>
+                <div className="metrica-valor" style={{ fontSize: '1.05rem' }}>{stats.disciplina_favorita ?? '—'}</div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Accesos rápidos */}
+        <h2 className="titulo" style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--texto-3)', marginBottom: '0.5rem' }}>
+          Accesos rápidos
+        </h2>
+        <div className="metricas" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))' }}>
+          <AccionRapida to="/reservar" icon={CalendarClock} titulo="Reservar cancha" sub="Turnos de 1 h, :15 a :15" />
+          <AccionRapida to="/mis-reservas" icon={CalendarDays} titulo="Mis reservas" sub="Próximos turnos e historial" />
+          <AccionRapida to="/mis-abonos" icon={Ticket} titulo="Mis abonos" sub="Gym y pileta mensuales" />
+          <AccionRapida to="/torneos" icon={Trophy} titulo="Torneos" sub="Inscripciones y partidos" />
+          <AccionRapida to="/notificaciones" icon={Bell} titulo="Notificaciones" sub="Avisos del complejo" />
+          <AccionRapida to="/complejo" icon={Goal} titulo="El complejo" sub="Canchas, precios y horarios" />
+        </div>
+      </div>
+    </main>
+  );
+}
+
+/* ============================================================
+   STAFF / DUEÑO — panel del día con datos reales
+   ============================================================ */
+function HomeStaff() {
+  const { perfil } = useAuth();
+  const [resumen, setResumen] = useState<ResumenStaff | null>(null);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    let cancelado = false;
+    api<ResumenStaff>('/dashboard/resumen')
+      .then((d) => {
+        if (!cancelado) setResumen(d);
+      })
+      .catch(() => {
+        /* si falla, igual mostramos los accesos */
+      })
+      .finally(() => {
+        if (!cancelado) setCargando(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  const esSuper = perfil?.rol === 'super_admin';
+
+  return (
+    <main className="pantalla" style={{ paddingTop: '1.25rem' }}>
+      <div className="contenedor-ancho">
+        {/* Saludo */}
+        <div className="fila-entre" style={{ marginBottom: '1.1rem' }}>
+          <div>
+            <h1 className="titulo" style={{ fontSize: '1.6rem', marginBottom: '0.1rem' }}>
+              {perfil?.nombre ? `¡Hola, ${perfil.nombre}!` : 'Panel del complejo'}
+            </h1>
+            <p className="subtitulo" style={{ margin: 0, textTransform: 'capitalize' }}>
+              {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </p>
+          </div>
+          <Link to="/complejo" className="boton boton-outline">Ver sitio público</Link>
+        </div>
+
+        {/* El complejo hoy */}
+        <h2 className="titulo" style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--texto-3)', marginBottom: '0.5rem' }}>
+          El complejo hoy
+        </h2>
+        {cargando ? (
+          <div className="metricas" style={{ marginBottom: '1.25rem' }}>
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="skeleton" style={{ height: '6rem' }} />
+            ))}
+          </div>
+        ) : resumen ? (
+          <div className="metricas" style={{ marginBottom: '1.25rem' }}>
+            <div className="metrica">
+              <div className="metrica-icono verde"><CalendarDays size={19} /></div>
+              <div className="metrica-label">Reservas hoy</div>
+              <div className="metrica-valor">{resumen.reservas_hoy}</div>
+            </div>
+            <div className="metrica">
+              <div className="metrica-icono verde"><BadgeDollarSign size={19} /></div>
+              <div className="metrica-label">Ingresos hoy</div>
+              <div className="metrica-valor">{precio(resumen.ingresos_dia)}</div>
+            </div>
+            <div className="metrica">
+              <div className="metrica-icono ambar"><ClipboardList size={19} /></div>
+              <div className="metrica-label">Pendientes de seña</div>
+              <div className="metrica-valor">{resumen.pendientes_seña}</div>
+            </div>
+            <div className="metrica">
+              <div className="metrica-icono rojo"><AlertTriangle size={19} /></div>
+              <div className="metrica-label">Abonos por vencer</div>
+              <div className="metrica-valor">{resumen.abonos_por_vencer}</div>
+            </div>
+          </div>
+        ) : null}
+
+        {/* Accesos al panel */}
+        <h2 className="titulo" style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--texto-3)', marginBottom: '0.5rem' }}>
+          Tu panel
+        </h2>
+        <div className="metricas" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))' }}>
+          <AccionRapida to="/admin/dashboard" icon={LayoutDashboard} titulo="Panel general" sub="Métricas y resumen del día" />
+          <AccionRapida to="/admin/grilla" icon={Grid3x3} titulo="Grilla del día" sub="Turnos, bloqueos y carga rápida" />
+          <AccionRapida to="/admin/vender-abono" icon={Ticket} titulo="Vender abono" sub="Gym y pileta mensuales" />
+          {esSuper ? (
+            <AccionRapida to="/admin/caja" icon={Wallet} titulo="Caja" sub="Ingresos, egresos y CSV" />
+          ) : (
+            <AccionRapida to="/admin/torneos" icon={Trophy} titulo="Torneos" sub="Equipos y partidos" />
+          )}
+          <AccionRapida to="/admin/socios" icon={Users} titulo="Socios" sub="Altas, directorio y beneficios" />
+          {esSuper ? (
+            <AccionRapida to="/admin/reportes" icon={BadgeDollarSign} titulo="Reportes" sub="Recaudación y estadísticas" />
+          ) : (
+            <AccionRapida to="/admin/configuracion" icon={Goal} titulo="Configuración" sub="Deportes, canchas y políticas" />
+          )}
+        </div>
+      </div>
     </main>
   );
 }
