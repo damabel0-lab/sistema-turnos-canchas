@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api } from '../../lib/api';
-import { Card, Button } from '../../components/ui';
+import { Card, Badge } from '../../components/ui';
+import { Plus, RefreshCw } from 'lucide-react';
 
 interface SetupResponse {
   setup_completado: boolean;
@@ -26,12 +27,30 @@ interface SetupResponse {
   };
 }
 
+interface Deporte {
+  id: number;
+  nombre: string;
+  tipo: string;
+  requiere_cancha: boolean;
+}
+
+interface Cancha {
+  id: number;
+  nombre: string;
+  deporte_id: number | null;
+  precio_base: number;
+  activa: boolean;
+  caracteristicas: string | null;
+  deportes?: { nombre: string; tipo: string } | null;
+}
+
 export function ConfiguracionPage() {
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Metadatos y políticas
   const [nombre, setNombre] = useState('');
   const [tipo, setTipo] = useState('fraccionado');
   const [horaApertura, setHoraApertura] = useState('08');
@@ -42,6 +61,19 @@ export function ConfiguracionPage() {
   const [pileta, setPileta] = useState(false);
   const [socios, setSocios] = useState(false);
 
+  // Deportes y canchas
+  const [deportes, setDeportes] = useState<Deporte[]>([]);
+  const [canchas, setCanchas] = useState<Cancha[]>([]);
+  const [nuevoDeporte, setNuevoDeporte] = useState({ nombre: '', tipo: 'cancha', requiere_cancha: true });
+  const [nuevaCancha, setNuevaCancha] = useState({
+    nombre: '',
+    deporte_id: '',
+    precio_base: '',
+    caracteristicas: '',
+    activa: true,
+  });
+
+  // Cargar configuración del complejo
   const cargar = useCallback(async () => {
     setCargando(true);
     setError(null);
@@ -54,8 +86,9 @@ export function ConfiguracionPage() {
 
       setNombre(meta.nombre ?? '');
       setTipo(meta.tipo ?? 'fraccionado');
-      setHoraApertura(String(meta.hora_apertura ?? '08'));
-      setHoraCierre(String(meta.hora_cierre ?? '23'));
+      const toTime = (h: number | undefined) => (h !== undefined ? `${String(h).padStart(2, '0')}:00` : '08:00');
+      setHoraApertura(toTime(meta.hora_apertura));
+      setHoraCierre(toTime(meta.hora_cierre));
       setCancelacionHoras(String(pol.cancelacion_minima_horas ?? '2'));
       setDescuentoTurnoFijo(String(pol.descuento_turno_fijo_porcentaje ?? '10'));
       setGym(am.gym ?? false);
@@ -68,9 +101,24 @@ export function ConfiguracionPage() {
     }
   }, []);
 
+  // Cargar deportes y canchas
+  const cargarCatalogo = useCallback(async () => {
+    try {
+      const [dep, can] = await Promise.all([
+        api<Deporte[]>('/deportes'),
+        api<Cancha[]>('/canchas'),
+      ]);
+      setDeportes(dep);
+      setCanchas(can);
+    } catch (e) {
+      console.warn('Error cargando catálogo:', e);
+    }
+  }, []);
+
   useEffect(() => {
     void cargar();
-  }, [cargar]);
+    void cargarCatalogo();
+  }, [cargar, cargarCatalogo]);
 
   async function guardar(parcial?: Record<string, Record<string, unknown>>) {
     setGuardando(true);
@@ -81,8 +129,8 @@ export function ConfiguracionPage() {
         metadatos: {
           nombre,
           tipo,
-          hora_apertura: Number(horaApertura),
-          hora_cierre: Number(horaCierre),
+          hora_apertura: Number(horaApertura.split(':')[0] || '0'),
+          hora_cierre: Number(horaCierre.split(':')[0] || '0'),
         },
         politicas: {
           cancelacion_minima_horas: Number(cancelacionHoras),
@@ -110,6 +158,48 @@ export function ConfiguracionPage() {
     }
   }
 
+  async function agregarDeporte(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    try {
+      await api('/deportes', {
+        method: 'POST',
+        body: JSON.stringify({
+          nombre: nuevoDeporte.nombre,
+          tipo: nuevoDeporte.tipo,
+          requiere_cancha: nuevoDeporte.requiere_cancha,
+        }),
+      });
+      setNuevoDeporte({ nombre: '', tipo: 'cancha', requiere_cancha: true });
+      await cargarCatalogo();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo crear el deporte');
+    }
+  }
+
+  async function agregarCancha(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!nuevaCancha.deporte_id) {
+      setError('Elige un deporte');
+      return;
+    }
+    try {
+      await api('/canchas', {
+        method: 'POST',
+        body: JSON.stringify({
+          nombre: nuevaCancha.nombre,
+          deporte_id: Number(nuevaCancha.deporte_id),
+          precio_base: Number(nuevaCancha.precio_base),
+          activa: nuevaCancha.activa,
+          caracteristicas: nuevaCancha.caracteristicas || null,
+        }),
+      });
+      setNuevaCancha({ nombre: '', deporte_id: '', precio_base: '', caracteristicas: '', activa: true });
+      await cargarCatalogo();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo crear la cancha');
+    }
+  }
+
   if (cargando) {
     return (
       <main className="pantalla">
@@ -129,7 +219,7 @@ export function ConfiguracionPage() {
         {error && <p style={{ color: '#dc2626' }}>{error}</p>}
         {mensaje && <p style={{ color: '#10b981' }}>{mensaje}</p>}
 
-        {/* Metadatos */}
+        {/* Datos del complejo */}
         <Card>
           <h3 className="titulo" style={{ fontSize: '1.1rem', marginBottom: '0.75rem' }}>Datos del complejo</h3>
           <label className="label">
@@ -202,12 +292,130 @@ export function ConfiguracionPage() {
           </label>
         </Card>
 
-        {/* Botones */}
+        {/* Deportes */}
+        <Card>
+          <h3 className="titulo" style={{ fontSize: '1.1rem', marginBottom: '0.75rem' }}>Deportes</h3>
+          <form onSubmit={agregarDeporte} className="fila" style={{ gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <input
+              value={nuevoDeporte.nombre}
+              onChange={(e) => setNuevoDeporte({ ...nuevoDeporte, nombre: e.target.value })}
+              placeholder="Nombre del deporte"
+              required
+              className="input" style={{ flex: 1 }}
+            />
+            <select
+              value={nuevoDeporte.tipo}
+              onChange={(e) => setNuevoDeporte({ ...nuevoDeporte, tipo: e.target.value })}
+              className="input"
+            >
+              <option value="cancha">Cancha</option>
+              <option value="gimnasio">Gimnasio</option>
+              <option value="pileta">Pileta</option>
+              <option value="otro">Otro</option>
+            </select>
+            <button type="submit" className="boton boton-primario"><Plus size={16} /> Agregar</button>
+          </form>
+          {deportes.length === 0 ? (
+            <p className="texto-sec">Aún no hay deportes cargados.</p>
+          ) : (
+            <div className="stack" style={{ listStyle: 'none', padding: 0 }}>
+              {deportes.map((d) => (
+                <div key={d.id} className="fila-entre">
+                  <div>
+                    <span style={{ fontWeight: 600 }}>{d.nombre}</span>
+                    <span className="texto-sec" style={{ marginLeft: '0.5rem', fontSize: '0.85rem' }}>
+                      {d.tipo}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        {/* Canchas */}
+        <Card>
+          <h3 className="titulo" style={{ fontSize: '1.1rem', marginBottom: '0.75rem' }}>Canchas</h3>
+          <form onSubmit={agregarCancha} className="stack">
+            <label className="label">
+              Nombre
+              <input
+                value={nuevaCancha.nombre}
+                onChange={(e) => setNuevaCancha({ ...nuevaCancha, nombre: e.target.value })}
+                required
+                className="input"
+              />
+            </label>
+            <label className="label">
+              Deporte
+              <select
+                value={nuevaCancha.deporte_id}
+                onChange={(e) => setNuevaCancha({ ...nuevaCancha, deporte_id: e.target.value })}
+                required
+                className="input"
+              >
+                <option value="">Elegir…</option>
+                {deportes.map((d) => (
+                  <option key={d.id} value={d.id}>{d.nombre}</option>
+                ))}
+              </select>
+            </label>
+            <label className="label">
+              Precio por hora ($)
+              <input
+                type="number"
+                min={0}
+                value={nuevaCancha.precio_base}
+                onChange={(e) => setNuevaCancha({ ...nuevaCancha, precio_base: e.target.value })}
+                required
+                className="input"
+              />
+            </label>
+            <label className="label">
+              Características
+              <input
+                value={nuevaCancha.caracteristicas}
+                placeholder="Ej: Iluminada, techada…"
+                onChange={(e) => setNuevaCancha({ ...nuevaCancha, caracteristicas: e.target.value })}
+                className="input"
+              />
+            </label>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="submit" className="boton boton-primario"><Plus size={16} /> Agregar cancha</button>
+            </div>
+          </form>
+
+          {canchas.length === 0 ? (
+            <p className="texto-sec" style={{ marginTop: '0.75rem' }}>Aún no hay canchas cargadas.</p>
+          ) : (
+            <div className="stack" style={{ marginTop: '0.75rem' }}>
+              {canchas.map((c) => (
+                <div key={c.id} className="tarjeta-plana" style={{ padding: '0.5rem 0.75rem' }}>
+                  <div className="fila-entre">
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{c.nombre}</div>
+                      <div className="texto-sec" style={{ fontSize: '0.85rem' }}>
+                        {c.deportes?.nombre ?? 'Sin deporte'} · ${c.precio_base}/h
+                      </div>
+                    </div>
+                    <Badge variant={c.activa ? 'success' : 'neutral'}>
+                      {c.activa ? 'Activa' : 'Inactiva'}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        {/* Botones guardar */}
         <div className="fila" style={{ justifyContent: 'flex-end', gap: '0.5rem' }}>
-          <Button variant="secondary" onClick={() => void cargar()}>Cancelar</Button>
-          <Button variant="primary" onClick={() => void guardar()} disabled={guardando}>
+          <button className="boton boton-secondary" onClick={() => void cargar()}>
+            <RefreshCw size={16} /> Recargar
+          </button>
+          <button className="boton boton-primario" onClick={() => void guardar()} disabled={guardando}>
             {guardando ? 'Guardando…' : 'Guardar configuración'}
-          </Button>
+          </button>
         </div>
       </div>
     </main>
