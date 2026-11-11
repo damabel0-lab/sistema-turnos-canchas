@@ -96,13 +96,24 @@ export async function reservasDelUsuario(usuarioId: string) {
 export async function cancelarPropia(usuarioId: string, reservaId: number) {
   const { data: reserva, error } = await supabaseAdmin
     .from('reservas')
-    .select('id, usuario_id, fecha, estado')
+    .select('id, usuario_id, fecha, estado, hora_inicio')
     .eq('id', reservaId)
     .single();
   if (error || !reserva) throw new HttpError(404, 'Reserva no encontrada');
   if (reserva.usuario_id !== usuarioId) throw new HttpError(403, 'Esa reserva no es tuya');
   if (reserva.estado !== 'pendiente_seña' && reserva.estado !== 'confirmada') {
     throw new HttpError(409, `No se puede cancelar una reserva "${reserva.estado}"`);
+  }
+
+  // Política de cancelación configurable por el dueño del complejo (opcional).
+  // Si no hay variable definida, no hay límite. Por defecto: sin límite.
+  const horasMinimas = Number(process.env.POLITICA_CANCELACION_HORAS ?? '0');
+  if (horasMinimas > 0) {
+    const inicio = new Date(`${reserva.fecha}T${reserva.hora_inicio}`);
+    const limite = new Date(inicio.getTime() - horasMinimas * 60 * 60 * 1000);
+    if (new Date() > limite) {
+      throw new HttpError(409, `No se puede cancelar: el complejo exige al menos \${horasMinimas} hs antes del turno`);
+    }
   }
 
   const { data, error: eUpd } = await supabaseAdmin
@@ -330,6 +341,8 @@ export interface NuevaReserva {
   cliente_nombre?: string | null;
   /** Marca si esta reserva se proyectó automáticamente como turno fijo semanal */
   es_turno_fijo?: boolean;
+  /** Descuento opcional para clientes con turno fijo (0..100). El dueño decide si quiere o no darlo */
+  descuento_turno_fijo?: number;
 }
 
 /**
@@ -404,6 +417,7 @@ export async function crearReserva(entrada: NuevaReserva) {
       hora_inicio,
       hora_fin,
       usuario_id: entrada.usuario_id ?? null,
+      descuento_turno_fijo: entrada.descuento_turno_fijo ?? 0,
     });
     precio_total = cotizacion.precio_total;
     monto_seña = cotizacion.monto_seña;
@@ -513,6 +527,8 @@ export interface TurnoFijoEntrada {
   monto_seña?: number;
   metodo_pago?: string | null;
   estado?: 'pendiente_seña' | 'confirmada';
+  /** Descuento opcional configurable por el complejo (0..100). 0 = sin descuento */
+  descuento_turno_fijo?: number;
 }
 
 /** Resuelve el usuario_id: si viene lo usa, si no, busca/crea por teléfono. */
@@ -598,6 +614,7 @@ export async function proyectarTurnosFijos(entrada: TurnoFijoEntrada) {
         metodo_pago: entrada.metodo_pago,
         estado: entrada.estado,
         es_turno_fijo: true,
+        descuento_turno_fijo: entrada.descuento_turno_fijo,
       });
       creadas.push({ fecha: fechaStr, reserva_id: reserva.id });
     } catch (err) {
