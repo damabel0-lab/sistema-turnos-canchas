@@ -45,7 +45,8 @@ const envNum = (clave: string, fallback: number): number =>
 
 /** GET /config -> configuración PÚBLICA del complejo.
  *  Fuente única de verdad: tablas configuracion_complejo / configuracion_valores.
- *  Fallback: variables de entorno (si el asistente nunca se ejecutó). */
+ *  Fallback: variables de entorno (si el asistente nunca se ejecutó).
+ *  Incluye las canchas activas con su precio (para la página pública del complejo). */
 configRouter.get(
   '/',
   h(async (_req, res) => {
@@ -73,6 +74,29 @@ configRouter.get(
     const str = (fuente: Record<string, unknown>, clave: string): string | null =>
       typeof fuente[clave] === 'string' && (fuente[clave] as string).trim() ? (fuente[clave] as string) : null;
 
+    // Canchas activas con nombre de deporte y precio (listado público)
+    const { data: canchasRaw } = await supabaseAdmin
+      .from('canchas')
+      .select('id, nombre, precio_base, caracteristicas, deporte_id, deportes(nombre)')
+      .eq('activa', true)
+      .order('nombre');
+
+    const canchasList = (canchasRaw ?? []) as unknown as Array<{
+      id: number;
+      nombre: string;
+      precio_base: number;
+      caracteristicas: string | null;
+      deporte_id: number | null;
+      deportes: { nombre: string } | null;
+    }>;
+    const canchas = canchasList.map((c) => ({
+      id: c.id,
+      nombre: c.nombre,
+      deporte: c.deportes?.nombre ?? null,
+      caracteristicas: c.caracteristicas,
+      precio_base: c.precio_base,
+    }));
+
     res.json({
       // Datos del complejo (si corrió el asistente)
       nombre: str(meta, 'nombre'),
@@ -94,6 +118,8 @@ configRouter.get(
       ofrece_socios: bool(soc, 'ofrece_socios', false),
       // Torneos
       ofrece_torneos: bool(tor, 'ofrece_torneos', true),
+      // Canchas y precios (activos — para la página pública)
+      canchas,
     });
   }),
 );

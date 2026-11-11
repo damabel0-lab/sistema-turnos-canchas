@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
+import { ToastContainer, useToast } from '../../components/ui/Toast';
 import {
   CalendarDays,
   BadgeDollarSign,
@@ -15,6 +16,8 @@ import {
   Wallet,
   Trophy,
   RefreshCw,
+  Send,
+  Loader2,
 } from 'lucide-react';
 
 interface ResumenDashboard {
@@ -31,6 +34,8 @@ export function DashboardPage() {
   const [datos, setDatos] = useState<ResumenDashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
+  const [enviandoRecordatorios, setEnviandoRecordatorios] = useState(false);
+  const { toasts, mostrar, cerrar } = useToast();
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -56,8 +61,36 @@ export function DashboardPage() {
       })
     : '';
 
+  async function enviarRecordatorios() {
+    setEnviandoRecordatorios(true);
+    try {
+      const res = await api<{ creadas: number; errores: Array<{ reserva_id: number; error: string }>; total_reservas: number }>(
+        '/notificaciones/procesar-recordatorios',
+        { method: 'POST' },
+      );
+      if (res.creadas > 0) {
+        mostrar(
+          `${res.creadas} recordatorio${res.creadas !== 1 ? 's' : ''} enviado${res.creadas !== 1 ? 's' : ''} a clientes con turno mañana/hoy.`,
+          'success',
+        );
+      } else if (res.total_reservas === 0) {
+        mostrar('No hay turnos confirmados hoy/mañana para recordar.', 'info');
+      } else {
+        mostrar('Ya no había recordatorios pendientes (los que corresponden ya fueron enviados).', 'info');
+      }
+      if (res.errores && res.errores.length > 0) {
+        mostrar(`Errores: ${res.errores.length} al enviar avisos.`, 'warning');
+      }
+    } catch (e) {
+      mostrar(e instanceof Error ? e.message : 'No se pudieron enviar los recordatorios', 'danger');
+    } finally {
+      setEnviandoRecordatorios(false);
+    }
+  }
+
   return (
     <div className="admin-page">
+      <ToastContainer toasts={toasts} onCerrar={cerrar} />
       {/* Encabezado */}
       <div className="fila-entre" style={{ marginBottom: '1.1rem' }}>
         <div>
@@ -68,9 +101,21 @@ export function DashboardPage() {
             {fechaLegible || 'Resumen del día'}
           </p>
         </div>
-        <button type="button" className="boton boton-outline" onClick={() => void cargar()} disabled={cargando}>
-          <RefreshCw size={15} /> {cargando ? 'Actualizando…' : 'Actualizar'}
-        </button>
+        <div className="fila" style={{ gap: '0.5rem' }}>
+          <button
+            type="button"
+            className="boton boton-outline"
+            onClick={() => void enviarRecordatorios()}
+            disabled={enviandoRecordatorios}
+            aria-label="Enviar recordatorios de turno a los clientes"
+          >
+            {enviandoRecordatorios ? <Loader2 size={15} /> : <Send size={15} />}
+            {enviandoRecordatorios ? 'Enviando…' : 'Enviar recordatorios'}
+          </button>
+          <button type="button" className="boton boton-outline" onClick={() => void cargar()} disabled={cargando}>
+            <RefreshCw size={15} /> {cargando ? 'Actualizando…' : 'Actualizar'}
+          </button>
+        </div>
       </div>
 
       {error && (

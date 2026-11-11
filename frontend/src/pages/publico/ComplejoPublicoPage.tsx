@@ -29,6 +29,14 @@ interface ConfigComplejo {
     precio_mensual_pileta: number | null;
   };
   ofrece_socios: boolean;
+  ofrece_torneos?: boolean;
+  canchas?: Array<{
+    id: number;
+    nombre: string;
+    deporte: string | null;
+    caracteristicas: string | null;
+    precio_base: number;
+  }>;
 }
 
 export function ComplejoPublicoPage() {
@@ -189,6 +197,42 @@ export function ComplejoPublicoPage() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Canchas y precios */}
+        {config?.canchas && config.canchas.length > 0 && (
+          <section style={{ marginTop: '1.25rem' }}>
+            <h2 className="titulo" style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--texto-3)', margin: '0 0 0.6rem 0.15rem' }}>
+              Canchas y precios
+            </h2>
+            <div className="grilla-tarjetas" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))' }}>
+              {config.canchas.map((c) => (
+                <Link
+                  key={c.id}
+                  to="/reservar"
+                  className="tarjeta-plana"
+                  style={{ padding: '0.9rem 1rem', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}
+                  aria-label={`Reservar ${c.nombre}`}
+                >
+                  <div className="fila-entre" style={{ gap: '0.5rem' }}>
+                    <div className="fila" style={{ gap: '0.5rem', minWidth: 0 }}>
+                      <span className="cal-cancha-icono" style={{ width: '1.9rem', height: '1.9rem' }}>
+                        <Goal size={16} />
+                      </span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, letterSpacing: '-0.02em', fontSize: '0.95rem' }}>{c.nombre}</div>
+                        <div className="texto-debil">{c.deporte ?? 'Cancha'}</div>
+                      </div>
+                    </div>
+                    <div style={{ fontWeight: 850, fontSize: '1rem', whiteSpace: 'nowrap' }}>
+                      ${c.precio_base.toLocaleString('es-AR')}<span className="texto-debil" style={{ fontSize: '0.72rem', fontWeight: 600 }}>/h</span>
+                    </div>
+                  </div>
+                  {c.caracteristicas && <p className="texto-sec" style={{ margin: 0, fontSize: '0.8rem' }}>{c.caracteristicas}</p>}
+                </Link>
+              ))}
+            </div>
+          </section>
         )}
 
         {/* Cómo reservar */}
