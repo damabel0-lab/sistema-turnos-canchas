@@ -57,6 +57,47 @@ export async function leerNotificacion(id: string, usuarioId: string) {
   return { ok: true };
 }
 
+/** Marcar TODAS como leídas */
+export async function marcarTodasLeidas(usuarioId: string) {
+  const { error } = await supabaseAdmin
+    .from('notificaciones')
+    .update({ leida: true })
+    .eq('usuario_id', usuarioId)
+    .eq('leida', false);
+  if (error) {
+    if (esTablaNotificacionesFaltante(error)) return { ok: true, actualizadas: 0 };
+    throw new HttpError(500, error.message);
+  }
+  return { ok: true };
+}
+
+/** Borrar TODAS las notificaciones del usuario */
+export async function eliminarTodasNotificaciones(usuarioId: string) {
+  const { error } = await supabaseAdmin
+    .from('notificaciones')
+    .delete()
+    .eq('usuario_id', usuarioId);
+  if (error) {
+    if (esTablaNotificacionesFaltante(error)) return { ok: true, borradas: 0 };
+    throw new HttpError(500, error.message);
+  }
+  return { ok: true };
+}
+
+/** Borrar una notificación */
+export async function eliminarNotificacion(id: string, usuarioId: string) {
+  const { error } = await supabaseAdmin
+    .from('notificaciones')
+    .delete()
+    .eq('id', id)
+    .eq('usuario_id', usuarioId);
+  if (error) {
+    if (esTablaNotificacionesFaltante(error)) return { ok: true };
+    throw new HttpError(404, 'Notificación no encontrada');
+  }
+  return { ok: true };
+}
+
 /** Crear una notificación (para uso interno del sistema) */
 export async function crearNotificacion(entrada: {
   usuario_id: string;

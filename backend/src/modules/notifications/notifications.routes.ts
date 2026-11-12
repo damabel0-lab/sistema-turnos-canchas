@@ -7,6 +7,9 @@ import {
   recordatorioTurno,
   avisoSuspension,
   procesarRecordatoriosProximos,
+  marcarTodasLeidas,
+  eliminarTodasNotificaciones,
+  eliminarNotificacion,
 } from './notifications.service.js';
 
 export const notificacionesRouter = Router();
@@ -30,6 +33,33 @@ notificacionesRouter.patch(
     const usuarioId = (req as any).userId;
     await leerNotificacion(req.params.id, usuarioId);
     res.json({ ok: true });
+  }),
+);
+
+// PATCH /notificaciones/leer-todas -> marcar TODAS como leídas
+notificacionesRouter.patch(
+  '/leer-todas',
+  h(async (req, res) => {
+    const usuarioId = (req as any).userId;
+    res.json(await marcarTodasLeidas(usuarioId));
+  }),
+);
+
+// DELETE /notificaciones -> borrar TODAS las del usuario
+notificacionesRouter.delete(
+  '/',
+  h(async (req, res) => {
+    const usuarioId = (req as any).userId;
+    res.json(await eliminarTodasNotificaciones(usuarioId));
+  }),
+);
+
+// DELETE /notificaciones/:id -> borrar una
+notificacionesRouter.delete(
+  '/:id',
+  h(async (req, res) => {
+    const usuarioId = (req as any).userId;
+    res.json(await eliminarNotificacion(req.params.id, usuarioId));
   }),
 );
 
