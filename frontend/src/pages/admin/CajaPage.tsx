@@ -1,3 +1,4 @@
+import * as XLSX from 'xlsx';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
@@ -23,6 +24,8 @@ interface Movimiento {
 }
 
 interface Resumen {
+  desde: string;
+  hasta: string;
   ingresos: number;
   egresos: number;
   saldo: number;
@@ -89,32 +92,139 @@ export function CajaPage() {
 
   async function descargarReporte(periodoElegido: PeriodoExport) {
     try {
-      const reporte = await api<Resumen>(`/caja/resumen?fecha=${fecha}&periodo=${periodoElegido}`);
-      const encabezados = ['Fecha y hora', 'Tipo', 'Descripción', 'Método', 'Monto ($)'];
-      const filasCsv: string[][] = [encabezados];
+      const [reporte, cfg] = await Promise.all([
+        api<Resumen>(`/caja/resumen?fecha=${fecha}&periodo=${periodoElegido}`),
+        api<{ nombre: string | null; hora_apertura: number; hora_cierre: number }>('/config').catch(
+          () => ({ nombre: null as null | string, hora_apertura: 8, hora_cierre: 23 }),
+        ),
+      ]);
+
+      const nombreComplejo = cfg?.nombre ?? 'PlayControl';
+      const diaHoraApertura = `${String(cfg?.hora_apertura ?? 8).padStart(2, '0')}:00`;
+      const diaHoraCierre = `${String(cfg?.hora_cierre ?? 23).padStart(2, '0')}:00`;
+      const desdeLocal = new Date(reporte.desde).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const hastaLocal = new Date(new Date(reporte.hasta).getTime() - new Date().getTimezoneOffset() * 60_000).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const periodoLabel = etiquetasPeriodo[periodoElegido] ?? 'Histórico';
+      const monedaFmt = '"$"#,##0;[Red]-"$"#,##0';
+
+      // Construcción de celdas con estilos
+      const aoa: unknown[][] = [
+        ['PlayControl'],
+        [`${nombreComplejo} · Cierre de caja`],
+        [`${periodoLabel} · del ${desdeLocal} al ${hastaLocal} · horario operativo ${diaHoraApertura}–${diaHoraCierre}`],
+        [],
+        ['Fecha y hora', 'Tipo', 'Descripción', 'Método', 'Monto ($)'],
+      ];
+
       for (const m of reporte.movimientos) {
-        filasCsv.push([
-          new Date(m.fecha_hora).toLocaleString('es-AR'),
+        const signo = m.tipo_movimiento === 'ingreso' ? 1 : -1;
+        aoa.push([
+          new Date(m.fecha_hora).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
           m.tipo_movimiento,
           m.descripcion,
           m.metodo_pago,
-          (m.tipo_movimiento === 'ingreso' ? '+' : '-') + String(m.monto),
+          signo * Number(m.monto),
         ]);
       }
-      filasCsv.push(['', '', '', 'TOTAL INGRESOS', String(reporte.ingresos)]);
-      filasCsv.push(['', '', '', 'TOTAL EGRESOS', String(reporte.egresos)]);
-      filasCsv.push(['', '', '', 'SALDO', String(reporte.saldo)]);
-      const csv = filasCsv
-        .map((fila) => fila.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))
-        .join('\r\n');
-      const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `caja-${periodoElegido}-${fecha}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-      mostrar('Reporte descargado.', 'success');
+
+      // Totales
+      const filaTotalesIngreso = aoa.length; // marcamos filas desde acá hacia abajo
+      aoa.push(['', '', '', 'TOTAL INGRESOS', reporte.ingresos]);
+      aoa.push(['', '', '', 'TOTAL EGRESOS', reporte.egresos]);
+      aoa.push(['', '', '', 'SALDO', reporte.saldo]);
+
+      // Por origen
+      if (reporte.por_origen.length > 0) {
+        aoa.push([]);
+        aoa.push(['', '', '', 'ORIGEN', 'TOTAL']);
+        for (const o of reporte.por_origen) {
+          aoa.push(['', '', '', `${o.origen} (${o.movimientos} mov)`, o.total]);
+        }
+      }
+      // Por método
+      const metodos = Object.entries(reporte.por_metodo_pago);
+      if (metodos.length > 0) {
+        aoa.push([]);
+        aoa.push(['', '', '', 'MÉTODO', 'TOTAL']);
+        for (const [m, total] of metodos) {
+          aoa.push(['', '', '', m, total]);
+        }
+      }
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa as unknown as string[][]);
+
+      // Ancho de columnas
+      ws['!cols'] = [{ wch: 20 }, { wch: 12 }, { wch: 55 }, { wch: 18 }, { wch: 18 }];
+
+      // Fusión de líneas del encabezado
+      ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 4 } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 4 } },
+      ];
+      // Congelar encabezado
+      ws['!freeze'] = { xSplit: 0, ySplit: 5 };
+
+      // Estilos (bold / colores / fills / formato moneda) — el .d.ts no tipa "s", usamos any
+      const setStyle = (r: number, c: number, s: Record<string, unknown>) => {
+        const ref = XLSX.utils.encode_cell({ r, c });
+        const cell = (ws as Record<string, { v?: unknown; s?: Record<string, unknown> }>)[ref];
+        if (cell) cell.s = s;
+      };
+
+      const fontCenter = (bold: boolean, size: number, color = 'FF111827') => ({ font: { bold, sz: size, color: { rgb: color } }, alignment: { horizontal: 'left' as const } });
+      const fill = (rgb: string) => ({ fill: { patternType: 'solid', fgColor: { rgb } } });
+      const borderThin = {
+        top: { style: 'thin' as const, color: { rgb: 'FFE5E7EB' } },
+        bottom: { style: 'thin' as const, color: { rgb: 'FFE5E7EB' } },
+        left: { style: 'thin' as const, color: { rgb: 'FFE5E7EB' } },
+        right: { style: 'thin' as const, color: { rgb: 'FFE5E7EB' } },
+      };
+      const whiteBold = { font: { bold: true, sz: 10, color: { rgb: 'FFFFFFFF' } }, alignment: { horizontal: 'center' as const } };
+
+      // Fila 1 (título)
+      setStyle(0, 0, { ...fontCenter(true, 22), ...fill('FF111827') });
+      // Fila 2 (complejo)
+      setStyle(1, 0, { ...fontCenter(true, 14, 'FF34D399'), ...fill('FF111827') });
+      // Fila 3 (período)
+      setStyle(2, 0, { ...fontCenter(false, 9, 'FF9CA3AF'), ...fill('FF111827') });
+
+      // Encabezados columna (fila 5)
+      for (let c = 0; c < 5; c++) {
+        setStyle(4, c, { ...whiteBold, ...fill('FF047857'), border: borderThin });
+      }
+
+      // Filas de datos (zebra stripes light y derecha para monto)
+      for (let r = 5; r < filaTotalesIngreso; r++) {
+        const esZebra = (r - 5) % 2 === 1;
+        for (let c = 0; c < 5; c++) {
+          setStyle(r, c, { border: borderThin, fill: esZebra ? fill('FFF9FAFB') : undefined, alignment: { horizontal: c === 4 ? 'right' : 'left' } });
+        }
+        // Columna monto: formato moneda
+        const ref = XLSX.utils.encode_cell({ r, c: 4 });
+        const montoCell = (ws as Record<string, { z?: string }>)[ref];
+        if (montoCell) montoCell.z = monedaFmt;
+      }
+
+      // Filas de totales: borde superior fuerte, bold
+      for (let r = filaTotalesIngreso; r < filaTotalesIngreso + 3; r++) {
+        for (let c = 0; c < 5; c++) {
+          const ref = XLSX.utils.encode_cell({ r, c });
+          const cell = (ws as Record<string, { s?: Record<string, unknown> }>)[ref];
+          if (cell) {
+            cell.s = { border: { top: { style: 'medium' as const, color: { rgb: 'FF111827' } } }, font: { bold: true }, alignment: { horizontal: c === 4 ? 'right' : 'left' } };
+          }
+        }
+        const totalRef = XLSX.utils.encode_cell({ r, c: 4 });
+        const totalCell = (ws as Record<string, { z?: string }>)[totalRef];
+        if (totalCell) totalCell.z = monedaFmt;
+      }
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Cierre');
+      const nombreArchivo = `caja-${periodoElegido}-${fecha.replace(/-/g, '')}.xlsx`;
+      XLSX.writeFile(wb, nombreArchivo);
+      mostrar('Reporte descargado en Excel.', 'success');
     } catch (e) {
       mostrar(e instanceof Error ? e.message : 'No se pudo descargar el reporte', 'danger');
     }
