@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { hoyISOLocal } from '../../lib/fecha';
 import { useAuth } from '../../hooks/useAuth';
+import { useComplejo } from '../../hooks/useComplejo';
 import { ToastContainer, useToast } from '../../components/ui/Toast';
 import { Card, Button, Input } from '../../components/ui';
-import { MapPin, Loader2, CheckCircle2 } from 'lucide-react';
+import { MapPin, Loader2, CheckCircle2, Building2, Compass } from 'lucide-react';
 
 interface Deporte {
   id: number;
@@ -48,6 +49,42 @@ function sumarUnaHora(hhmm: string): string {
 export function ReservarPage() {
   const { session } = useAuth();
   const { toasts, mostrar, cerrar } = useToast();
+  const { activoId, activoSlug, seleccionar } = useComplejo();
+  const [searchParams] = useSearchParams();
+  const slugParam = searchParams.get('complejo');
+
+  const [complejoNombre, setComplejoNombre] = useState<string | null>(null);
+  const [complejoResolviendo, setComplejoResolviendo] = useState(true);
+
+  // Resolver el complejo a reservar: ?complejo=slug > complejo activo persistido (por slug, mejor esfuerzo) > nada
+  useEffect(() => {
+    let cancelado = false;
+    setComplejoResolviendo(true);
+
+    const slug = slugParam ?? activoSlug;
+    if (!slug) {
+      setComplejoNombre(null);
+      setComplejoResolviendo(false);
+      return () => undefined;
+    }
+    api<{ id: number; nombre: string; slug: string }>(`/complejos/${slug}`)
+      .then((d) => {
+        if (cancelado) return;
+        seleccionar(d.id, d.slug);
+        setComplejoNombre(d.nombre);
+        setComplejoResolviendo(false);
+      })
+      .catch(() => {
+        if (cancelado) return;
+        // Si falla (complejo suspendido/inexistente), tratamos como sin selección
+        setComplejoNombre(null);
+        setComplejoResolviendo(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slugParam]);
 
   const [deportes, setDeportes] = useState<Deporte[]>([]);
   const [canchas, setCanchas] = useState<Cancha[]>([]);
@@ -65,8 +102,16 @@ export function ReservarPage() {
 
   useEffect(() => {
     api<Deporte[]>('/deportes').then(setDeportes).catch((e) => setError(e.message));
-    api<Cancha[]>('/canchas').then(setCanchas).catch((e) => setError(e.message));
   }, []);
+
+  useEffect(() => {
+    if (!activoId) {
+      setCanchas([]);
+      return;
+    }
+    api<Cancha[]>('/canchas').then(setCanchas).catch((e) => setError(e.message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activoId]);
 
   /** true si el turno ya empezó (solo aplica cuando la fecha es hoy) */
   const turnoYaPaso = (hora: string): boolean => {
@@ -188,7 +233,31 @@ export function ReservarPage() {
 
       {error && <div className="alerta-error" role="alert">{error}</div>}
 
-      {confirmada ? (
+      {!complejoResolviendo && !activoId ? (
+        <div className="card" style={{ textAlign: 'center', padding: '2.5rem 1rem', maxWidth: '30rem', margin: '0 auto' }}>
+          <Compass size={42} strokeWidth={1.6} style={{ margin: '0 auto 0.6rem', color: 'var(--primario)' }} />
+          <h2 className="titulo" style={{ marginBottom: '0.35rem' }}>Elegí un complejo primero</h2>
+          <p className="subtitulo" style={{ margin: 0 }}>
+            Para reservar un turno tenés que elegir dónde vas a jugar — hay canchas, gym y pileta en cada complejo.
+          </p>
+          <Link to="/complejos" className="boton boton-primario" style={{ marginTop: '0.9rem' }}>
+            <Building2 size={17} /> Ver complejos disponibles
+          </Link>
+        </div>
+      ) : (
+        <>
+          {activoId && (
+            <div className="fila-entre" style={{ marginBottom: '0.65rem' }}>
+              <p className="texto-sec" style={{ margin: 0 }}>
+                <Building2 size={15} style={{ verticalAlign: '-3px', marginRight: '0.35rem' }} aria-hidden />
+                Reservando en <strong>{complejoNombre ?? 'el complejo seleccionado'}</strong>
+              </p>
+              <Link to="/complejos" className="boton boton-ghost" style={{ fontSize: '0.85rem', padding: '0.35rem 0.7rem' }}>
+                Cambiar
+              </Link>
+            </div>
+          )}
+          {confirmada ? (
         <Card className="caja-vacia">
           <div className="icono-circulo" style={{ margin: '0 auto 0.75rem' }}>
             <CheckCircle2 size={28} />
@@ -414,6 +483,8 @@ export function ReservarPage() {
               </Card>
             </aside>
         </div>
+          )}
+        </>
       )}
     </main>
   );

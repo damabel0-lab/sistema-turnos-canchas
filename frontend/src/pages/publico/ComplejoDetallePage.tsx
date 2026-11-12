@@ -118,7 +118,7 @@ export function ComplejoDetallePage() {
   );
 
   const reservar = () => {
-    seleccionar(detalle.id);
+    seleccionar(detalle.id, detalle.slug);
     navigate(`/reservar?complejo=${detalle.slug}`);
   };
 

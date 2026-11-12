@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Bell, Goal } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useComplejo } from '../hooks/useComplejo';
 import { useNoLeidas } from '../hooks/useNoLeidas';
 import { ThemeToggle } from './ThemeToggle';
 import { api } from '../lib/api';
@@ -9,6 +10,7 @@ import { api } from '../lib/api';
 /** Barra de navegación superior (cliente / público). En rutas /admin la reemplaza el sidebar. */
 export function BarraSesion() {
   const { session, perfil, salir } = useAuth();
+  const { esStaffActivo } = useComplejo();
   const { pathname } = useLocation();
   const noLeidas = useNoLeidas();
   const [ofreceTorneos, setOfreceTorneos] = useState(true);
@@ -25,7 +27,7 @@ export function BarraSesion() {
   // Las pantallas de administración usan el AdminLayout (sidebar)
   if (pathname.startsWith('/admin')) return null;
 
-  const esStaff = perfil && (perfil.rol === 'super_admin' || perfil.rol === 'recepcionista');
+  const esStaff = perfil && (perfil.rol === 'super_admin' || esStaffActivo);
 
   const brand = (
     <Link to="/" className="nav-brand" aria-label="PlayControl — inicio">
@@ -40,7 +42,7 @@ export function BarraSesion() {
     return (
       <nav className="nav-barra" aria-label="Navegación principal">
         {brand}
-        <Link to="/complejo">Complejo</Link>
+        <Link to="/complejos">Complejos</Link>
         <div className="nav-derecha">
           <ThemeToggle />
           <Link to="/login" className="boton boton-primario" style={{ fontSize: '0.82rem', padding: '0.45rem 1rem' }}>
@@ -54,7 +56,7 @@ export function BarraSesion() {
   return (
     <nav className="nav-barra" aria-label="Navegación principal">
       {brand}
-      <Link to="/complejo">Complejo</Link>
+      <Link to="/complejos">Complejos</Link>
       <Link to="/reservar">Reservar</Link>
       <span className="nav-separador" aria-hidden />
       <Link to="/mis-reservas">Mis reservas</Link>

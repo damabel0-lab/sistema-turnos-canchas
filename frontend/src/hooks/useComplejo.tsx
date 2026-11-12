@@ -44,6 +44,7 @@ export interface MembresiaInfo {
 
 /** Clave con la que el frontend persiste el complejo activo (staff en operaciones / jugador reservando) */
 export const CLAVE_COMPLEJO_ACTIVO = 'playcontrol.complejo_id';
+export const CLAVE_COMPLEJO_SLUG = 'playcontrol.complejo_slug';
 
 interface ComplejoContextValue {
   /** Membresías del usuario logueado (dueño/recepcionista en complejos) */
@@ -59,8 +60,10 @@ interface ComplejoContextValue {
   esSuperAdmin: boolean;
   /** ¿Complejo activo opera con suscripción vigente? null si no es un complejo propio del staff */
   vigenteActivo: boolean | null;
+  /** slug del complejo activo (si se persistió) */
+  activoSlug: string | null;
   /** Selecciona el complejo activo (persiste en localStorage). null = limpiar */
-  seleccionar: (complejoId: number | null) => void;
+  seleccionar: (complejoId: number | null, slug?: string) => void;
   recargar: () => Promise<void>;
 }
 
@@ -70,6 +73,15 @@ function idDesdeStorage(): number | null {
   try {
     const v = Number(window.localStorage.getItem(CLAVE_COMPLEJO_ACTIVO));
     return Number.isInteger(v) && v > 0 ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+function slugDesdeStorage(): string | null {
+  try {
+    const v = window.localStorage.getItem(CLAVE_COMPLEJO_SLUG);
+    return v && /^[a-z0-9-]+$/.test(v) ? v : null;
   } catch {
     return null;
   }
@@ -89,6 +101,7 @@ export function ComplejoProvider({ children }: { children: ReactNode }) {
   const [membresias, setMembresias] = useState<MembresiaInfo[]>([]);
   const [cargando, setCargando] = useState(true);
   const [activoId, setActivoId] = useState<number | null>(() => idDesdeStorage());
+  const [activoSlug, setActivoSlug] = useState<string | null>(() => slugDesdeStorage());
 
   const recargar = useCallback(async () => {
     if (!session) {
@@ -119,17 +132,21 @@ export function ComplejoProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [membresias, perfil]);
 
-  const seleccionar = useCallback((complejoId: number | null) => {
+  const seleccionar = useCallback((complejoId: number | null, slug?: string) => {
     try {
       if (complejoId != null) {
         window.localStorage.setItem(CLAVE_COMPLEJO_ACTIVO, String(complejoId));
+        if (slug) window.localStorage.setItem(CLAVE_COMPLEJO_SLUG, slug);
       } else {
         window.localStorage.removeItem(CLAVE_COMPLEJO_ACTIVO);
+        window.localStorage.removeItem(CLAVE_COMPLEJO_SLUG);
       }
     } catch {
       /* modo privado: seguimos solo en memoria */
     }
     setActivoId(complejoId);
+    if (complejoId == null) setActivoSlug(null);
+    else if (slug) setActivoSlug(slug);
   }, []);
 
   const membresiaActiva = membresias.find((m) => m.complejo_id === activoId) ?? null;
@@ -151,6 +168,7 @@ export function ComplejoProvider({ children }: { children: ReactNode }) {
         esStaffActivo,
         esSuperAdmin,
         vigenteActivo,
+        activoSlug,
         seleccionar,
         recargar,
       }}

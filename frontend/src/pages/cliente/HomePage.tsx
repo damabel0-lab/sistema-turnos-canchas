@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useComplejo } from '../../hooks/useComplejo';
 import { api } from '../../lib/api';
 import {
   Goal,
@@ -38,6 +39,18 @@ interface EstadisticasMias {
   cancelaciones: number;
 }
 
+interface ThumbnailComplejo {
+  id: number;
+  nombre: string;
+  slug: string;
+  ciudad: string | null;
+  gym: boolean;
+  pileta: boolean;
+  ofrece_torneos: boolean;
+  deportes: Array<{ id: number; nombre: string }>;
+  precio_desde: number | null;
+}
+
 interface ResumenStaff {
   reservas_hoy: number;
   pendientes_seña: number;
@@ -73,8 +86,9 @@ function AccionRapida({ to, icon: Icon, titulo, sub }: { to: string; icon: Lucid
 
 export function HomePage() {
   const { session, perfil } = useAuth();
+  const { esStaffActivo } = useComplejo();
   if (!session) return <LandingPublica />;
-  const esStaff = perfil?.rol === 'super_admin' || perfil?.rol === 'recepcionista';
+  const esStaff = perfil?.rol === 'super_admin' || esStaffActivo;
   return esStaff ? <HomeStaff /> : <HomeCliente nombre={`${perfil?.nombre ?? ''} ${perfil?.apellido ?? ''}`.trim()} />;
 }
 
@@ -83,9 +97,9 @@ export function HomePage() {
    ============================================================ */
 function LandingPublica() {
   const pasos = [
-    { n: 1, titulo: 'Elegí el deporte', texto: 'Disciplina y cancha disponible.' },
-    { n: 2, titulo: 'Elegí el horario', texto: 'Fecha y turno libre (1 h, de :15 a :15).' },
-    { n: 3, titulo: 'Confirmá', texto: 'Reservá y a jugar. Seña opcional en el complejo.' },
+    { n: 1, titulo: 'Elegí tu complejo', texto: 'Canchas, gym, pileta y torneos de la zona en un solo lugar.' },
+    { n: 2, titulo: 'Elegí deporte y horario', texto: 'Turno de 1 h, garantizado en el complejo que prefieras.' },
+    { n: 3, titulo: 'Confirmá y a jugar', texto: 'Reservá gratis como jugador. Seña opcional en el complejo.' },
   ];
 
   return (
@@ -93,28 +107,34 @@ function LandingPublica() {
       <header className="hero" style={{ gridTemplateColumns: '1fr', textAlign: 'center', justifyItems: 'center', paddingBottom: '1.25rem' }}>
         <div className="hero-texto" style={{ maxWidth: '44rem' }}>
           <span className="hero-badge">
-            <Goal size={14} /> El complejo, bajo control
+            <Goal size={14} /> La plataforma de complejos
           </span>
           <h1 className="hero-titulo">
-            Reservá tu cancha.<br />
-            <span className="hero-gradiente">Jugá hoy.</span>
+            Todos los complejos,<br />
+            <span className="hero-gradiente">una sola plataforma.</span>
           </h1>
           <p className="hero-sub" style={{ marginLeft: 'auto', marginRight: 'auto' }}>
-            Reservá en segundos, gestioná tus turnos y participá en torneos — todo en un solo lugar.
+            Jugadores reservan gratis en cualquier complejo adherido; los dueños gestionan turnos, caja, abonos y torneos desde su panel.
           </p>
           <div className="fila" style={{ justifyContent: 'center', gap: '0.75rem' }}>
-            <Link to="/reservar" className="boton boton-primario" style={{ padding: '0.75rem 1.5rem', fontSize: '0.95rem' }}>
-              Reservar turno <ArrowRight size={17} />
+            <Link to="/login" className="boton boton-primario" style={{ padding: '0.75rem 1.5rem', fontSize: '0.95rem' }}>
+              Crear cuenta gratis <ArrowRight size={17} />
             </Link>
-            <Link to="/complejo" className="boton boton-outline" style={{ padding: '0.75rem 1.5rem', fontSize: '0.95rem' }}>
-              Ver el complejo
+            <Link to="/login" className="boton boton-outline" style={{ padding: '0.75rem 1.5rem', fontSize: '0.95rem' }}>
+              Explorar complejos
             </Link>
           </div>
           <div className="hero-puntos" style={{ justifyContent: 'center' }}>
+            <span><CheckCircle2 size={14} /> Gratis para jugadores</span>
             <span><CheckCircle2 size={14} /> Turnos de 1 h</span>
-            <span><CheckCircle2 size={14} /> Cancelación gratis 2 h antes</span>
-            <span><CheckCircle2 size={14} /> Seña opcional</span>
+            <span><CheckCircle2 size={14} /> 14 días de prueba para dueños</span>
           </div>
+          <p className="texto-sec" style={{ marginTop: '0.75rem', fontSize: '0.9rem' }}>
+            ¿Sos dueño de un complejo?{' '}
+            <Link to="/login" style={{ color: 'var(--primario-2)', fontWeight: 700 }}>
+              Registrate y publicalo en PlayControl →
+            </Link>
+          </p>
         </div>
       </header>
 
@@ -148,6 +168,7 @@ function HomeCliente({ nombre }: { nombre: string }) {
   const [stats, setStats] = useState<EstadisticasMias | null>(null);
   const [cargando, setCargando] = useState(true);
   const [ofreceTorneos, setOfreceTorneos] = useState(true);
+  const [destacados, setDestacados] = useState<ThumbnailComplejo[]>([]);
 
   useEffect(() => {
     let cancelado = false;
@@ -172,6 +193,12 @@ function HomeCliente({ nombre }: { nombre: string }) {
     return () => {
       cancelado = true;
     };
+  }, []);
+
+  useEffect(() => {
+    api<ThumbnailComplejo[]>('/complejos')
+      .then((d) => setDestacados(Array.isArray(d) ? d.slice(0, 3) : []))
+      .catch(() => setDestacados([]));
   }, []);
 
   return (
@@ -256,6 +283,49 @@ function HomeCliente({ nombre }: { nombre: string }) {
           </>
         )}
 
+        {/* Explorá complejos */}
+        {destacados.length > 0 && (
+          <>
+            <h2 className="titulo" style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--texto-3)', marginBottom: '0.5rem' }}>
+              Explorá complejos
+            </h2>
+            <div className="complejos-grid" style={{ marginBottom: '1.1rem' }}>
+              {destacados.map((c) => (
+                <Link key={c.id} to={`/complejos/${c.slug}`} className="complejo-card">
+                  <div className="fila-entre">
+                    <h3 className="complejo-card-nombre" style={{ fontSize: '0.98rem' }}>{c.nombre}</h3>
+                    {c.precio_desde != null && (
+                      <span className="badge badge-exito">desde ${c.precio_desde.toLocaleString('es-AR')}</span>
+                    )}
+                  </div>
+                  {c.ciudad && <p className="texto-debil" style={{ margin: 0, fontSize: '0.8rem' }}>{c.ciudad}</p>}
+                  <div className="amenity-row">
+                    {c.gym && <span className="amenity-chip destacada">Gym</span>}
+                    {c.pileta && <span className="amenity-chip destacada">Pileta</span>}
+                    {c.ofrece_torneos && <span className="amenity-chip destacada">Torneos</span>}
+                    {c.deportes.slice(0, 2).map((d) => (
+                      <span key={d.id} className="amenity-chip">{d.nombre}</span>
+                    ))}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* CTA para dueños */}
+        <div className="dueno-cta" style={{ marginBottom: '1.25rem' }}>
+          <div>
+            <strong>¿Sos dueño de un complejo?</strong>
+            <p className="texto-sec" style={{ margin: '0.15rem 0 0', fontSize: '0.88rem' }}>
+              Publicalo en PlayControl y gestioná turnos, caja, socios, abonos y torneos desde un panel. 14 días de prueba.
+            </p>
+          </div>
+          <Link to="/registra-tu-complejo" className="boton boton-primario" style={{ whiteSpace: 'nowrap' }}>
+            Registrar mi complejo <ArrowRight size={16} />
+          </Link>
+        </div>
+
         {/* Accesos rápidos */}
         <h2 className="titulo" style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--texto-3)', marginBottom: '0.5rem' }}>
           Accesos rápidos
@@ -268,7 +338,7 @@ function HomeCliente({ nombre }: { nombre: string }) {
             <AccionRapida to="/torneos" icon={Trophy} titulo="Torneos" sub="Inscripciones y partidos" />
           )}
           <AccionRapida to="/notificaciones" icon={Bell} titulo="Notificaciones" sub="Avisos del complejo" />
-          <AccionRapida to="/complejo" icon={Goal} titulo="El complejo" sub="Canchas, precios y horarios" />
+          <AccionRapida to="/complejos" icon={Goal} titulo="Explorar complejos" sub="Canchas, precios y reservas" />
         </div>
       </div>
     </main>

@@ -61,6 +61,7 @@ interface TorneoActivo {
   reglamento: string | null;
   estado: 'inscripcion' | 'en_curso' | 'finalizado' | 'cancelado';
   deportes?: { nombre: string } | null;
+  complejos?: { nombre: string; slug: string; ciudad: string | null } | null;
 }
 
 export function TorneosClientePage() {
@@ -74,16 +75,8 @@ export function TorneosClientePage() {
   const [inscribiendo, setInscribiendo] = useState(false);
   const [nombreEquipo, setNombreEquipo] = useState('');
   const { toasts, mostrar, cerrar } = useToast();
-  const [ofreceTorneos, setOfreceTorneos] = useState(true);
-
-  useEffect(() => {
-    api<{ ofrece_torneos?: boolean }>('/config')
-      .then((d) => setOfreceTorneos(d.ofrece_torneos !== false))
-      .catch(() => {});
-  }, []);
 
   const cargarTorneos = useCallback(async () => {
-    if (!ofreceTorneos) return;
     setCargando(true);
     try {
       setTorneos(await api<TorneoActivo[]>('/torneos/activos'));
@@ -92,7 +85,7 @@ export function TorneosClientePage() {
     } finally {
       setCargando(false);
     }
-  }, [ofreceTorneos]);
+  }, []);
 
   useEffect(() => {
     void cargarTorneos();
@@ -159,20 +152,6 @@ export function TorneosClientePage() {
     ? inscripciones.some((i) => i.capitan_id === perfil.id)
     : false;
 
-  if (!ofreceTorneos) {
-    return (
-      <main className="pantalla">
-        <div className="contenedor">
-          <Card className="caja-vacia">
-            <Trophy size={28} style={{ margin: '0 auto 0.75rem', color: 'var(--texto-3)' }} />
-            <h1 className="titulo">Torneos</h1>
-            <p className="texto-sec" style={{ margin: 0 }}>Este complejo no ofrece torneos por ahora.</p>
-          </Card>
-        </div>
-      </main>
-    );
-  }
-
   return (
     <main className="pantalla">
       <div className="contenedor-ancho" style={{ maxWidth: '1200px' }}>
@@ -221,6 +200,11 @@ export function TorneosClientePage() {
                         </Badge>
                       </div>
                       <h2 className="titulo" style={{ fontSize: '1.05rem', margin: 0 }}>{t.nombre}</h2>
+                      {t.complejos?.nombre && (
+                        <p className="texto-debil" style={{ margin: 0, fontSize: '0.82rem' }}>
+                          en {t.complejos.nombre}{t.complejos.ciudad ? ` · ${t.complejos.ciudad}` : ''}
+                        </p>
+                      )}
                       <div className="fila" style={{ gap: '0.4rem', flexWrap: 'wrap' }}>
                         <span className="badge badge-neutro">{t.modalidad === 'equipos' ? 'Equipos' : 'Individual'}</span>
                         <span className="badge badge-neutro">{t.formato === 'todos_contra_todos' ? 'Todos vs Todos' : 'Eliminación directa'}</span>
@@ -246,6 +230,11 @@ export function TorneosClientePage() {
               <div>
                 <span className="pagina-eyebrow">Torneo seleccionado</span>
                 <h1 className="pagina-titulo" style={{ marginBottom: 0 }}>{torneoSeleccionado.nombre}</h1>
+                {torneoSeleccionado.complejos?.nombre && (
+                  <p className="texto-sec" style={{ margin: '0.2rem 0 0' }}>
+                    en {torneoSeleccionado.complejos.nombre}{torneoSeleccionado.complejos.ciudad ? ` · ${torneoSeleccionado.complejos.ciudad}` : ''}
+                  </p>
+                )}
               </div>
               <button type="button" className="boton boton-ghost" onClick={() => setSeleccionado(null)} aria-label="Volver al listado">
                 <X size={16} /> Volver
