@@ -154,7 +154,7 @@ export function MisAbonosPage() {
         </div>
       )}
 
-      <div className="grilla-2-col">
+      <div className="grilla-2-col" style={{ alignItems: 'start' }}>
         {/* ===== Columna 1: pedir mensualidad ===== */}
         <div className="stack">
           <span className="panel-titulo" style={{ padding: '0 0.15rem' }}>Pedir mensualidad</span>
@@ -182,12 +182,12 @@ export function MisAbonosPage() {
         </div>
 
         {/* ===== Columna 2: tus mensualidades ===== */}
-        <section className="panel" aria-labelledby="mensualidades-titulo">
+        <section className="panel panel-con-altura" aria-labelledby="mensualidades-titulo">
           <div className="panel-header">
             <span className="panel-titulo" id="mensualidades-titulo">Tus mensualidades</span>
             <span className="texto-debil">{abonosVisibles.length}</span>
           </div>
-          <div className="panel-body">
+          <div className="panel-body" style={abonosVisibles.length === 0 ? { alignContent: 'center', height: '100%' } : undefined}>
             {abonosVisibles.length === 0 ? (
               <div className="panel-vacio">
                 <CalendarDays size={22} style={{ color: 'var(--primario-2)' }} />

@@ -223,13 +223,16 @@ body {
 }
 
 .panel-vacio {
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 0.45rem;
-  justify-items: center;
   padding: 1.75rem 1rem;
   color: var(--texto-2);
   font-size: 0.88rem;
   text-align: center;
+  flex: 1 1 auto;
 }
 
 /* Ítems de lista compactos */
@@ -3324,37 +3327,45 @@ body {
   border-radius: var(--radio-lg, 16px);
   border: 1px solid var(--border);
   background: radial-gradient(900px 260px at 85% -20%, var(--primario-soft-2), transparent), var(--bg-surface);
-  padding: 1.25rem 1.4rem;
-  margin-bottom: 1rem;
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 0.9rem;
 }
 
 .complejo-hero h1 {
-  margin: 0.3rem 0 0.2rem;
-  font-size: 1.6rem;
+  font-size: 1.55rem;
   letter-spacing: -0.02em;
 }
 
 .cancha-card {
-  background: var(--bg-surface);
+  background: var(--bg-surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radio);
-  padding: 0.85rem 0.95rem;
+  padding: 0.6rem 0.75rem;
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
 }
 
-.complejo-cta-bar {
-  position: sticky;
-  bottom: 0.75rem;
-  z-index: 20;
-  display: flex;
-  justify-content: center;
-  margin-top: 1.25rem;
+.grid-det-detalle {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(250px, 4fr);
+  gap: 0.9rem;
+  align-items: start;
 }
 
-.complejo-cta-bar .boton {
-  box-shadow: var(--sombra-lg), var(--glow);
+@media (max-width: 900px) {
+  .grid-det-detalle {
+    grid-template-columns: 1fr;
+  }
+  .complejo-hero {
+    grid-template-columns: 1fr;
+  }
+}
+
+.canchas-grid-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.55rem;
 }
 
 /* Suscripción del complejo en el panel del dueño */

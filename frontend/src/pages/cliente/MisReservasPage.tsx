@@ -281,14 +281,14 @@ export function MisReservasPage() {
         {/* ===== Próximos turnos + Historial (2 paneles) ===== */}
         {datos && (
           <div className="grilla-2-col">
-            <section className="panel" aria-labelledby="proximos-titulo">
+            <section className="panel panel-con-altura" aria-labelledby="proximos-titulo">
               <div className="panel-header">
                 <span className="panel-titulo" id="proximos-titulo">Próximos turnos</span>
                 <Link to="/reservar" className="boton boton-ghost" style={{ fontSize: '0.8rem', padding: '0.3rem 0.6rem' }}>
                   + Reservar
                 </Link>
               </div>
-              <div className="panel-body">
+              <div className="panel-body" style={datos.proximas.length === 0 ? { alignContent: 'center', height: '100%' } : undefined}>
                 {datos.proximas.length === 0 ? (
                   <div className="panel-vacio">
                     <Calendar size={22} style={{ color: 'var(--primario-2)' }} />
@@ -303,12 +303,12 @@ export function MisReservasPage() {
               </div>
             </section>
 
-            <section className="panel" aria-labelledby="historial-titulo">
+            <section className="panel panel-con-altura" aria-labelledby="historial-titulo">
               <div className="panel-header">
                 <span className="panel-titulo" id="historial-titulo">Historial</span>
                 <span className="texto-debil">{datos.historial.length} turno{datos.historial.length !== 1 ? 's' : ''}</span>
               </div>
-              <div className="panel-body">
+              <div className="panel-body" style={datos.historial.length === 0 ? { alignContent: 'center', height: '100%' } : undefined}>
                 {datos.historial.length === 0 ? (
                   <div className="panel-vacio">
                     <History size={22} style={{ color: 'var(--primario-2)' }} />

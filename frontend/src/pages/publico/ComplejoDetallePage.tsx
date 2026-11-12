@@ -101,21 +101,21 @@ export function ComplejoDetallePage() {
   if (error || !detalle) {
     return (
       <main className="contenedor" style={{ paddingTop: '1.5rem', paddingBottom: '3rem' }}>
-        <Link to="/complejos" className="fila" style={{ gap: '0.4rem', marginBottom: '1rem', color: 'var(--texto-2)' }}>
+        <Link to="/complejos" className="fila" style={{ gap: '0.4rem', marginBottom: '1rem', color: 'var(--texto-2)', width: 'fit-content' }}>
           <ArrowLeft size={16} /> Volver al catálogo
         </Link>
-        <div className="card" style={{ textAlign: 'center', padding: '2.5rem 1rem' }}>
-          <Building2 size={40} strokeWidth={1.5} style={{ margin: '0 auto 0.6rem', color: 'var(--texto-3)' }} />
-          <h1 className="titulo">No pudimos mostrar este complejo</h1>
+        <div className="empty-state">
+          <Building2 size={36} strokeWidth={1.6} style={{ color: 'var(--texto-3)' }} />
+          <h1 className="titulo" style={{ margin: 0 }}>No pudimos mostrar este complejo</h1>
           <p className="subtitulo" style={{ margin: 0 }}>{error ?? 'Puede que no exista o no esté disponible.'}</p>
         </div>
       </main>
     );
   }
 
-  const deportesConCanchas = detalle.deportes.filter((d) =>
-    detalle.canchas.some((c) => c.deporte_id === d.id),
-  );
+  const deportesConCanchas = detalle.deportes
+    .map((d) => ({ ...d, canchas: detalle.canchas.filter((c) => c.deporte_id === d.id).length }))
+    .filter((d) => d.canchas > 0);
 
   const reservar = () => {
     seleccionar(detalle.id, detalle.slug);
@@ -123,116 +123,116 @@ export function ComplejoDetallePage() {
   };
 
   return (
-    <main className="contenedor" style={{ paddingTop: '1.25rem', paddingBottom: '3rem' }}>
-      <Link to="/complejos" className="fila" style={{ gap: '0.4rem', marginBottom: '0.85rem', color: 'var(--texto-2)', width: 'fit-content' }}>
+    <main className="contenedor" style={{ paddingTop: '1.15rem', paddingBottom: '2.5rem', maxWidth: '1120px' }}>
+      <Link to="/complejos" className="fila" style={{ gap: '0.4rem', marginBottom: '0.7rem', color: 'var(--texto-2)', width: 'fit-content' }}>
         <ArrowLeft size={16} /> Todos los complejos
       </Link>
 
-      {/* ===== Hero ===== */}
-      <header className="complejo-hero">
-        <div className="fila-entre">
-          <span className={`badge ${detalle.tipo === 'fraccionado' ? 'badge-info' : 'badge-neutro'}`}>
-            {detalle.tipo === 'fraccionado' ? 'Fraccionado' : 'Complejo deportivo'}
-          </span>
-          <div className="fila" style={{ gap: '0.4rem', color: 'var(--texto-2)', fontSize: '0.85rem' }}>
-            <Clock size={14} /> {HORARIO(detalle.hora_apertura)} – {HORARIO(detalle.hora_cierre)}
-          </div>
-        </div>
-
-        <h1>{detalle.nombre}</h1>
-
-        <div className="stack" style={{ gap: '0.3rem', color: 'var(--texto-2)', fontSize: '0.9rem' }}>
-          {(detalle.direccion || detalle.ciudad) && (
-            <span className="fila" style={{ gap: '0.4rem' }}>
-              <MapPin size={15} /> {[detalle.direccion, detalle.ciudad].filter(Boolean).join(' · ')}
+      {/* ===== Hero compacto ===== */}
+      <header className="complejo-hero" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '1rem', alignItems: 'center' }}>
+        <div>
+          <div className="fila-entre" style={{ gap: '0.5rem', marginBottom: '0.35rem' }}>
+            <span className={`badge ${detalle.tipo === 'fraccionado' ? 'badge-info' : 'badge-neutro'}`}>
+              {detalle.tipo === 'fraccionado' ? 'Fraccionado' : 'Complejo deportivo'}
             </span>
+            <span className="fila" style={{ gap: '0.35rem', color: 'var(--texto-2)', fontSize: '0.85rem' }}>
+              <Clock size={13} /> {HORARIO(detalle.hora_apertura)} – {HORARIO(detalle.hora_cierre)}
+            </span>
+          </div>
+          <h1 style={{ margin: '0.15rem 0 0.3rem' }}>{detalle.nombre}</h1>
+          <div className="stack" style={{ gap: '0.22rem', color: 'var(--texto-2)', fontSize: '0.88rem' }}>
+            {(detalle.direccion || detalle.ciudad) && (
+              <span className="fila" style={{ gap: '0.4rem' }}>
+                <MapPin size={14} /> {[detalle.direccion, detalle.ciudad].filter(Boolean).join(' · ')}
+              </span>
+            )}
+            <span className="fila" style={{ gap: '0.6rem', flexWrap: 'wrap' }}>
+              {detalle.telefono && <span className="fila" style={{ gap: '0.3rem' }}><Phone size={13} /> {detalle.telefono}</span>}
+              {detalle.email_contacto && <span className="fila" style={{ gap: '0.3rem' }}><Mail size={13} /> {detalle.email_contacto}</span>}
+            </span>
+          </div>
+          {detalle.descripcion && (
+            <p style={{ margin: '0.55rem 0 0', color: 'var(--texto-2)', fontSize: '0.88rem', maxWidth: '62ch' }}>
+              {detalle.descripcion}
+            </p>
           )}
-          <span className="fila" style={{ gap: '0.4rem', flexWrap: 'wrap' }}>
-            {detalle.telefono && <span className="fila" style={{ gap: '0.35rem' }}><Phone size={14} /> {detalle.telefono}</span>}
-            {detalle.email_contacto && <span className="fila" style={{ gap: '0.35rem' }}><Mail size={14} /> {detalle.email_contacto}</span>}
-          </span>
-        </div>
-
-        {detalle.descripcion && (
-          <p style={{ margin: '0.75rem 0 0', color: 'var(--texto-2)', maxWidth: '62ch' }}>
-            {detalle.descripcion}
-          </p>
-        )}
-
-        {/* Amenities + políticas */}
-        <div className="amenity-row" style={{ marginTop: '0.8rem' }}>
-          {detalle.gym && <span className="amenity-chip destacada"><Dumbbell size={13} /> Gym{detalle.precio_mensual_gym ? ` · ${fmtPesos(detalle.precio_mensual_gym)}/mes` : ''}</span>}
-          {detalle.pileta && <span className="amenity-chip destacada"><Waves size={13} /> Pileta{detalle.precio_mensual_pileta ? ` · ${fmtPesos(detalle.precio_mensual_pileta)}/mes` : ''}</span>}
-          {detalle.ofrece_socios && <span className="amenity-chip destacada"><Users size={13} /> Socios</span>}
-          {detalle.ofrece_torneos && <span className="amenity-chip destacada"><Trophy size={13} /> Torneos</span>}
-          {detalle.amenidades.map((a) => (
-            <span key={a} className="amenity-chip"><CircleCheck size={12} /> {a}</span>
-          ))}
-        </div>
-
-        <div className="fila" style={{ gap: '0.9rem', marginTop: '0.6rem', fontSize: '0.8rem', color: 'var(--texto-3)' }}>
-          {detalle.cancelacion_minima_horas > 0 && <span>Cancelación sin cargo hasta {detalle.cancelacion_minima_horas} h antes</span>}
-          {detalle.sena_obligatoria && <span>· Seña obligatoria</span>}
-          {detalle.descuento_turno_fijo_porcentaje > 0 && <span>· {detalle.descuento_turno_fijo_porcentaje}% off turno fijo</span>}
-        </div>
-      </header>
-
-      <div className="grilla-2-eq" style={{ alignItems: 'start' }}>
-        {/* ===== Canchas y precios ===== */}
-        <section aria-labelledby="titulo-canchas">
-          <h2 id="titulo-canchas" className="titulo" style={{ fontSize: '1.05rem', marginBottom: '0.6rem' }}>
-            Canchas y precios
-          </h2>
-          {detalle.canchas.length === 0 ? (
-            <p className="texto-debil">El complejo todavía no cargó sus canchas.</p>
-          ) : (
-            <div className="grilla-tarjetas">
-              {detalle.canchas.map((c) => (
-                <div key={c.id} className="cancha-card">
-                  <div className="fila-entre">
-                    <strong>{c.nombre}</strong>
-                    {c.deporte && <span className="amenity-chip">{c.deporte.nombre}</span>}
-                  </div>
-                  {c.caracteristicas && <p className="texto-debil" style={{ margin: 0, fontSize: '0.82rem' }}>{c.caracteristicas}</p>}
-                  <div className="fila-entre" style={{ marginTop: 'auto', paddingTop: '0.4rem' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--texto-3)' }}>por hora</span>
-                    <strong style={{ fontSize: '1.05rem' }}>${c.precio_base.toLocaleString('es-AR')}</strong>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* ===== Disciplinas para reservar ===== */}
-        <section aria-labelledby="titulo-disciplinas">
-          <h2 id="titulo-disciplinas" className="titulo" style={{ fontSize: '1.05rem', marginBottom: '0.6rem' }}>
-            Disciplinas con canchas
-          </h2>
-          <div className="stack">
-            {deportesConCanchas.map((d) => (
-              <div key={d.id} className="fila-entre" style={{ padding: '0.55rem 0.75rem', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 'var(--radio)' }}>
-                <span>{d.nombre}</span>
-                <button type="button" className="boton boton-outline" style={{ fontSize: '0.78rem', padding: '0.3rem 0.7rem' }} onClick={reservar}>
-                  Reservar
-                </button>
-              </div>
+          <div className="amenity-row" style={{ marginTop: '0.6rem' }}>
+            {detalle.gym && <span className="amenity-chip destacada"><Dumbbell size={13} /> Gym{detalle.precio_mensual_gym ? ` · ${fmtPesos(detalle.precio_mensual_gym)}/mes` : ''}</span>}
+            {detalle.pileta && <span className="amenity-chip destacada"><Waves size={13} /> Pileta{detalle.precio_mensual_pileta ? ` · ${fmtPesos(detalle.precio_mensual_pileta)}/mes` : ''}</span>}
+            {detalle.ofrece_socios && <span className="amenity-chip destacada"><Users size={13} /> Socios</span>}
+            {detalle.ofrece_torneos && <span className="amenity-chip destacada"><Trophy size={13} /> Torneos</span>}
+            {detalle.amenidades.map((a) => (
+              <span key={a} className="amenity-chip"><CircleCheck size={12} /> {a}</span>
             ))}
           </div>
-
-          {detalle.ofrece_torneos && (
-            <Link to="/torneos" className="fila" style={{ gap: '0.4rem', marginTop: '0.8rem', color: 'var(--primario-2)', fontWeight: 600, fontSize: '0.88rem' }}>
-              <Trophy size={16} /> Ver torneos de este lugar
-            </Link>
+          {(detalle.cancelacion_minima_horas > 0 || detalle.sena_obligatoria || detalle.descuento_turno_fijo_porcentaje > 0) && (
+            <div className="fila" style={{ gap: '0.7rem', marginTop: '0.5rem', fontSize: '0.76rem', color: 'var(--texto-3)' }}>
+              {detalle.cancelacion_minima_horas > 0 && <span>Cancelación sin cargo hasta {detalle.cancelacion_minima_horas} h antes</span>}
+              {detalle.sena_obligatoria && <span>· Seña obligatoria</span>}
+              {detalle.descuento_turno_fijo_porcentaje > 0 && <span>· {detalle.descuento_turno_fijo_porcentaje}% off turno fijo</span>}
+            </div>
           )}
-        </section>
-      </div>
-
-      {/* ===== CTA sticky ===== */}
-      <div className="complejo-cta-bar">
-        <button type="button" className="boton boton-primario" style={{ fontSize: '1rem', padding: '0.7rem 2.2rem' }} onClick={reservar}>
-          <CalendarClock size={17} /> Reservar turno en {detalle.nombre}
+        </div>
+        <button
+          type="button"
+          className="boton boton-primario"
+          style={{ fontSize: '1.02rem', padding: '0.85rem 1.4rem', whiteSpace: 'nowrap' }}
+          onClick={reservar}
+        >
+          <CalendarClock size={18} /> Reservar turno
         </button>
+      </header>
+
+      {/* ===== Canchas + Disciplinas ===== */}
+      <div className="grid-det-detalle">
+        {/* Canchas y precios — panel con scroll */}
+        <section className="panel panel-con-altura" aria-labelledby="titulo-canchas">
+          <div className="panel-header">
+            <span className="panel-titulo" id="titulo-canchas">Canchas y precios</span>
+            <span className="texto-debil">{detalle.canchas.length} cancha{detalle.canchas.length === 1 ? '' : 's'}</span>
+          </div>
+          <div className="panel-body">
+            {detalle.canchas.length === 0 ? (
+              <p className="texto-debil">Todavía no hay canchas cargadas.</p>
+            ) : (
+              <div className="canchas-grid-panel">
+                {detalle.canchas.map((c) => (
+                  <div key={c.id} className="cancha-card">
+                    <div className="fila-entre" style={{ gap: '0.4rem' }}>
+                      <strong>{c.nombre}</strong>
+                      {c.deporte && <span className="amenity-chip">{c.deporte.nombre}</span>}
+                    </div>
+                    {c.caracteristicas && <p className="texto-debil" style={{ margin: 0, fontSize: '0.8rem' }}>{c.caracteristicas}</p>}
+                    <div className="fila-entre" style={{ marginTop: 'auto', paddingTop: '0.3rem' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--texto-3)' }}>por hora</span>
+                      <strong style={{ fontSize: '0.98rem' }}>${c.precio_base.toLocaleString('es-AR')}</strong>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Disciplinas */}
+        <aside className="panel" style={{ alignSelf: 'start' }} aria-labelledby="titulo-disciplinas">
+          <div className="panel-header">
+            <span className="panel-titulo" id="titulo-disciplinas">Disciplinas</span>
+          </div>
+          <div className="panel-body">
+            {deportesConCanchas.map((d) => (
+              <div key={d.id} className="fila-entre" style={{ padding: '0.5rem 0.25rem', borderBottom: '1px solid var(--border)' }}>
+                <span>{d.nombre}</span>
+                <span className="amenity-chip">{d.canchas} {d.canchas === 1 ? 'cancha' : 'canchas'}</span>
+              </div>
+            ))}
+            {detalle.ofrece_torneos && (
+              <Link to="/torneos" className="fila" style={{ gap: '0.4rem', margin: '0.35rem 0 0', color: 'var(--primario-2)', fontWeight: 600, fontSize: '0.86rem' }}>
+                <Trophy size={15} /> Ver torneos de este lugar
+              </Link>
+            )}
+          </div>
+        </aside>
       </div>
     </main>
   );
