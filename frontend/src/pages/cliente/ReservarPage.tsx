@@ -86,7 +86,10 @@ export function ReservarPage() {
 
     const slug = slugParam ?? (esStaffActivo ? activoSlug : null);
     if (!slug) {
+      // Sin complejo en la URL → limpiar el complejo viejo del storage y mostrar el picker
+      if (!esStaffActivo && activoId != null) seleccionar(null);
       setComplejoNombre(null);
+      setError(null);
       setComplejoResolviendo(false);
       return () => undefined;
     }
@@ -399,9 +402,14 @@ export function ReservarPage() {
                 <Building2 size={15} style={{ verticalAlign: '-3px', marginRight: '0.35rem' }} aria-hidden />
                 Reservando en <strong>{complejoNombre ?? 'el complejo seleccionado'}</strong>
               </p>
-              <Link to="/complejos" className="boton boton-ghost" style={{ fontSize: '0.85rem', padding: '0.35rem 0.7rem' }}>
+              <button
+                type="button"
+                className="boton boton-ghost"
+                style={{ fontSize: '0.85rem', padding: '0.35rem 0.7rem' }}
+                onClick={() => { seleccionar(null); setError(null); }}
+              >
                 Cambiar
-              </Link>
+              </button>
             </div>
           )}
           {confirmada ? (
