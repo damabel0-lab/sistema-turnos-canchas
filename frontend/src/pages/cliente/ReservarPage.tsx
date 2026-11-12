@@ -91,6 +91,17 @@ export function ReservarPage() {
   const [canchas, setCanchas] = useState<Cancha[]>([]);
   const [deporteId, setDeporteId] = useState<number | null>(null);
   const [canchaId, setCancaId] = useState<number | null>(null);
+
+  // Preseleccionar cancha desde deep link ?cancha=N (desde el perfil del complejo)
+  const canchaParam = searchParams.get('cancha');
+  useEffect(() => {
+    if (!canchaParam || canchas.length === 0) return;
+    const c = canchas.find((x) => x.id === Number(canchaParam));
+    if (c) {
+      setDeporteId(c.deporte_id);
+      setCancaId(c.id);
+    }
+  }, [canchaParam, canchas]);
   const [fecha, setFecha] = useState(hoy());
   const [horas, setHoras] = useState<EstadoHora[]>([]);
   const [horaSel, setHoraSel] = useState<string | null>(null);

@@ -3426,3 +3426,66 @@ body {
 .susc-banner strong { margin-right: 0.15rem; }
 .susc-banner.prueba { background: var(--primario-soft); border-color: color-mix(in srgb, var(--primario) 35%, transparent); color: var(--texto); }
 .susc-banner.vencida { background: color-mix(in srgb, var(--peligro) 10%, var(--bg-surface)); border-color: color-mix(in srgb, var(--peligro) 40%, transparent); color: var(--texto); }
+
+/* ===== PERFIL DEL COMPLEJO ===== */
+.perfil-complejo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  border-radius: var(--radio-lg, 16px);
+  border: 1px solid var(--border);
+  background: radial-gradient(900px 240px at 85% -20%, var(--primario-soft-2), transparent), var(--bg-surface);
+  padding: 0.95rem 1.15rem;
+  margin-bottom: 0.8rem;
+}
+
+.perfil-complejo h1 {
+  margin: 0.25rem 0 0.4rem;
+  font-size: 1.75rem;
+  letter-spacing: -0.025em;
+}
+
+@media (max-width: 700px) {
+  .perfil-complejo {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+}
+
+.card-torneo-local {
+  border: 1px solid color-mix(in srgb, var(--advertencia) 45%, var(--border-strong));
+  background: color-mix(in srgb, var(--advertencia) 8%, var(--bg-surface));
+  border-radius: var(--radio-lg, 16px);
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.torneo-icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.7rem;
+  background: var(--advertencia);
+  color: #1c1109;
+  flex-shrink: 0;
+}
+
+.gympileta-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.gympileta-fila:last-of-type {
+  border-bottom: none;
+}
+
+.perfil-pie {
+  margin-top: 0.9rem;
+}
