@@ -2,6 +2,8 @@ import { supabaseAdmin } from '../../config/supabase.js';
 import { hoyLocal, isoMinLocal } from '../../lib/fecha.js';
 import { HttpError } from '../../middleware/error.js';
 import { crearNotificacion, notificarStaff } from '../notifications/notifications.service.js';
+import { leerConfigComplejo } from '../../config/complejoConfig.js';
+import { suscripcionVigente } from '../suscripciones/suscripciones.service.js';
 
 export type ServicioAbono = 'gym' | 'pileta';
 
@@ -33,23 +35,6 @@ export interface AprobarSolicitud {
   fecha_vencimiento?: string;
 }
 
-/** Amenidades configuradas en el complejo (precios de los abonos) */
-async function configMensualidades(): Promise<Record<string, unknown>> {
-  const { data: valores } = await supabaseAdmin
-    .from('configuracion_valores')
-    .select('categoria, clave, valor')
-    .eq('categoria', 'amenidades');
-  const am: Record<string, unknown> = {};
-  for (const fila of valores ?? []) {
-    try {
-      am[fila.clave] = JSON.parse(fila.valor ?? 'null');
-    } catch {
-      am[fila.clave] = fila.valor;
-    }
-  }
-  return am;
-}
-
 /** hoy + 1 mes (formato YYYY-MM-DD) */
 function unMesDesdeHoy(): string {
   const d = new Date();
@@ -57,9 +42,12 @@ function unMesDesdeHoy(): string {
   return isoMinLocal(d);
 }
 
-function precioDe(servicio: ServicioAbono, config: Record<string, unknown>): number | null {
-  const n = Number(servicio === 'gym' ? config.precio_mensual_gym : config.precio_mensual_pileta);
-  return Number.isFinite(n) && n > 0 ? n : null;
+function precioDe(servicio: ServicioAbono, config: {
+  precio_mensual_gym: number | null;
+  precio_mensual_pileta: number | null;
+}): number | null {
+  const n = servicio === 'gym' ? config.precio_mensual_gym : config.precio_mensual_pileta;
+  return n != null && Number(n) > 0 ? Number(n) : null;
 }
 
 function nombreServicio(servicio: ServicioAbono): string {
@@ -72,10 +60,12 @@ async function registrarEnCaja(entrada: {
   descripcion: string;
   monto: number;
   metodo_pago: string;
+  complejo_id: number;
 }) {
   const { error } = await supabaseAdmin.from('movimientos_caja').insert({
     reserva_id: null,
     usuario_id: entrada.usuario_id,
+    complejo_id: entrada.complejo_id,
     monto: entrada.monto,
     tipo_movimiento: 'ingreso',
     metodo_pago: entrada.metodo_pago,
@@ -97,10 +87,11 @@ function esMigracionAbonosFaltante(error: { code?: string; message?: string } | 
   );
 }
 
-export async function listarAbonos() {
+export async function listarAbonos(complejoId: number) {
   const { data, error } = await supabaseAdmin
     .from('abonos')
     .select('*')
+    .eq('complejo_id', complejoId)
     .order('fecha_vencimiento');
   if (error) {
     if (esMigracionAbonosFaltante(error)) {
@@ -128,11 +119,12 @@ export async function listarAbonosDelUsuario(usuarioId: string) {
   return data ?? [];
 }
 
-/** Solicitudes de mensualidad pendientes de activación (para el mostrador) */
-export async function listarSolicitudes() {
+/** Solicitudes de mensualidad pendientes de activación (mostrador de UN complejo) */
+export async function listarSolicitudes(complejoId: number) {
   const { data, error } = await supabaseAdmin
     .from('abonos')
     .select('id, usuario_id, servicio, monto_pagado, fecha_vencimiento, usuarios(nombre, apellido, telefono)')
+    .eq('complejo_id', complejoId)
     .eq('estado', 'solicitado')
     .eq('activo', false)
     .order('id', { ascending: true });
@@ -151,27 +143,32 @@ interface SolicitudVista {
 }
 
 /** Venta directa en mostrador (staff): abono activo desde el momento */
-export async function venderAbono(datos: VenderAbono) {
+export async function venderAbono(datos: VenderAbono, complejoId: number) {
   const servicio = datos.servicio;
   if (!servicio || !['gym', 'pileta'].includes(servicio)) {
     throw new HttpError(400, 'servicio debe ser "gym" o "pileta"');
   }
   if (!datos.usuario_id) throw new HttpError(400, 'usuario_id es obligatorio');
 
-  const config = await configMensualidades();
-  const habilitado = servicio === 'gym' ? config.gym === true : config.pileta === true;
+  if (!(await suscripcionVigente(complejoId))) {
+    throw new HttpError(403, 'Este complejo no está disponible por el momento');
+  }
+
+  const config = await leerConfigComplejo(complejoId);
+  const habilitado = servicio === 'gym' ? config.gym : config.pileta;
   if (!habilitado) throw new HttpError(400, `El servicio de ${nombreServicio(servicio)} no está habilitado en este complejo`);
 
   const monto = datos.monto_pagado ?? precioDe(servicio, config) ?? 0;
   const vencimiento = datos.fecha_vencimiento ?? unMesDesdeHoy();
   const metodoPago = datos.metodo_pago ?? 'efectivo';
 
-  // No permitir duplicado mensual activo/solicitado para el mismo servicio
+  // No permitir duplicado mensual activo/solicitado para el mismo servicio (en ESTE complejo)
   const { data: existente } = await supabaseAdmin
     .from('abonos')
     .select('id')
     .eq('usuario_id', datos.usuario_id)
     .eq('servicio', servicio)
+    .eq('complejo_id', complejoId)
     .neq('estado', 'cancelado')
     .limit(1)
     .maybeSingle();
@@ -192,6 +189,7 @@ export async function venderAbono(datos: VenderAbono) {
       activo: true,
       estado: 'activo',
       disciplina_id: null,
+      complejo_id: complejoId,
     })
     .select()
     .single();
@@ -203,6 +201,7 @@ export async function venderAbono(datos: VenderAbono) {
     descripcion: `Abono ${nombreServicioLabel} mensual — venta en mostrador`,
     monto,
     metodo_pago: metodoPago,
+    complejo_id: complejoId,
   });
 
   const { data: clienteInfo } = await supabaseAdmin
@@ -222,28 +221,34 @@ export async function venderAbono(datos: VenderAbono) {
     'abono',
     'Mensualidad vendida en mostrador',
     `${nombreCliente} activó mensualidad de ${nombreServicioLabel} · $${Number(monto).toLocaleString('es-AR')} · ${metodoPago}`,
+    complejoId,
   );
 
   return data;
 }
 
-/** El cliente solicita una mensualidad desde la app (queda pendiente de pago/activación en recepción) */
-export async function solicitarAbono(usuarioId: string, servicioRaw: unknown) {
+/** El cliente solicita una mensualidad DESDE LA APP para un complejo puntual (queda pendiente de pago/activación en recepción) */
+export async function solicitarAbono(usuarioId: string, servicioRaw: unknown, complejoId: number) {
   const servicio = servicioRaw as ServicioAbono;
   if (!servicio || !['gym', 'pileta'].includes(servicio)) {
     throw new HttpError(400, 'servicio debe ser "gym" o "pileta"');
   }
 
-  const config = await configMensualidades();
-  const habilitado = servicio === 'gym' ? config.gym === true : config.pileta === true;
+  if (!(await suscripcionVigente(complejoId))) {
+    throw new HttpError(403, 'Este complejo no está disponible por el momento');
+  }
+
+  const config = await leerConfigComplejo(complejoId);
+  const habilitado = servicio === 'gym' ? config.gym : config.pileta;
   if (!habilitado) throw new HttpError(400, `El servicio de ${nombreServicio(servicio)} no está habilitado`);
 
-  // Evitar solicitudes duplicadas / abonos activos del mismo servicio
+  // Evitar solicitudes duplicadas / abonos activos del mismo servicio (en ESTE complejo)
   const { data: existente } = await supabaseAdmin
     .from('abonos')
     .select('id, estado')
     .eq('usuario_id', usuarioId)
     .eq('servicio', servicio)
+    .eq('complejo_id', complejoId)
     .neq('estado', 'cancelado')
     .limit(1)
     .maybeSingle();
@@ -272,6 +277,7 @@ export async function solicitarAbono(usuarioId: string, servicioRaw: unknown) {
       activo: false,
       estado: 'solicitado',
       disciplina_id: null,
+      complejo_id: complejoId,
     })
     .select()
     .single();
@@ -295,6 +301,7 @@ export async function solicitarAbono(usuarioId: string, servicioRaw: unknown) {
       'abono',
       'Mensualidad por activar',
       `${nombreCliente} quiere activar su mensualidad de ${nombreServicio(servicio)} · $${Number(monto).toLocaleString('es-AR')}`,
+      complejoId,
     );
   } catch (e) {
     console.warn('No se pudo notificar la solicitud de abono', e);
@@ -304,16 +311,17 @@ export async function solicitarAbono(usuarioId: string, servicioRaw: unknown) {
 }
 
 /** Activar una solicitud (mostrador, tras cobrar): pasa a activo, registra en caja y avisa al cliente */
-export async function aprobarSolicitud(id: number, datos: AprobarSolicitud) {
+export async function aprobarSolicitud(id: number, datos: AprobarSolicitud, complejoId: number) {
   const { data: actual, error: eGet } = await supabaseAdmin
     .from('abonos')
     .select('*')
     .eq('id', id)
+    .eq('complejo_id', complejoId)
     .single();
   if (eGet || !actual) throw new HttpError(404, 'Solicitud no encontrada');
   if (actual.estado !== 'solicitado') throw new HttpError(409, 'La solicitud ya fue resuelta');
 
-  const config = await configMensualidades();
+  const config = await leerConfigComplejo(complejoId);
   const servicio = actual.servicio as ServicioAbono;
   const monto = datos.monto_pagado ?? precioDe(servicio, config) ?? Number(actual.monto_pagado) ?? 0;
   const vencimiento = datos.fecha_vencimiento ?? unMesDesdeHoy();
@@ -339,6 +347,7 @@ export async function aprobarSolicitud(id: number, datos: AprobarSolicitud) {
     descripcion: `Abono ${nombreServicioLabel} mensual — cobro de solicitud`,
     monto,
     metodo_pago: metodoPago,
+    complejo_id: complejoId,
   });
 
   const { data: clienteInfo } = await supabaseAdmin
@@ -358,14 +367,20 @@ export async function aprobarSolicitud(id: number, datos: AprobarSolicitud) {
     'abono',
     'Mensualidad aprobada',
     `${nombreCliente} activó mensualidad de ${nombreServicioLabel} · $${Number(monto).toLocaleString('es-AR')} · ${metodoPago}`,
+    complejoId,
   );
 
   return data;
 }
 
-/** Rechazar una solicitud (mostrador): no se aprueba ni se cobra */
-export async function rechazarSolicitud(id: number) {
-  const { data: actual } = await supabaseAdmin.from('abonos').select('id, estado').eq('id', id).maybeSingle();
+/** Rechazar una solicitud (mostrador del complejo activo): no se aprueba ni se cobra */
+export async function rechazarSolicitud(id: number, complejoId: number) {
+  const { data: actual } = await supabaseAdmin
+    .from('abonos')
+    .select('id, estado')
+    .eq('id', id)
+    .eq('complejo_id', complejoId)
+    .maybeSingle();
   if (!actual) throw new HttpError(404, 'Solicitud no encontrada');
   if (actual.estado !== 'solicitado') throw new HttpError(409, 'La solicitud ya fue resuelta');
 
@@ -424,24 +439,26 @@ export async function consumirClase(usuarioId: string, disciplinaId?: number | n
   };
 }
 
-export async function listarAbonosVencidos() {
+export async function listarAbonosVencidos(complejoId: number) {
   const hoy = hoyLocal();
   const { data, error } = await supabaseAdmin
     .from('abonos')
     .select('*')
     .eq('activo', true)
+    .eq('complejo_id', complejoId)
     .lt('fecha_vencimiento', hoy);
   if (error) throw new HttpError(500, error.message);
   return data ?? [];
 }
 
-/** Marcar como vencido (fin de período) los abonos vencidos */
-export async function cerrarAbonosVencidos() {
+/** Marcar como vencido (fin de período) los abonos vencidos de este complejo */
+export async function cerrarAbonosVencidos(complejoId: number) {
   const hoy = hoyLocal();
   const { error } = await supabaseAdmin
     .from('abonos')
     .update({ activo: false, estado: 'cancelado' })
     .eq('activo', true)
+    .eq('complejo_id', complejoId)
     .lt('fecha_vencimiento', hoy);
   if (error) throw new HttpError(500, error.message);
   return { ok: true };

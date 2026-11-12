@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
-import { AuthedRequest, requireSuperAdmin, requireStaff } from '../../middleware/auth.js';
+import {
+  AuthedRequest,
+  requireStaff,
+  requireOwner,
+  complejoIdRequerido,
+} from '../../middleware/auth.js';
 import {
   listarTorneos,
   crearTorneo,
@@ -17,22 +22,25 @@ import {
   finalizarTorneo,
   obtenerTorneoConConteos,
 } from './torneos.service.js';
+import { supabaseAdmin } from '../../config/supabase.js';
 
 export const torneosRouter = Router();
 
-const h = (fn: (req: Request, res: Response) => Promise<void>) =>
-  (req: Request, res: Response, next: NextFunction) => fn(req, res).catch(next);
+const h = (fn: (req: AuthedRequest, res: Response) => Promise<void>) =>
+  (req: Request, res: Response, next: NextFunction) =>
+    fn(req as AuthedRequest, res).catch(next);
 
-// GET /torneos -> listado completo (staff)
+// GET /torneos -> listado completo del complejo activo (staff)
 torneosRouter.get(
   '/',
   requireStaff,
-  h(async (_req, res) => {
-    res.json(await listarTorneos());
+  h(async (req, res) => {
+    const cid = complejoIdRequerido(req);
+    res.json(await listarTorneos(cid));
   }),
 );
 
-// GET /torneos/activos -> torneos abiertos a participantes (público autenticado)
+// GET /torneos/activos -> torneos abiertos a participantes (público autenticado, complejos vigentes)
 torneosRouter.get(
   '/activos',
   h(async (_req, res) => {
@@ -40,7 +48,7 @@ torneosRouter.get(
   }),
 );
 
-// GET /torneos/:id -> detalle + conteos (público)
+// GET /torneos/:id -> detalle + conteos (público; complejos vigentes)
 torneosRouter.get(
   '/:id',
   h(async (req, res) => {
@@ -48,12 +56,13 @@ torneosRouter.get(
   }),
 );
 
-// POST /torneos -> crear torneo (solo administradores)
+// POST /torneos -> crear torneo (DUEÑO del complejo activo)
 torneosRouter.post(
   '/',
-  requireSuperAdmin,
+  requireOwner,
   h(async (req, res) => {
-    res.status(201).json(await crearTorneo(req.body));
+    const cid = complejoIdRequerido(req);
+    res.status(201).json(await crearTorneo(req.body, cid));
   }),
 );
 
@@ -62,16 +71,17 @@ torneosRouter.post(
 // POST /torneos/:id/inscribirse -> inscribirme (individual o crear mi equipo)
 torneosRouter.post(
   '/:id/inscribirse',
-  h(async (req: AuthedRequest, res) => {
+  h(async (req, res) => {
     const modalidad = (req.body?.modalidad as string | undefined) ?? 'auto';
     const usuarioId = req.userId!;
-    const { data: torneo } = await getTorneoInfo(Number(req.params.id));
+    const torneoId = Number(req.params.id);
+    const { data: torneo } = await getTorneoInfo(torneoId);
     if (!torneo) {
       res.status(404).json({ error: 'Torneo no encontrado' });
       return;
     }
-    if (torneo.modalidad === 'individual') {
-      res.status(201).json(await inscribirIndividual(Number(req.params.id), usuarioId));
+    if (torneo.modalidad === 'individual' || modalidad === 'individual') {
+      res.status(201).json(await inscribirIndividual(torneoId, usuarioId));
       return;
     }
     const nombreEquipo: string = String(req.body?.nombre_equipo ?? '').trim();
@@ -79,28 +89,36 @@ torneosRouter.post(
       res.status(400).json({ error: 'El nombre de tu equipo es obligatorio' });
       return;
     }
-    res.status(201).json(await crearEquipoConCapitan(Number(req.params.id), usuarioId, nombreEquipo));
+    res.status(201).json(await crearEquipoConCapitan(torneoId, usuarioId, nombreEquipo));
   }),
 );
 
 // DELETE /torneos/:id/inscribirse -> cancelar mi inscripción
 torneosRouter.delete(
   '/:id/inscribirse',
-  h(async (req: AuthedRequest, res) => {
+  h(async (req, res) => {
     res.json(await cancelarInscripcionIndividual(Number(req.params.id), req.userId!));
   }),
 );
 
-// DELETE /torneos/:id/equipos/:equipoId -> cancelar un equipo propio (o staff)
+// DELETE /torneos/:id/equipos/:equipoId -> cancelar un equipo propio (o staff de ESE complejo)
 torneosRouter.delete(
   '/:id/equipos/:equipoId',
-  h(async (req: AuthedRequest, res) => {
-    const esStaff = req.rol === 'super_admin' || req.rol === 'recepcionista';
-    res.json(await cancelarEquipo(Number(req.params.id), Number(req.params.equipoId), req.userId!, esStaff));
+  h(async (req, res) => {
+    const esStaff = req.rol === 'super_admin' || req.rolComplejo != null;
+    res.json(
+      await cancelarEquipo(
+        Number(req.params.id),
+        Number(req.params.equipoId),
+        req.userId!,
+        esStaff,
+        req.complejoId ?? undefined,
+      ),
+    );
   }),
 );
 
-// GET /torneos/:id/inscripciones -> listado de equipos/inscriptos (público)
+// GET /torneos/:id/inscripciones -> listado de equipos/inscriptos (público; complejos vigentes)
 torneosRouter.get(
   '/:id/inscripciones',
   h(async (req, res) => {
@@ -110,21 +128,23 @@ torneosRouter.get(
 
 /* ===== Fixture y tabla ===== */
 
-// POST /torneos/:id/fixture -> generar eliminatoria o todos_contra_todos
+// POST /torneos/:id/fixture -> generar eliminatoria o todos_contra_todos (staff del complejo activo)
 torneosRouter.post(
   '/:id/fixture',
   requireStaff,
   h(async (req, res) => {
-    res.json(await generarFixture(Number(req.params.id)));
+    const cid = complejoIdRequerido(req);
+    res.json(await generarFixture(Number(req.params.id), cid));
   }),
 );
 
-// POST /torneos/:id/finalizar -> cerrar torneo
+// POST /torneos/:id/finalizar -> cerrar torneo (DUEÑO del complejo activo)
 torneosRouter.post(
   '/:id/finalizar',
-  requireSuperAdmin,
+  requireOwner,
   h(async (req, res) => {
-    res.json(await finalizarTorneo(Number(req.params.id)));
+    const cid = complejoIdRequerido(req);
+    res.json(await finalizarTorneo(Number(req.params.id), cid));
   }),
 );
 
@@ -136,11 +156,12 @@ torneosRouter.get(
   }),
 );
 
-// PATCH /torneos/partidos/:partidoId -> cargar resultado (staff)
+// PATCH /torneos/partidos/:partidoId -> cargar resultado (staff del complejo del torneo)
 torneosRouter.patch(
   '/partidos/:partidoId',
   requireStaff,
   h(async (req, res) => {
+    const cid = complejoIdRequerido(req);
     const { goles_local, goles_visitante, jugado } = req.body ?? {};
     res.json(
       await cargarResultadoPartido(
@@ -148,6 +169,7 @@ torneosRouter.patch(
         Number(goles_local),
         Number(goles_visitante),
         Boolean(jugado),
+        cid,
       ),
     );
   }),
@@ -163,11 +185,10 @@ torneosRouter.get(
 
 /** Helper: traer solo la info mínima del torneo para la inscripción */
 async function getTorneoInfo(id: number) {
-  const { supabaseAdmin } = await import('../../config/supabase.js');
   const { data } = await supabaseAdmin
     .from('torneos')
     .select('id, modalidad, estado')
     .eq('id', id)
-    .single();
+    .maybeSingle();
   return { data };
 }

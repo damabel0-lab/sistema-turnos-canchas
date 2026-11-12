@@ -1,25 +1,46 @@
 import { supabaseAdmin } from '../../config/supabase.js';
 import { HttpError } from '../../middleware/error.js';
 
-export async function listarBeneficiosDeSocio(usuarioId: string) {
+async function beneficioDelComplejo(beneficioId: number, complejoId: number) {
+  const { data, error } = await supabaseAdmin
+    .from('beneficios_socios')
+    .select('id, complejo_id')
+    .eq('id', beneficioId)
+    .maybeSingle();
+  if (error) throw new HttpError(500, error.message);
+  if (!data || Number(data.complejo_id) !== complejoId) {
+    throw new HttpError(404, 'Beneficio no encontrado');
+  }
+  return data;
+}
+
+export async function listarBeneficiosDeSocio(usuarioId: string, complejoId: number) {
   const { data, error } = await supabaseAdmin
     .from('socio_beneficios')
     .select('beneficio_id, beneficios_socios(*)')
-    .eq('usuario_id', usuarioId);
+    .eq('usuario_id', usuarioId)
+    .eq('beneficios_socios.complejo_id', complejoId);
   if (error) throw new HttpError(500, error.message);
   return (data ?? []).map((d: any) => d.beneficios_socios);
 }
 
-export async function asignarBeneficio(usuarioId: string, beneficioId: number) {
+export async function asignarBeneficio(usuarioId: string, beneficioId: number, complejoId: number) {
+  await beneficioDelComplejo(beneficioId, complejoId);
   const { error } = await supabaseAdmin.from('socio_beneficios').insert({
     usuario_id: usuarioId,
     beneficio_id: beneficioId,
   });
-  if (error) throw new HttpError(409, 'Ese beneficio ya está asignado o datos inválidos');
+  if (error) {
+    if (/duplicate|already|unique/i.test(error.message)) {
+      throw new HttpError(409, 'Ese beneficio ya está asignado');
+    }
+    throw new HttpError(400, error.message);
+  }
   return { ok: true };
 }
 
-export async function quitarBeneficio(usuarioId: string, beneficioId: number) {
+export async function quitarBeneficio(usuarioId: string, beneficioId: number, complejoId: number) {
+  await beneficioDelComplejo(beneficioId, complejoId);
   const { error } = await supabaseAdmin
     .from('socio_beneficios')
     .delete()
@@ -29,12 +50,13 @@ export async function quitarBeneficio(usuarioId: string, beneficioId: number) {
   return { ok: true };
 }
 
-export async function descuentoDelSocio(usuarioId: string, aplicaEn: string) {
+export async function descuentoDelSocio(usuarioId: string, aplicaEn: string, complejoId: number) {
   const { data, error } = await supabaseAdmin
     .from('socio_beneficios')
     .select('beneficios_socios(descuento_porcentaje, aplica_en)')
     .eq('usuario_id', usuarioId)
     .eq('beneficios_socios.aplica_en', aplicaEn)
+    .eq('beneficios_socios.complejo_id', complejoId)
     .order('descuento_porcentaje', { ascending: false })
     .limit(1)
     .maybeSingle();

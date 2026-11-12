@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
-import { AuthedRequest } from '../../middleware/auth.js';
+import { requireStaff, complejoIdRequerido, type AuthedRequest } from '../../middleware/auth.js';
 import {
   disponibilidad,
   crearReserva,
@@ -16,33 +16,25 @@ import { cargaManual } from './carga-manual.service.js';
 export const reservasRouter = Router();
 
 const h = (fn: (req: AuthedRequest, res: Response) => Promise<void>) =>
-  (req: AuthedRequest, res: Response, next: NextFunction) => fn(req, res).catch(next);
+  (req: Request, res: Response, next: NextFunction) => fn(req as AuthedRequest, res).catch(next);
 
 // POST /reservas/manual -> carga rápida del admin (nombre + teléfono, sin cuenta)
 reservasRouter.post(
   '/manual',
-  (req: AuthedRequest, res, next) => {
-    if (req.rol !== 'super_admin' && req.rol !== 'recepcionista') {
-      return res.status(403).json({ error: 'Requiere rol de staff' });
-    }
-    next();
-  },
+  requireStaff,
   h(async (req, res) => {
+    complejoIdRequerido(req);
     res.status(201).json(await cargaManual(req.body));
   }),
 );
 
-// GET /reservas/grilla?fecha=YYYY-MM-DD -> tablero del día (solo staff)
+// GET /reservas/grilla?fecha=YYYY-MM-DD -> tablero del día (staff del complejo activo)
 reservasRouter.get(
   '/grilla',
-  (req: AuthedRequest, res, next) => {
-    if (req.rol !== 'super_admin' && req.rol !== 'recepcionista') {
-      return res.status(403).json({ error: 'Requiere rol de staff' });
-    }
-    next();
-  },
+  requireStaff,
   h(async (req, res) => {
-    res.json(await grillaDelDia(String(req.query.fecha ?? '')));
+    const cid = complejoIdRequerido(req);
+    res.json(await grillaDelDia(String(req.query.fecha ?? ''), cid));
   }),
 );
 
@@ -53,7 +45,7 @@ reservasRouter.post(
     const body = req.body ?? {};
     // Un cliente siempre reserva a su nombre; el staff puede asignarle a otro
     // (carga manual por teléfono) pasando usuario_id en el body.
-    const esStaff = req.rol === 'super_admin' || req.rol === 'recepcionista';
+    const esStaff = req.rol === 'super_admin' || (req.rolComplejo != null && req.complejoId != null);
     const usuario_id = esStaff ? (body.usuario_id ?? null) : req.userId;
 
     res.status(201).json(await crearReserva({ ...body, usuario_id }));
@@ -84,36 +76,28 @@ reservasRouter.delete(
   }),
 );
 
-// POST /reservas/turno-fijo -> proyectar reservas semanales recurrentes (solo staff)
+// POST /reservas/turno-fijo -> proyectar reservas semanales recurrentes (staff del complejo activo)
 reservasRouter.post(
   '/turno-fijo',
-  (req: AuthedRequest, res, next) => {
-    if (req.rol !== 'super_admin' && req.rol !== 'recepcionista') {
-      return res.status(403).json({ error: 'Requiere rol de staff' });
-    }
-    next();
-  },
+  requireStaff,
   h(async (req, res) => {
+    complejoIdRequerido(req);
     res.status(201).json(await proyectarTurnosFijos(req.body));
   }),
 );
 
-// PATCH /reservas/:id/estado -> confirmar seña / completar / cancelar (solo staff)
+// PATCH /reservas/:id/estado -> confirmar seña / completar / cancelar (staff del complejo activo)
 reservasRouter.patch(
   '/:id/estado',
-  (req: AuthedRequest, res, next) => {
-    if (req.rol !== 'super_admin' && req.rol !== 'recepcionista') {
-      return res.status(403).json({ error: 'Requiere rol de staff' });
-    }
-    next();
-  },
+  requireStaff,
   h(async (req, res) => {
+    const cid = complejoIdRequerido(req);
     const { estado, metodo_pago } = req.body ?? {};
     if (!['confirmada', 'cancelada', 'completada'].includes(estado)) {
       res.status(400).json({ error: 'estado debe ser confirmada, cancelada o completada' });
       return;
     }
-    res.json(await cambiarEstadoReserva(Number(req.params.id), estado, metodo_pago));
+    res.json(await cambiarEstadoReserva(Number(req.params.id), estado, metodo_pago, cid));
   }),
 );
 
@@ -131,10 +115,3 @@ reservasRouter.get(
     res.json(await disponibilidad(canchaId, fecha));
   }),
 );
-
-// TODO (siguientes fases):
-// GET    /reservas/grilla        -> grilla/calendario del día por cancha
-// POST   /reservas               -> crear reserva (cliente o carga manual del admin)
-// PATCH  /reservas/:id/estado    -> confirmar seña, cancelar, completar
-// DELETE /reservas/:id           -> cancelar (política de cancelación)
-// POST   /reservas/:id/turno-fijo -> proyectar reservas semanales recurrentes

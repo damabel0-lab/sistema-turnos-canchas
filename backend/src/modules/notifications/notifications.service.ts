@@ -134,16 +134,19 @@ export async function recordatorioTurno(usuarioId: string, turno: {
   });
 }
 
-/** Detectar reservas próximas (hoy/mañana) y crear recordatorios automáticos si no existen */
-export async function procesarRecordatoriosProximos() {
+/** Detectar reservas próximas (hoy/mañana) y crear recordatorios automáticos si no existen.
+ *  Con complejoId → solo reservas de ESE complejo (para staff de un complejo). */
+export async function procesarRecordatoriosProximos(complejoId?: number) {
   const hoy = hoyLocal();
   const mañana = mananaLocal();
 
-  const { data: reservas, error } = await supabaseAdmin
+  let query = supabaseAdmin
     .from('reservas')
     .select('id, usuario_id, fecha, hora_inicio, canchas(nombre)')
     .in('fecha', [hoy, mañana])
     .eq('estado', 'confirmada');
+  if (complejoId != null) query = query.eq('complejo_id', complejoId);
+  const { data: reservas, error } = await query;
   if (error) throw new HttpError(500, error.message);
 
   const creadas: Array<{ reserva_id: number; usuario_id: string }> = [];
@@ -206,18 +209,36 @@ export async function avisoSuspension(usuarioIds: string[], motivo: string) {
   return { ok: true, enviados: usuarioIds.length };
 }
 
-/** Notificación masiva a todo el staff del complejo (super_admin + recepcionista).
- *  Pensado para avisar movimientos de caja/eventos relevantes del día. */
-export async function notificarStaff(tipo: string, titulo: string, cuerpo: string) {
-  const { data: staff, error } = await supabaseAdmin
-    .from('usuarios')
-    .select('id')
-    .in('rol', ['super_admin', 'recepcionista']);
-  if (error) {
-    console.warn('No se pudo leer staff para notificar:', error.message);
-    return { ok: false, enviados: 0 };
+/** Notificación masiva al staff de UN complejo (membresías dueno/recepcionista).
+ *  Pensado para avisar movimientos de caja/eventos relevantes del día.
+ *  Sin complejoId (legacy) → avisa a todo el staff del sistema. */
+export async function notificarStaff(tipo: string, titulo: string, cuerpo: string, complejoId?: number) {
+  let staffIds: string[] = [];
+  if (complejoId != null) {
+    const { data: membresias, error } = await supabaseAdmin
+      .from('complejo_usuarios')
+      .select('usuario_id')
+      .eq('complejo_id', complejoId)
+      .in('rol', ['dueno', 'recepcionista']);
+    if (error) {
+      console.warn('No se pudieron leer los staff del complejo para notificar:', error.message);
+      return { ok: false, enviados: 0 };
+    }
+    staffIds = (membresias ?? []).map((m) => m.usuario_id as string);
+  } else {
+    const { data: staff, error } = await supabaseAdmin
+      .from('usuarios')
+      .select('id')
+      .in('rol', ['super_admin', 'recepcionista']);
+    if (error) {
+      console.warn('No se pudo leer staff para notificar:', error.message);
+      return { ok: false, enviados: 0 };
+    }
+    staffIds = (staff ?? []).map((s) => s.id as string);
   }
-  if (!staff || staff.length === 0) return { ok: true, enviados: 0 };
+  if (staffIds.length === 0) return { ok: true, enviados: 0 };
+
+  const staff = staffIds.map((id) => ({ id }));
 
   const rows = staff.map((s) => ({ usuario_id: s.id, tipo, titulo, cuerpo }));
   const { error: eIns } = await supabaseAdmin.from('notificaciones').insert(rows);

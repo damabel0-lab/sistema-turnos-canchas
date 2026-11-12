@@ -1,12 +1,11 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
-import { requireSuperAdmin } from '../../middleware/auth.js';
-import { supabaseAdmin } from '../../config/supabase.js';
-import { HttpError } from '../../middleware/error.js';
+import { requireOwner, complejoIdRequerido, type AuthedRequest } from '../../middleware/auth.js';
 import {
   crearCancha,
   crearTarifa,
   editarCancha,
+  eliminarCancha,
   eliminarTarifa,
   listarCanchas,
   listarTarifas,
@@ -16,8 +15,9 @@ import { cotizar } from '../../services/tarifas/cotizador.js';
 export const canchasRouter = Router();
 
 /** Envuelve los handlers async para mandar las excepciones al errorHandler */
-const h = (fn: (req: Request, res: Response) => Promise<void>) =>
-  (req: Request, res: Response, next: NextFunction) => fn(req, res).catch(next);
+const h = (fn: (req: AuthedRequest, res: Response) => Promise<void>) =>
+  (req: Request, res: Response, next: NextFunction) =>
+    fn(req as AuthedRequest, res).catch(next);
 
 // POST /canchas/cotizar -> precio final de un turno (cualquier rol logueado)
 canchasRouter.post(
@@ -27,43 +27,42 @@ canchasRouter.post(
   }),
 );
 
-// GET /canchas -> listado (con deporte y activa)
+// GET /canchas -> listado de canchas del complejo activo
 canchasRouter.get(
   '/',
-  h(async (_req, res) => {
-    res.json(await listarCanchas());
+  h(async (req, res) => {
+    const cid = complejoIdRequerido(req);
+    res.json(await listarCanchas(cid));
   }),
 );
 
-// POST /canchas -> alta (solo super_admin)
+// POST /canchas -> alta (dueño del complejo activo)
 canchasRouter.post(
   '/',
-  requireSuperAdmin,
+  requireOwner,
   h(async (req, res) => {
-    res.status(201).json(await crearCancha(req.body));
+    const cid = complejoIdRequerido(req);
+    res.status(201).json(await crearCancha(req.body, cid));
   }),
 );
 
 // PATCH /canchas/:id -> editar precio, nombre, activa
 canchasRouter.patch(
   '/:id',
-  requireSuperAdmin,
+  requireOwner,
   h(async (req, res) => {
-    res.json(await editarCancha(Number(req.params.id), req.body));
+    const cid = complejoIdRequerido(req);
+    res.json(await editarCancha(Number(req.params.id), req.body, cid));
   }),
 );
 
 // DELETE /canchas/:id -> eliminar cancha
 canchasRouter.delete(
   '/:id',
-  requireSuperAdmin,
+  requireOwner,
   h(async (req, res) => {
-    const { error } = await supabaseAdmin
-      .from('canchas')
-      .delete()
-      .eq('id', Number(req.params.id));
-    if (error) throw new HttpError(400, error.message);
-    res.json({ ok: true });
+    const cid = complejoIdRequerido(req);
+    res.json(await eliminarCancha(Number(req.params.id), cid));
   }),
 );
 
@@ -71,24 +70,27 @@ canchasRouter.delete(
 canchasRouter.get(
   '/:id/tarifas',
   h(async (req, res) => {
-    res.json(await listarTarifas(Number(req.params.id)));
+    const cid = complejoIdRequerido(req);
+    res.json(await listarTarifas(Number(req.params.id), cid));
   }),
 );
 
 // POST /canchas/:id/tarifas
 canchasRouter.post(
   '/:id/tarifas',
-  requireSuperAdmin,
+  requireOwner,
   h(async (req, res) => {
-    res.status(201).json(await crearTarifa(Number(req.params.id), req.body));
+    const cid = complejoIdRequerido(req);
+    res.status(201).json(await crearTarifa(Number(req.params.id), req.body, cid));
   }),
 );
 
 // DELETE /tarifas/:id  (la tarifa se referencia por su propio id)
 canchasRouter.delete(
   '/tarifas/:id',
-  requireSuperAdmin,
+  requireOwner,
   h(async (req, res) => {
-    res.json(await eliminarTarifa(Number(req.params.id)));
+    const cid = complejoIdRequerido(req);
+    res.json(await eliminarTarifa(Number(req.params.id), cid));
   }),
 );

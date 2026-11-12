@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../../config/supabase.js';
 import { HttpError } from '../../middleware/error.js';
+import { suscripcionVigente } from '../suscripciones/suscripciones.service.js';
 
 export type ModalidadTorneo = 'individual' | 'equipos';
 export type FormatoTorneo = 'todos_contra_todos' | 'eliminacion_directa';
@@ -38,26 +39,67 @@ export interface NuevoTorneo {
   cancha_id?: number | null;
 }
 
-export async function listarTorneos() {
+/** Torneo + complejo_id. Lanza 404 si no existe. */
+async function torneoConComplejo(torneoId: number): Promise<Torneo & { complejo_id: number }> {
   const { data, error } = await supabaseAdmin
     .from('torneos')
     .select('*, deportes(nombre)')
+    .eq('id', torneoId)
+    .maybeSingle();
+  if (error) throw new HttpError(500, error.message);
+  if (!data) throw new HttpError(404, 'Torneo no encontrado');
+  return data as unknown as Torneo & { complejo_id: number };
+}
+
+/** Acceso público/participantes: exige que el complejo del torneo tenga suscripción vigente. */
+async function torneoPublico(torneoId: number) {
+  const torneo = await torneoConComplejo(torneoId);
+  if (!(await suscripcionVigente(Number(torneo.complejo_id)))) {
+    throw new HttpError(404, 'Torneo no disponible por el momento');
+  }
+  return torneo;
+}
+
+/** Staff: exige que el torneo pertenezca al complejo activo del request. */
+async function torneoDelComplejo(torneoId: number, complejoId: number) {
+  const torneo = await torneoConComplejo(torneoId);
+  if (Number(torneo.complejo_id) !== complejoId) throw new HttpError(404, 'Torneo no encontrado');
+  return torneo;
+}
+
+export async function listarTorneos(complejoId: number) {
+  const { data, error } = await supabaseAdmin
+    .from('torneos')
+    .select('*, deportes(nombre)')
+    .eq('complejo_id', complejoId)
     .order('fecha_inicio', { ascending: false });
   if (error) throw new HttpError(500, error.message);
   return data ?? [];
 }
 
+/** Torneos abiertos a participantes: solo complejos con suscripción vigente */
 export async function listarTorneosActivos() {
+  const { data: complejos } = await supabaseAdmin
+    .from('complejos')
+    .select('id')
+    .eq('activo', true);
+  const vigentIds: number[] = [];
+  for (const c of complejos ?? []) {
+    if (await suscripcionVigente(c.id)) vigentIds.push(c.id);
+  }
+  if (vigentIds.length === 0) return [];
+
   const { data, error } = await supabaseAdmin
     .from('torneos')
     .select('*, deportes(nombre)')
     .eq('activo', true)
+    .in('complejo_id', vigentIds)
     .order('fecha_inicio', { ascending: true });
   if (error) throw new HttpError(500, error.message);
   return data ?? [];
 }
 
-export async function crearTorneo(datos: NuevoTorneo) {
+export async function crearTorneo(datos: NuevoTorneo, complejoId: number) {
   if (!datos.nombre?.trim()) throw new HttpError(400, 'El nombre es obligatorio');
   if (!datos.fecha_inicio) throw new HttpError(400, 'La fecha de inicio es obligatoria');
 
@@ -78,6 +120,7 @@ export async function crearTorneo(datos: NuevoTorneo) {
       cancha_id: datos.cancha_id ?? null,
       activo: true,
       estado: 'inscripcion',
+      complejo_id: complejoId,
     })
     .select()
     .single();
@@ -91,14 +134,9 @@ export interface TorneoActual {
   equipos: number;
 }
 
-/** Devuelve el torneo + conteos de participantes y equipos */
+/** Devuelve el torneo + conteos de participantes y equipos (público: exige complejo vigente) */
 export async function obtenerTorneoConConteos(torneoId: number): Promise<TorneoActual> {
-  const { data: torneo, error: eT } = await supabaseAdmin
-    .from('torneos')
-    .select('*, deportes(nombre)')
-    .eq('id', torneoId)
-    .single();
-  if (eT || !torneo) throw new HttpError(404, 'Torneo no encontrado');
+  const torneo = await torneoPublico(torneoId);
 
   const { count: inscripciones } = torneo.modalidad === 'individual'
     ? await supabaseAdmin.from('inscripciones_torneo').select('id', { count: 'exact', head: true }).eq('torneo_id', torneoId)
@@ -109,18 +147,13 @@ export async function obtenerTorneoConConteos(torneoId: number): Promise<TorneoA
     .select('id', { count: 'exact', head: true })
     .eq('torneo_id', torneoId);
 
-  return { torneo: torneo as Torneo, inscripciones: inscripciones ?? 0, equipos: equipos ?? 0 };
+  return { torneo: torneo as unknown as Torneo, inscripciones: inscripciones ?? 0, equipos: equipos ?? 0 };
 }
 
 /* ===== Inscripción cliente ===== */
 
 export async function inscribirIndividual(torneoId: number, usuarioId: string) {
-  const { data: torneo, error: eT } = await supabaseAdmin
-    .from('torneos')
-    .select('id, modalidad, estado, cupo_equipos')
-    .eq('id', torneoId)
-    .single();
-  if (eT || !torneo) throw new HttpError(404, 'Torneo no encontrado');
+  const torneo = await torneoPublico(torneoId);
   if (torneo.modalidad !== 'individual') throw new HttpError(400, 'Este torneo es por equipos');
   if (torneo.estado !== 'inscripcion') throw new HttpError(400, 'La inscripción ya cerró');
 
@@ -144,12 +177,7 @@ export async function inscribirIndividual(torneoId: number, usuarioId: string) {
 }
 
 export async function crearEquipoConCapitan(torneoId: number, usuarioId: string, nombreEquipo: string) {
-  const { data: torneo, error: eT } = await supabaseAdmin
-    .from('torneos')
-    .select('id, modalidad, estado, cupo_equipos')
-    .eq('id', torneoId)
-    .single();
-  if (eT || !torneo) throw new HttpError(404, 'Torneo no encontrado');
+  const torneo = await torneoPublico(torneoId);
   if (torneo.modalidad !== 'equipos') throw new HttpError(400, 'Este torneo es individual');
   if (torneo.estado !== 'inscripcion') throw new HttpError(400, 'La inscripción ya cerró');
   if (!nombreEquipo.trim()) throw new HttpError(400, 'El nombre del equipo es obligatorio');
@@ -181,6 +209,7 @@ interface InscripcionVista {
 }
 
 export async function listarInscripciones(torneoId: number) {
+  await torneoPublico(torneoId);
   const { data: torneo } = await supabaseAdmin.from('torneos').select('modalidad').eq('id', torneoId).single();
   const individual = torneo?.modalidad === 'individual';
   if (individual) {
@@ -321,8 +350,9 @@ export async function generarFixtureEliminatoria(torneoId: number) {
   return { generadas: slots.length };
 }
 
-/** Dispatch al generador según formato */
-export async function generarFixture(torneoId: number) {
+/** Dispatch al generador según formato. Solo staff del complejo del torneo. */
+export async function generarFixture(torneoId: number, complejoId: number) {
+  await torneoDelComplejo(torneoId, complejoId);
   const { data: torneo } = await supabaseAdmin
     .from('torneos')
     .select('formato')
@@ -348,6 +378,7 @@ export interface PartidoTorneo {
 /* ===== Resultado y tabla ===== */
 
 export async function listarPartidos(torneoId: number) {
+  await torneoPublico(torneoId);
   const { data: partidos, error } = await supabaseAdmin
     .from('partidos_torneo')
     .select('*')
@@ -373,6 +404,7 @@ export async function cargarResultadoPartido(
   golesLocal: number,
   golesVisitante: number,
   jugado: boolean,
+  complejoId: number,
 ) {
   const { data: partido } = await supabaseAdmin
     .from('partidos_torneo')
@@ -380,6 +412,7 @@ export async function cargarResultadoPartido(
     .eq('id', partidoId)
     .single();
   if (!partido) throw new HttpError(404, 'Partido no encontrado');
+  await torneoDelComplejo(partido.torneo_id, complejoId);
 
   const { data, error } = await supabaseAdmin
     .from('partidos_torneo')
@@ -411,6 +444,7 @@ export interface Posicion {
 }
 
 export async function tablaPosiciones(torneoId: number): Promise<Posicion[]> {
+  await torneoPublico(torneoId);
   const { data: partidos, error } = await supabaseAdmin
     .from('partidos_torneo')
     .select('equipo_local_id, equipo_visitante_id, goles_local, goles_visitante, jugado')
@@ -479,7 +513,8 @@ export async function tablaPosiciones(torneoId: number): Promise<Posicion[]> {
   return tabla;
 }
 
-export async function finalizarTorneo(torneoId: number) {
+export async function finalizarTorneo(torneoId: number, complejoId: number) {
+  await torneoDelComplejo(torneoId, complejoId);
   const { data, error } = await supabaseAdmin
     .from('torneos')
     .update({ estado: 'finalizado' })
@@ -500,7 +535,7 @@ export async function cancelarInscripcionIndividual(torneoId: number, usuarioId:
   return { ok: true };
 }
 
-export async function cancelarEquipo(torneoId: number, equipoId: number, usuarioId: string, esStaff: boolean) {
+export async function cancelarEquipo(torneoId: number, equipoId: number, usuarioId: string, esStaff: boolean, complejoId?: number) {
   const { data: equipo } = await supabaseAdmin
     .from('equipos_torneo')
     .select('capitan_id')
@@ -508,6 +543,11 @@ export async function cancelarEquipo(torneoId: number, equipoId: number, usuario
     .eq('torneo_id', torneoId)
     .single();
   if (!equipo) throw new HttpError(404, 'Equipo no encontrado');
+
+  // El staff solo puede operar equipos de SU complejo (el capitán cancela los suyos siempre)
+  if (esStaff && complejoId != null) {
+    await torneoDelComplejo(torneoId, complejoId);
+  }
   if (!esStaff && equipo.capitan_id !== usuarioId) {
     throw new HttpError(403, 'Sólo el capitán o un admin puede cancelarlo');
   }

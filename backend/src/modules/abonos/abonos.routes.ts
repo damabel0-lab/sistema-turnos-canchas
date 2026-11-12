@@ -1,8 +1,6 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
-import { AuthedRequest } from '../../middleware/auth.js';
-import { requireStaff } from '../../middleware/auth.js';
-import { HttpError } from '../../middleware/error.js';
+import { requireStaff, complejoIdRequerido, type AuthedRequest } from '../../middleware/auth.js';
 import {
   listarAbonos,
   listarAbonosDelUsuario,
@@ -18,39 +16,43 @@ import {
 
 export const abonosRouter = Router();
 
-const h = (fn: (req: Request, res: Response) => Promise<void>) =>
-  (req: Request, res: Response, next: NextFunction) => fn(req, res).catch(next);
+const h = (fn: (req: AuthedRequest, res: Response) => Promise<void>) =>
+  (req: Request, res: Response, next: NextFunction) => fn(req as AuthedRequest, res).catch(next);
 
-// GET /abonos -> listado completo (staff)
+// GET /abonos -> listado completo del complejo activo (staff)
 abonosRouter.get(
   '/',
-  h(async (_req, res) => {
-    res.json(await listarAbonos());
+  requireStaff,
+  h(async (req, res) => {
+    const cid = complejoIdRequerido(req);
+    res.json(await listarAbonos(cid));
   }),
 );
 
-// GET /abonos/mis -> abonos del usuario logueado (cliente)
+// GET /abonos/mis -> abonos del usuario logueado (cualquier complejo — es SU historial)
 abonosRouter.get(
   '/mis',
-  h(async (req: AuthedRequest, res) => {
+  h(async (req, res) => {
     res.json(await listarAbonosDelUsuario(req.userId!));
   }),
 );
 
-// POST /abonos/solicitud -> el cliente pide la mensualidad desde la app
+// POST /abonos/solicitud -> el cliente pide la mensualidad para un complejo (header X-Complejo-Id)
 abonosRouter.post(
   '/solicitud',
-  h(async (req: AuthedRequest, res) => {
-    res.status(201).json(await solicitarAbono(req.userId!, (req.body ?? {}).servicio));
+  h(async (req, res) => {
+    const cid = complejoIdRequerido(req);
+    res.status(201).json(await solicitarAbono(req.userId!, (req.body ?? {}).servicio, cid));
   }),
 );
 
-// GET /abonos/solicitudes -> solicitudes pendientes de activación (staff)
+// GET /abonos/solicitudes -> solicitudes pendientes de activación (staff del complejo activo)
 abonosRouter.get(
   '/solicitudes',
   requireStaff,
-  h(async (_req, res) => {
-    res.json(await listarSolicitudes());
+  h(async (req, res) => {
+    const cid = complejoIdRequerido(req);
+    res.json(await listarSolicitudes(cid));
   }),
 );
 
@@ -59,7 +61,8 @@ abonosRouter.post(
   '/solicitudes/:id/aprobar',
   requireStaff,
   h(async (req, res) => {
-    res.json(await aprobarSolicitud(Number(req.params.id), req.body ?? {}));
+    const cid = complejoIdRequerido(req);
+    res.json(await aprobarSolicitud(Number(req.params.id), req.body ?? {}, cid));
   }),
 );
 
@@ -68,22 +71,25 @@ abonosRouter.post(
   '/solicitudes/:id/rechazar',
   requireStaff,
   h(async (req, res) => {
-    res.json(await rechazarSolicitud(Number(req.params.id)));
+    const cid = complejoIdRequerido(req);
+    res.json(await rechazarSolicitud(Number(req.params.id), cid));
   }),
 );
 
-// POST /abonos -> vender abono mensual/pases (staff)
+// POST /abonos -> vender abono mensual/pases (staff del complejo activo)
 abonosRouter.post(
   '/',
   requireStaff,
   h(async (req, res) => {
-    res.status(201).json(await venderAbono(req.body));
+    const cid = complejoIdRequerido(req);
+    res.status(201).json(await venderAbono(req.body, cid));
   }),
 );
 
-// POST /abonos/consumo -> descontar 1 clase (staff o sistema al crear reserva)
+// POST /abonos/consumo -> descontar 1 clase (staff)
 abonosRouter.post(
   '/consumo',
+  requireStaff,
   h(async (req, res) => {
     const { usuario_id, disciplina_id } = req.body ?? {};
     if (!usuario_id) {
@@ -94,19 +100,22 @@ abonosRouter.post(
   }),
 );
 
-// GET /abonos/vencidos -> listado para dar de baja (staff)
+// GET /abonos/vencidos -> listado para dar de baja (staff del complejo activo)
 abonosRouter.get(
   '/vencidos',
-  h(async (_req, res) => {
-    res.json(await listarAbonosVencidos());
+  requireStaff,
+  h(async (req, res) => {
+    const cid = complejoIdRequerido(req);
+    res.json(await listarAbonosVencidos(cid));
   }),
 );
 
-// POST /abonos/cerrar-vencidos -> inactivar abonos vencidos (staff)
+// POST /abonos/cerrar-vencidos -> inactivar abonos vencidos (staff del complejo activo)
 abonosRouter.post(
   '/cerrar-vencidos',
   requireStaff,
-  h(async (_req, res) => {
-    res.json(await cerrarAbonosVencidos());
+  h(async (req, res) => {
+    const cid = complejoIdRequerido(req);
+    res.json(await cerrarAbonosVencidos(cid));
   }),
 );

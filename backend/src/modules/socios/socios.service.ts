@@ -16,11 +16,35 @@ export interface NuevoSocio {
   telefono: string;
 }
 
-export async function listarSocios() {
+/** Socios con actividad en ESTE complejo (reserva o abono).
+ *  es_socio es un flag global del jugador; el listado muestra los que
+ *  ya pasaron por tu complejo. Un socio nuevo aparece desde su primera actividad. */
+export async function listarSocios(complejoId: number) {
+  const [reservas, abonos] = await Promise.all([
+    supabaseAdmin
+      .from('reservas')
+      .select('usuario_id')
+      .eq('complejo_id', complejoId)
+      .not('usuario_id', 'is', null),
+    supabaseAdmin
+      .from('abonos')
+      .select('usuario_id')
+      .eq('complejo_id', complejoId),
+  ]);
+
+  const ids = [
+    ...new Set([
+      ...((reservas.data ?? []) as Array<{ usuario_id: string }>).map((r) => r.usuario_id),
+      ...((abonos.data ?? []) as Array<{ usuario_id: string }>).map((a) => a.usuario_id),
+    ]),
+  ];
+  if (ids.length === 0) return [];
+
   const { data, error } = await supabaseAdmin
     .from('usuarios')
     .select('id, nombre, apellido, telefono, es_socio, creado_en')
     .eq('es_socio', true)
+    .in('id', ids)
     .order('apellido')
     .order('nombre');
   if (error) throw new HttpError(500, error.message);

@@ -53,7 +53,7 @@ function origenDe(descripcion: string): string {
   return 'Otros';
 }
 
-export async function resumenCaja(filtro: FiltroCaja): Promise<ResumenCaja> {
+export async function resumenCaja(filtro: FiltroCaja, complejoId: number): Promise<ResumenCaja> {
   const base = filtro.fecha ? new Date(`${filtro.fecha}T00:00:00`) : new Date();
   if (filtro.fecha && Number.isNaN(base.getTime())) {
     throw new HttpError(400, 'fecha inválida (YYYY-MM-DD)');
@@ -62,7 +62,7 @@ export async function resumenCaja(filtro: FiltroCaja): Promise<ResumenCaja> {
   const periodo = filtro.periodo ?? 'dia';
 
   /** Apertura del complejo leída de la configuración (define tu "día" si abre hasta medianoche) */
-  const { apertura } = await leerHorasComplejo();
+  const { apertura } = await leerHorasComplejo(complejoId);
   const horaApertura: number = apertura;
 
   const desde = new Date(base);
@@ -97,6 +97,7 @@ export async function resumenCaja(filtro: FiltroCaja): Promise<ResumenCaja> {
   const query = supabaseAdmin
     .from('movimientos_caja')
     .select('id, fecha_hora, tipo_movimiento, monto, metodo_pago, descripcion, reserva_id')
+    .eq('complejo_id', complejoId)
     .gte('fecha_hora', desde.toISOString());
 
   const { data, error } = periodo === 'historico'
@@ -146,7 +147,7 @@ export async function registrarEgreso(entrada: {
   monto: number;
   metodo_pago: string;
   descripcion: string;
-}) {
+}, complejoId: number) {
   if (!(entrada.monto > 0)) throw new HttpError(400, 'El monto debe ser mayor a 0');
   if (!entrada.descripcion?.trim()) throw new HttpError(400, 'La descripción es obligatoria');
   if (!['efectivo', 'transferencia', 'mercado_pago', 'tarjeta'].includes(entrada.metodo_pago)) {
@@ -160,6 +161,7 @@ export async function registrarEgreso(entrada: {
       tipo_movimiento: 'egreso',
       metodo_pago: entrada.metodo_pago as never,
       descripcion: `Egreso: ${entrada.descripcion.trim()}`,
+      complejo_id: complejoId,
     })
     .select()
     .single();
@@ -171,6 +173,7 @@ export async function registrarEgreso(entrada: {
       'caja',
       'Egreso registrado',
       `Gasto: ${entrada.descripcion.trim()} · $${Number(entrada.monto).toLocaleString('es-AR')} · ${entrada.metodo_pago}`,
+      complejoId,
     );
   } catch (e) {
     console.warn('No se pudo notificar el egreso al staff', e);

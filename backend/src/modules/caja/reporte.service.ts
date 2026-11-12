@@ -26,7 +26,7 @@ function origenDe(descripcion: string): string {
   return 'Otros';
 }
 
-export async function reportePorDisciplina(fecha?: string): Promise<ReporteDisciplina> {
+export async function reportePorDisciplina(fecha: string | undefined, complejoId: number): Promise<ReporteDisciplina> {
   const base = fecha ? new Date(`${fecha}T00:00:00`) : new Date();
   if (fecha && Number.isNaN(base.getTime())) {
     throw new HttpError(400, 'fecha inválida (YYYY-MM-DD)');
@@ -40,6 +40,7 @@ export async function reportePorDisciplina(fecha?: string): Promise<ReporteDisci
   const { data, error } = await supabaseAdmin
     .from('movimientos_caja')
     .select('monto, tipo_movimiento, descripcion')
+    .eq('complejo_id', complejoId)
     .gte('fecha_hora', desde.toISOString())
     .lt('fecha_hora', hasta.toISOString());
   if (error) throw new HttpError(500, error.message);

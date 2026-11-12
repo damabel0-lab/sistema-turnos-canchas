@@ -4,6 +4,8 @@ import { HttpError } from '../../middleware/error.js';
 import { cotizar, aMinutos } from '../../services/tarifas/cotizador.js';
 import { leerHorasComplejo, minutosCierreAjustado } from '../../config/complejoHoras.js';
 import { crearNotificacion, notificarStaff } from '../notifications/notifications.service.js';
+import { leerConfigComplejo } from '../../config/complejoConfig.js';
+import { suscripcionVigente } from '../suscripciones/suscripciones.service.js';
 
 /** Inicio o fin de un turno ajustado al día "deportivo" (que empieza a la apertura).
  *  Necesario para clubs que pasan medianoche (slot 00:15 -> 24:15). */
@@ -166,7 +168,7 @@ export async function estadisticasDelUsuario(usuarioId: string) {
 export async function cancelarPropia(usuarioId: string, reservaId: number) {
   const { data: reserva, error } = await supabaseAdmin
     .from('reservas')
-    .select('id, usuario_id, fecha, estado, hora_inicio')
+    .select('id, usuario_id, fecha, estado, hora_inicio, complejo_id')
     .eq('id', reservaId)
     .single();
   if (error || !reserva) throw new HttpError(404, 'Reserva no encontrada');
@@ -175,14 +177,16 @@ export async function cancelarPropia(usuarioId: string, reservaId: number) {
     throw new HttpError(409, `No se puede cancelar una reserva "${reserva.estado}"`);
   }
 
-  // Política de cancelación configurable por el dueño del complejo (opcional).
-  // Si no hay variable definida, no hay límite. Por defecto: sin límite.
-  const horasMinimas = Number(process.env.POLITICA_CANCELACION_HORAS ?? '0');
+  // Política de cancelación configurable por el dueño del complejo.
+  const cfgReserva = reserva.complejo_id
+    ? await leerConfigComplejo(Number(reserva.complejo_id))
+    : null;
+  const horasMinimas = cfgReserva?.cancelacion_minima_horas ?? 0;
   if (horasMinimas > 0) {
     const inicio = new Date(`${reserva.fecha}T${reserva.hora_inicio}`);
     const limite = new Date(inicio.getTime() - horasMinimas * 60 * 60 * 1000);
     if (new Date() > limite) {
-      throw new HttpError(409, `No se puede cancelar: el complejo exige al menos \${horasMinimas} hs antes del turno`);
+      throw new HttpError(409, `No se puede cancelar: el complejo exige al menos ${horasMinimas} hs antes del turno`);
     }
   }
 
@@ -212,6 +216,7 @@ export async function cambiarEstadoReserva(
   id: number,
   nuevoEstado: 'confirmada' | 'cancelada' | 'completada',
   metodoPago?: string | null,
+  complejoId?: number,
 ) {
   const { data: reserva, error } = await supabaseAdmin
     .from('reservas')
@@ -219,6 +224,10 @@ export async function cambiarEstadoReserva(
     .eq('id', id)
     .single();
   if (error || !reserva) throw new HttpError(404, 'Reserva no encontrada');
+  // Un staff solo puede operar reservas de SU complejo (ids de reserva son predecibles)
+  if (complejoId != null && reserva.complejo_id !== complejoId) {
+    throw new HttpError(404, 'Reserva no encontrada');
+  }
 
   const actual = reserva.estado as string;
   const transiciones: Record<string, string[]> = {
@@ -271,6 +280,7 @@ export async function cambiarEstadoReserva(
     const { error: eCaja } = await supabaseAdmin.from('movimientos_caja').insert({
       reserva_id: id,
       usuario_id: reserva.usuario_id,
+      complejo_id: reserva.complejo_id ?? null,
       monto,
       tipo_movimiento: 'ingreso',
       metodo_pago: (metodoPago ?? reserva.metodo_pago ?? 'efectivo') as never,
@@ -298,6 +308,7 @@ export async function cambiarEstadoReserva(
         'pago',
         'Cobro registrado',
         `${cliente} · reserva #${id} · ${fechaCorta} ${horaTrunc} · $${Number(monto).toLocaleString('es-AR')}`,
+        Number(reserva.complejo_id),
       );
     } else if (nuevoEstado === 'completada') {
       if (reserva.usuario_id) {
@@ -347,12 +358,12 @@ export interface FilaGrilla {
   items: ItemGrilla[];
 }
 
-export async function grillaDelDia(fecha: string): Promise<FilaGrilla[]> {
+export async function grillaDelDia(fecha: string, complejoId: number): Promise<FilaGrilla[]> {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
     throw new HttpError(400, 'fecha debe tener formato YYYY-MM-DD');
   }
 
-  const { apertura, cierre } = await leerHorasComplejo();
+  const { apertura, cierre } = await leerHorasComplejo(complejoId);
   const cierreAjustado = minutosCierreAjustado(apertura, cierre);
   const aperturaTexto = `${String(apertura).padStart(2, '0')}:00`;
   const cierreTexto = `${String(cierre).padStart(2, '0')}:00`;
@@ -361,17 +372,20 @@ export async function grillaDelDia(fecha: string): Promise<FilaGrilla[]> {
     supabaseAdmin
       .from('canchas')
       .select('id, nombre, activa, deportes(nombre)')
+      .eq('complejo_id', complejoId)
       .order('nombre'),
     supabaseAdmin
       .from('reservas')
       .select(
         'id, cancha_id, hora_inicio, hora_fin, precio_total, monto_seña, estado, usuarios(nombre, apellido)',
       )
+      .eq('complejo_id', complejoId)
       .eq('fecha', fecha)
       .neq('estado', 'cancelada'),
     supabaseAdmin
       .from('bloqueos_horarios')
       .select('cancha_id, fecha_inicio, fecha_fin, motivo')
+      .eq('complejo_id', complejoId)
       .lte('fecha_inicio', `${fecha}T${cierreTexto}:00`)
       .gte('fecha_fin', `${fecha}T${aperturaTexto}:00`),
   ]);
@@ -494,7 +508,23 @@ export async function crearReserva(entrada: NuevaReserva) {
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) throw new HttpError(400, 'fecha inválida (YYYY-MM-DD)');
 
-  const { apertura, cierre } = await leerHorasComplejo();
+  // La cancha define en qué complejo se juega (multi-tenant)
+  const { data: canchaTemprana, error: eCanchaTemprana } = await supabaseAdmin
+    .from('canchas')
+    .select('id, activa, complejo_id, nombre')
+    .eq('id', cancha_id)
+    .single();
+  if (eCanchaTemprana || !canchaTemprana) throw new HttpError(404, 'Cancha no encontrada');
+  if (!canchaTemprana.activa) throw new HttpError(400, 'La cancha no está activa');
+  const cid = Number(canchaTemprana.complejo_id);
+
+  // Solo complejos con suscripción vigente pueden vender canales
+  if (!(await suscripcionVigente(cid))) {
+    throw new HttpError(403, 'Este complejo no está disponible por el momento');
+  }
+
+  const cfgComplejo = await leerConfigComplejo(cid);
+  const { apertura, cierre } = await leerHorasComplejo(cid);
   const aperturaMin = apertura * 60;
   const cierreAjustado = minutosCierreAjustado(apertura, cierre);
   const aperturaTexto = `${apertura}:00`;
@@ -517,14 +547,7 @@ export async function crearReserva(entrada: NuevaReserva) {
     throw new HttpError(400, mensajeHorario);
   }
 
-  // 1. cancha activa
-  const { data: cancha, error: eCancha } = await supabaseAdmin
-    .from('canchas')
-    .select('id, activa')
-    .eq('id', cancha_id)
-    .single();
-  if (eCancha || !cancha) throw new HttpError(404, 'Cancha no encontrada');
-  if (!cancha.activa) throw new HttpError(400, 'La cancha no está activa');
+  // 1. cancha validada en el tope de la función (ya se conoce su complejo y nombre)
 
   // 3. superposición con reservas existentes
   const { data: reservas, error: eReservas } = await supabaseAdmin
@@ -565,7 +588,9 @@ export async function crearReserva(entrada: NuevaReserva) {
       hora_inicio,
       hora_fin,
       usuario_id: entrada.usuario_id ?? null,
-      descuento_turno_fijo: entrada.descuento_turno_fijo ?? 0,
+      descuento_turno_fijo:
+        entrada.descuento_turno_fijo ??
+        (entrada.es_turno_fijo ? cfgComplejo.descuento_turno_fijo_porcentaje : 0),
     });
     precio_total = cotizacion.precio_total;
     monto_seña = cotizacion.monto_seña;
@@ -584,6 +609,7 @@ export async function crearReserva(entrada: NuevaReserva) {
       metodo_pago: (entrada.metodo_pago ?? null) as never,
       estado: entrada.estado ?? 'pendiente_seña',
       es_turno_fijo: entrada.es_turno_fijo ?? false,
+      complejo_id: cid,
     })
     .select()
     .single();
@@ -591,12 +617,7 @@ export async function crearReserva(entrada: NuevaReserva) {
 
   // Notificar al cliente y al staff del complejo
   try {
-    const { data: canchaInfo } = await supabaseAdmin
-      .from('canchas')
-      .select('nombre')
-      .eq('id', cancha_id)
-      .single();
-    const nombreCancha = canchaInfo?.nombre ?? `cancha #${cancha_id}`;
+    const nombreCancha = canchaTemprana.nombre ?? `cancha #${cancha_id}`;
     const fechaCorta = new Date(`${fecha}T00:00:00`).toLocaleDateString('es-AR', { weekday: 'long', day: '2-digit', month: 'long' });
     const horaTrunc = String(hora_inicio).slice(0, 5);
 
@@ -613,7 +634,7 @@ export async function crearReserva(entrada: NuevaReserva) {
       ? await supabaseAdmin.from('usuarios').select('nombre, apellido').eq('id', entrada.usuario_id).single()
       : { data: null };
     const nombreCliente = clienteInfo ? `${clienteInfo.nombre} ${clienteInfo.apellido}` : 'Un cliente';
-    await notificarStaff('reserva', 'Nuevo turno creado', `${nombreCliente} reservó ${nombreCancha} · ${fecha} ${horaTrunc} · $${Number(precio_total).toLocaleString('es-AR')}`);
+    await notificarStaff('reserva', 'Nuevo turno creado', `${nombreCliente} reservó ${nombreCancha} · ${fecha} ${horaTrunc} · $${Number(precio_total).toLocaleString('es-AR')}`, cid);
   } catch (e) {
     console.warn('No se pudieron crear las notificaciones de la reserva', e);
   }
@@ -633,11 +654,15 @@ export async function disponibilidad(canchaId: number, fecha: string): Promise<E
 
   const { data: cancha, error: eCancha } = await supabaseAdmin
     .from('canchas')
-    .select('id, activa')
+    .select('id, activa, complejo_id')
     .eq('id', canchaId)
     .single();
   if (eCancha || !cancha) throw new HttpError(404, 'Cancha no encontrada');
   if (!cancha.activa) throw new HttpError(400, 'La cancha no está activa');
+  const cid = Number(cancha.complejo_id);
+  if (!(await suscripcionVigente(cid))) {
+    throw new HttpError(403, 'Este complejo no está disponible por el momento');
+  }
 
   // Reservas que ocupan el día (canceladas no bloquean)
   const { data: reservas, error: eReservas } = await supabaseAdmin
@@ -661,7 +686,7 @@ export async function disponibilidad(canchaId: number, fecha: string): Promise<E
 
   const horas: EstadoHora[] = [];
 
-  const { apertura, cierre } = await leerHorasComplejo();
+  const { apertura, cierre } = await leerHorasComplejo(cid);
   const aperturaMin = apertura * 60;
   const minutosCierre = minutosCierreAjustado(apertura, cierre);
   const aMinAdjust = (t: string) => ajustarAlDia(aMinutos(t), aperturaMin);
@@ -771,7 +796,20 @@ export async function proyectarTurnosFijos(entrada: TurnoFijoEntrada) {
 
   const usuario_id = await resolverUsuarioId(entrada);
 
-  const { apertura, cierre } = await leerHorasComplejo();
+  // El complejo de la cancha define vigencia y horas del día operativo
+  const { data: canchaProj, error: eCanchaProj } = await supabaseAdmin
+    .from('canchas')
+    .select('id, activa, complejo_id')
+    .eq('id', cancha_id)
+    .single();
+  if (eCanchaProj || !canchaProj) throw new HttpError(404, 'Cancha no encontrada');
+  if (!canchaProj.activa) throw new HttpError(400, 'La cancha no está activa');
+  const cid = Number(canchaProj.complejo_id);
+  if (!(await suscripcionVigente(cid))) {
+    throw new HttpError(403, 'Este complejo no está disponible por el momento');
+  }
+
+  const { apertura, cierre } = await leerHorasComplejo(cid);
   const aperturaMin = apertura * 60;
   const cierreAjustado = minutosCierreAjustado(apertura, cierre);
   const mensajeHorario = `El horario debe estar entre ${apertura}:00 y ${cierre}:00${cierre <= apertura ? ' (del día siguiente)' : ''}`;

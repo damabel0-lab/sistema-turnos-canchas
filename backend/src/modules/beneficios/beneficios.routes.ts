@@ -1,36 +1,40 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
-import { requireSuperAdmin } from '../../middleware/auth.js';
+import { requireStaff, requireOwner, complejoIdRequerido, type AuthedRequest } from '../../middleware/auth.js';
 import { listarBeneficios, crearBeneficio, eliminarBeneficio } from './beneficios.service.js';
 
 export const beneficiosRouter = Router();
 
-const h = (fn: (req: Request, res: Response) => Promise<void>) =>
-  (req: Request, res: Response, next: NextFunction) => fn(req, res).catch(next);
+const h = (fn: (req: AuthedRequest, res: Response) => Promise<void>) =>
+  (req: Request, res: Response, next: NextFunction) => fn(req as AuthedRequest, res).catch(next);
 
-// GET /beneficios -> catálogo (staff ve el catálogo, super_admin edita)
+// GET /beneficios -> catálogo del complejo activo (staff lo ve para aplicar)
 beneficiosRouter.get(
   '/',
-  h(async (_req, res) => {
-    res.json(await listarBeneficios());
+  requireStaff,
+  h(async (req, res) => {
+    const cid = complejoIdRequerido(req);
+    res.json(await listarBeneficios(cid));
   }),
 );
 
-// POST /beneficios -> alta de beneficio (solo super_admin)
+// POST /beneficios -> alta de beneficio del complejo activo (dueño)
 beneficiosRouter.post(
   '/',
-  requireSuperAdmin,
+  requireOwner,
   h(async (req, res) => {
-    res.status(201).json(await crearBeneficio(req.body));
+    const cid = complejoIdRequerido(req);
+    res.status(201).json(await crearBeneficio(req.body, cid));
   }),
 );
 
-// DELETE /beneficios/:id (solo super_admin)
+// DELETE /beneficios/:id (dueño del complejo activo)
 beneficiosRouter.delete(
   '/:id',
-  requireSuperAdmin,
+  requireOwner,
   h(async (req, res) => {
-    await eliminarBeneficio(Number(req.params.id));
+    const cid = complejoIdRequerido(req);
+    await eliminarBeneficio(Number(req.params.id), cid);
     res.json({ ok: true });
   }),
 );

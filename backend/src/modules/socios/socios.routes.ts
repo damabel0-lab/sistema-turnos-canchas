@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
-import { requireStaff } from '../../middleware/auth.js';
+import { requireStaff, complejoIdRequerido, type AuthedRequest } from '../../middleware/auth.js';
 import {
   listarSocios,
   darDeAltaSocio,
@@ -10,21 +10,25 @@ import {
 
 export const sociosRouter = Router();
 
-const h = (fn: (req: Request, res: Response) => Promise<void>) =>
-  (req: Request, res: Response, next: NextFunction) => fn(req, res).catch(next);
+const h = (fn: (req: AuthedRequest, res: Response) => Promise<void>) =>
+  (req: Request, res: Response, next: NextFunction) => fn(req as AuthedRequest, res).catch(next);
 
-// GET /socios -> directorio de socios
+// GET /socios -> directorio de socios CON ACTIVIDAD en tu complejo (staff)
 sociosRouter.get(
   '/',
-  h(async (_req, res) => {
-    res.json(await listarSocios());
+  requireStaff,
+  h(async (req, res) => {
+    const cid = complejoIdRequerido(req);
+    res.json(await listarSocios(cid));
   }),
 );
 
-// GET /socios/buscar?telefono=... -> buscar un cliente/socio por teléfono
+// GET /socios/buscar?telefono=... -> buscar un cliente/socio por teléfono exacto (staff)
 sociosRouter.get(
   '/buscar',
+  requireStaff,
   h(async (req, res) => {
+    complejoIdRequerido(req);
     const telefono = String(req.query.telefono ?? '');
     if (!telefono) {
       res.status(400).json({ error: 'telefono es obligatorio' });
@@ -39,6 +43,7 @@ sociosRouter.post(
   '/',
   requireStaff,
   h(async (req, res) => {
+    complejoIdRequerido(req);
     res.status(201).json(await darDeAltaSocio(req.body));
   }),
 );
@@ -48,6 +53,7 @@ sociosRouter.delete(
   '/:id',
   requireStaff,
   h(async (req, res) => {
+    complejoIdRequerido(req);
     await bajaSocio(req.params.id);
     res.json({ ok: true });
   }),

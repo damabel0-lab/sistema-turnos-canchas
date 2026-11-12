@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../../config/supabase.js';
 import { HttpError } from '../../middleware/error.js';
+import { suscripcionVigente } from '../../modules/suscripciones/suscripciones.service.js';
 
 /**
  * Cálculo de precio final de un turno.
@@ -76,11 +77,15 @@ export async function cotizar(entrada: CotizacionEntrada): Promise<Cotizacion> {
 
   const { data: cancha, error: eCancha } = await supabaseAdmin
     .from('canchas')
-    .select('id, precio_base, activa, deportes(nombre, tipo)')
+    .select('id, precio_base, activa, complejo_id, deportes(nombre, tipo)')
     .eq('id', cancha_id)
     .single();
   if (eCancha || !cancha) throw new HttpError(404, 'Cancha no encontrada');
   if (!cancha.activa) throw new HttpError(400, 'La cancha no está activa');
+  const complejoId = Number(cancha.complejo_id);
+  if (!(await suscripcionVigente(complejoId))) {
+    throw new HttpError(403, 'Este complejo no está disponible por el momento');
+  }
 
   const { data: tarifas, error: eTarifas } = await supabaseAdmin
     .from('tarifas')
@@ -112,21 +117,22 @@ export async function cotizar(entrada: CotizacionEntrada): Promise<Cotizacion> {
 
   const tipoDisciplina = (cancha.deportes as unknown as { nombre: string; tipo: string }).tipo;
 
-  // Descuento de socio (busca beneficio aplicable al tipo de disciplina)
+  // Descuento de socio (beneficio aplicable a la disciplina Y al complejo donde se juega)
   let descuentoSocio = 0;
   if (usuario_id) {
     const { data: beneficio } = await supabaseAdmin
       .from('socio_beneficios')
-      .select('beneficios_socios(descuento_porcentaje, aplica_en)')
+      .select('beneficios_socios(descuento_porcentaje, aplica_en, complejo_id)')
       .eq('usuario_id', usuario_id)
       .eq('beneficios_socios.aplica_en', tipoDisciplina)
+      .eq('beneficios_socios.complejo_id', complejoId)
       .maybeSingle();
 
     const fila = beneficio as unknown as
-      | { beneficios_socios: { descuento_porcentaje: number; aplica_en: string } | null }
+      | { beneficios_socios: { descuento_porcentaje: number; aplica_en: string; complejo_id: number } | null }
       | null;
     const pct = fila?.beneficios_socios?.descuento_porcentaje;
-    if (pct) descuentoSocio = Math.round(subtotal * (Number(pct) / 100));
+    if (pct && Number(pct) > 0) descuentoSocio = Math.round(subtotal * (Number(pct) / 100));
   }
 
   // Descuento de turno fijo (parámetro del caller o del entorno)

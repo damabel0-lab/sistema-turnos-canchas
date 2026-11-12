@@ -11,6 +11,7 @@ import {
   eliminarTodasNotificaciones,
   eliminarNotificacion,
 } from './notifications.service.js';
+import { requireStaff, complejoIdRequerido, type AuthedRequest } from '../../middleware/auth.js';
 
 export const notificacionesRouter = Router();
 
@@ -63,15 +64,12 @@ notificacionesRouter.delete(
   }),
 );
 
-// POST /notificaciones/procesar-recordatorios -> detectar reservas próximas y enviar recordatorios (staff)
+// POST /notificaciones/procesar-recordatorios -> detectar reservas próximas y enviar recordatorios (staff del complejo activo)
 notificacionesRouter.post(
   '/procesar-recordatorios',
+  requireStaff,
   h(async (req, res) => {
-    const rol = (req as any).rol;
-    if (rol !== 'super_admin' && rol !== 'recepcionista') {
-      res.status(403).json({ error: 'Requiere rol de staff' });
-      return;
-    }
-    res.json(await procesarRecordatoriosProximos());
+    const cid = complejoIdRequerido(req as AuthedRequest);
+    res.json(await procesarRecordatoriosProximos(cid));
   }),
 );
