@@ -1,13 +1,15 @@
 import { useEffect } from 'react';
-import { Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { RutaProtegida } from './components/RutaProtegida';
 import { BarraSesion } from './components/BarraSesion';
 import { api } from './lib/api';
 import { useAuth } from './hooks/useAuth';
 
-// Páginas cliente (públicas)
+// Páginas públicas / cliente autenticado
 import { HomePage } from './pages/cliente/HomePage';
 import { ReservarPage } from './pages/cliente/ReservarPage';
+import { ComplejosPage } from './pages/publico/ComplejosPage';
+import { ComplejoDetallePage } from './pages/publico/ComplejoDetallePage';
 import { MisReservasPage } from './pages/cliente/MisReservasPage';
 import { MisAbonosPage } from './pages/cliente/MisAbonosPage';
 import { TorneosClientePage } from './pages/cliente/TorneosClientePage';
@@ -16,7 +18,7 @@ import { NotificacionesPage } from './pages/cliente/NotificacionesPage';
 // Auth
 import { LoginPage } from './pages/auth/LoginPage';
 
-// Páginas admin (protegidas por rol)
+// Páginas admin (protegidas por membresía/rol)
 import { AdminLayout } from './components/AdminLayout';
 import { CierreCajaPage } from './pages/admin/CierreCajaPage';
 import { GrillaPage } from './pages/admin/GrillaPage';
@@ -28,7 +30,6 @@ import { DashboardPage } from './pages/admin/DashboardPage';
 import { ConfiguracionPage } from './pages/admin/ConfiguracionPage';
 import { ConfigurarPage } from './pages/admin/ConfigurarPage';
 import { CajaPage } from './pages/admin/CajaPage';
-import { ComplejoPublicoPage } from './pages/publico/ComplejoPublicoPage';
 import { ReportesPage } from './pages/admin/ReportesPage';
 import { TorneosPage } from './pages/admin/TorneosPage';
 
@@ -64,7 +65,23 @@ export function App() {
       <Routes>
         {/* Cliente */}
         <Route path="/" element={<HomePage />} />
-        <Route path="/complejo" element={<ComplejoPublicoPage />} />
+        <Route path="/complejo" element={<Navigate to="/complejos" replace />} />
+        <Route
+          path="/complejos"
+          element={
+            <RutaProtegida>
+              <ComplejosPage />
+            </RutaProtegida>
+          }
+        />
+        <Route
+          path="/complejos/:slug"
+          element={
+            <RutaProtegida>
+              <ComplejoDetallePage />
+            </RutaProtegida>
+          }
+        />
         <Route path="/login" element={<LoginPage />} />
         <Route
           path="/reservar"

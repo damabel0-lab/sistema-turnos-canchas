@@ -3204,3 +3204,148 @@ body {
   }
   html { scroll-behavior: auto; }
 }
+
+/* ===== CATÁLOGO DE COMPLEJOS ===== */
+.complejos-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+}
+
+.complejo-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radio-lg, 16px);
+  padding: 1rem 1.1rem 1.1rem;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.complejo-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--sombra-md), var(--glow);
+  border-color: color-mix(in srgb, var(--primario) 45%, var(--border));
+}
+
+.complejo-card-nombre {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.complejo-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--texto-3);
+  font-size: 0.8rem;
+}
+
+.amenity-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.amenity-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--bg-surface-3);
+  color: var(--texto-2);
+  border: 1px solid var(--border);
+}
+
+.amenity-chip.destacada {
+  background: var(--primario-soft);
+  color: var(--primario-2);
+  border-color: color-mix(in srgb, var(--primario) 40%, transparent);
+}
+
+.complejo-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border);
+}
+
+.complejo-precio small {
+  display: block;
+  color: var(--texto-3);
+  font-size: 0.68rem;
+}
+
+.complejo-hero {
+  border-radius: var(--radio-lg, 16px);
+  border: 1px solid var(--border);
+  background: radial-gradient(900px 260px at 85% -20%, var(--primario-soft-2), transparent), var(--bg-surface);
+  padding: 1.25rem 1.4rem;
+  margin-bottom: 1rem;
+}
+
+.complejo-hero h1 {
+  margin: 0.3rem 0 0.2rem;
+  font-size: 1.6rem;
+  letter-spacing: -0.02em;
+}
+
+.cancha-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radio);
+  padding: 0.85rem 0.95rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.complejo-cta-bar {
+  position: sticky;
+  bottom: 0.75rem;
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  margin-top: 1.25rem;
+}
+
+.complejo-cta-bar .boton {
+  box-shadow: var(--sombra-lg), var(--glow);
+}
+
+/* Suscripción del complejo en el panel del dueño */
+.susc-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--radio);
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+  border: 1px solid transparent;
+}
+.susc-banner.prueba { background: var(--primario-soft); border-color: color-mix(in srgb, var(--primario) 40%, transparent); }
+.susc-banner.vencida { background: color-mix(in srgb, var(--peligro) 12%, transparent); border-color: color-mix(in srgb, var(--peligro) 40%, transparent); }
+
+/* CTA dueños (HomePage / registro) */
+.dueno-cta {
+  border: 1px dashed color-mix(in srgb, var(--primario) 45%, var(--border-strong));
+  background: var(--primario-soft);
+  border-radius: var(--radio-lg, 16px);
+  padding: 0.9rem 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}

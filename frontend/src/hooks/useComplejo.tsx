@@ -1,0 +1,167 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react';
+import { api } from '../lib/api';
+import { useAuth } from './useAuth';
+
+export interface ComplejoResumen {
+  id: number;
+  nombre: string;
+  slug: string;
+  tipo: string;
+  ciudad: string | null;
+  direccion: string | null;
+  gym: boolean;
+  pileta: boolean;
+  precio_mensual_gym: number | null;
+  precio_mensual_pileta: number | null;
+  ofrece_torneos: boolean;
+  ofrece_socios: boolean;
+  amenidades: string[];
+}
+
+export interface SuscripcionInfo {
+  id: number;
+  estado: 'prueba' | 'activa' | 'vencida' | 'cancelada';
+  monto: number;
+  inicio: string;
+  fin: string | null;
+  metodo_pago: string | null;
+}
+
+export interface MembresiaInfo {
+  complejo_id: number;
+  rol: 'dueno' | 'recepcionista';
+  complejo: ComplejoResumen | null;
+  suscripcion: SuscripcionInfo | null;
+  vigente: boolean;
+}
+
+/** Clave con la que el frontend persiste el complejo activo (staff en operaciones / jugador reservando) */
+export const CLAVE_COMPLEJO_ACTIVO = 'playcontrol.complejo_id';
+
+interface ComplejoContextValue {
+  /** Membresías del usuario logueado (dueño/recepcionista en complejos) */
+  membresias: MembresiaInfo[];
+  cargando: boolean;
+  /** Complejo activo (si hay uno persistido y es válido, o única membresía). null = nada elegido/vínculo */
+  activoId: number | null;
+  /** Membresía del complejo activo (null si el activo es público y el usuario no es staff ahí) */
+  membresiaActiva: MembresiaInfo | null;
+  rolEnActivo: 'dueno' | 'recepcionista' | null;
+  esDuenoActivo: boolean;
+  esStaffActivo: boolean;
+  esSuperAdmin: boolean;
+  /** ¿Complejo activo opera con suscripción vigente? null si no es un complejo propio del staff */
+  vigenteActivo: boolean | null;
+  /** Selecciona el complejo activo (persiste en localStorage). null = limpiar */
+  seleccionar: (complejoId: number | null) => void;
+  recargar: () => Promise<void>;
+}
+
+const ComplejoContext = createContext<ComplejoContextValue | null>(null);
+
+function idDesdeStorage(): number | null {
+  try {
+    const v = Number(window.localStorage.getItem(CLAVE_COMPLEJO_ACTIVO));
+    return Number.isInteger(v) && v > 0 ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+function complejoDesdePerfil(perfil: { rol: string } | null, membresias: MembresiaInfo[], preferido: number | null): number | null {
+  if (preferido != null) {
+    // El complejo activo puede ser público (player reservando en un complejo donde NO es staff)
+    if (membresias.some((m) => m.complejo_id === preferido) || preferido > 0) return preferido;
+  }
+  if (perfil?.rol === 'super_admin' && membresias.length === 0) return null; // super admin plataforma
+  return membresias[0]?.complejo_id ?? null;
+}
+
+export function ComplejoProvider({ children }: { children: ReactNode }) {
+  const { session, perfil } = useAuth();
+  const [membresias, setMembresias] = useState<MembresiaInfo[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [activoId, setActivoId] = useState<number | null>(() => idDesdeStorage());
+
+  const recargar = useCallback(async () => {
+    if (!session) {
+      setMembresias([]);
+      setCargando(false);
+      return;
+    }
+    setCargando(true);
+    try {
+      const data = await api<MembresiaInfo[]>('/complejos/mi');
+      setMembresias(Array.isArray(data) ? data : []);
+    } catch {
+      setMembresias([]);
+    } finally {
+      setCargando(false);
+    }
+  }, [session]);
+
+  useEffect(() => {
+    void recargar();
+  }, [recargar]);
+
+  // Resolver el complejo activo: persistido > única membresía > primero
+  useEffect(() => {
+    const preferido = idDesdeStorage();
+    const resuelto = complejoDesdePerfil(perfil, membresias, preferido);
+    if (resuelto !== activoId) setActivoId(resuelto);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [membresias, perfil]);
+
+  const seleccionar = useCallback((complejoId: number | null) => {
+    try {
+      if (complejoId != null) {
+        window.localStorage.setItem(CLAVE_COMPLEJO_ACTIVO, String(complejoId));
+      } else {
+        window.localStorage.removeItem(CLAVE_COMPLEJO_ACTIVO);
+      }
+    } catch {
+      /* modo privado: seguimos solo en memoria */
+    }
+    setActivoId(complejoId);
+  }, []);
+
+  const membresiaActiva = membresias.find((m) => m.complejo_id === activoId) ?? null;
+  const rolEnActivo = membresiaActiva?.rol ?? null;
+  const esSuperAdmin = perfil?.rol === 'super_admin';
+  const esDuenoActivo = esSuperAdmin || rolEnActivo === 'dueno';
+  const esStaffActivo = esSuperAdmin || rolEnActivo != null;
+  const vigenteActivo = membresiaActiva ? membresiaActiva.vigente : null;
+
+  return (
+    <ComplejoContext.Provider
+      value={{
+        membresias,
+        cargando,
+        activoId,
+        membresiaActiva,
+        rolEnActivo,
+        esDuenoActivo,
+        esStaffActivo,
+        esSuperAdmin,
+        vigenteActivo,
+        seleccionar,
+        recargar,
+      }}
+    >
+      {children}
+    </ComplejoContext.Provider>
+  );
+}
+
+export function useComplejo() {
+  const ctx = useContext(ComplejoContext);
+  if (!ctx) throw new Error('useComplejo debe usarse dentro de <ComplejoProvider>');
+  return ctx;
+}
