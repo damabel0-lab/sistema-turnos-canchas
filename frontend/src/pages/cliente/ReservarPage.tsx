@@ -64,7 +64,7 @@ function sumarUnaHora(hhmm: string): string {
 export function ReservarPage() {
   const { session } = useAuth();
   const { toasts, mostrar, cerrar } = useToast();
-  const { activoId, activoSlug, seleccionar, esStaffActivo } = useComplejo();
+  const { activoId, seleccionar } = useComplejo();
   const [searchParams] = useSearchParams();
   const slugParam = searchParams.get('complejo');
 
@@ -74,15 +74,15 @@ export function ReservarPage() {
   const [picker, setPicker] = useState<ComplejoPicker[] | null>(null);
   const [pickerError, setPickerError] = useState<string | null>(null);
 
-  // Resolver el complejo a reservar: ?complejo=slug > complejo activo persistido (por slug, mejor esfuerzo) > nada
+  // Resolver el complejo a reservar: solo con el parámetro ?complejo=slug de la URL
   useEffect(() => {
     let cancelado = false;
     setComplejoResolviendo(true);
 
-    const slug = slugParam ?? (esStaffActivo ? activoSlug : null);
+    const slug = slugParam;
     if (!slug) {
-      // Sin complejo en la URL → limpiar el complejo viejo del storage y mostrar el picker
-      if (!esStaffActivo && activoId != null) seleccionar(null);
+      // Sin complejo en la URL → mostrar siempre el picker (y limpiar el contexto de reserva)
+      seleccionar(null);
       setComplejoNombre(null);
       setError(null);
       setComplejoResolviendo(false);
@@ -360,7 +360,11 @@ export function ReservarPage() {
                 type="button"
                 className="boton boton-ghost"
                 style={{ fontSize: '0.85rem', padding: '0.35rem 0.7rem' }}
-                onClick={() => { seleccionar(null); setError(null); }}
+                onClick={() => {
+                  seleccionar(null);
+                  setError(null);
+                  navigate('/reservar', { replace: true });
+                }}
               >
                 Cambiar
               </button>
