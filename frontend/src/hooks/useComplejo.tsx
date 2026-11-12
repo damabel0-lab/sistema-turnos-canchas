@@ -89,8 +89,12 @@ function slugDesdeStorage(): string | null {
 
 function complejoDesdePerfil(perfil: { rol: string } | null, membresias: MembresiaInfo[], preferido: number | null): number | null {
   if (preferido != null) {
-    // El complejo activo puede ser público (player reservando en un complejo donde NO es staff)
-    if (membresias.some((m) => m.complejo_id === preferido) || preferido > 0) return preferido;
+    // El storage es contexto de STAFF (o soporte plataforma super_admin).
+    // Para jugadores no debe congelarse la selección entre visitas.
+    if (membresias.some((m) => m.complejo_id === preferido) || perfil?.rol === 'super_admin') {
+      return preferido;
+    }
+    return null;
   }
   if (perfil?.rol === 'super_admin' && membresias.length === 0) return null; // super admin plataforma
   return membresias[0]?.complejo_id ?? null;
@@ -133,8 +137,17 @@ export function ComplejoProvider({ children }: { children: ReactNode }) {
   }, [membresias, perfil]);
 
   const seleccionar = useCallback((complejoId: number | null, slug?: string) => {
+    // Solo staff de ese complejo (o super_admin de plataforma) puede PERSISTIR el complejo activo.
+    // Los jugadores seleccionan su intención para la sesión, pero no queda guardada entre visitas.
+    const persistible =
+      perfil?.rol === 'super_admin' ||
+      (complejoId != null && membresias.some((m) => m.complejo_id === complejoId));
+
     try {
-      if (complejoId != null) {
+      if (!persistible) {
+        window.localStorage.removeItem(CLAVE_COMPLEJO_ACTIVO);
+        window.localStorage.removeItem(CLAVE_COMPLEJO_SLUG);
+      } else if (complejoId != null) {
         window.localStorage.setItem(CLAVE_COMPLEJO_ACTIVO, String(complejoId));
         if (slug) window.localStorage.setItem(CLAVE_COMPLEJO_SLUG, slug);
       } else {
@@ -147,7 +160,7 @@ export function ComplejoProvider({ children }: { children: ReactNode }) {
     setActivoId(complejoId);
     if (complejoId == null) setActivoSlug(null);
     else if (slug) setActivoSlug(slug);
-  }, []);
+  }, [perfil?.rol, membresias]);
 
   const membresiaActiva = membresias.find((m) => m.complejo_id === activoId) ?? null;
   const rolEnActivo = membresiaActiva?.rol ?? null;

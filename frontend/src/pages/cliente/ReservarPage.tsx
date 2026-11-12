@@ -69,7 +69,7 @@ function sumarUnaHora(hhmm: string): string {
 export function ReservarPage() {
   const { session } = useAuth();
   const { toasts, mostrar, cerrar } = useToast();
-  const { activoId, activoSlug, seleccionar } = useComplejo();
+  const { activoId, activoSlug, seleccionar, esStaffActivo } = useComplejo();
   const [searchParams] = useSearchParams();
   const slugParam = searchParams.get('complejo');
 
@@ -84,7 +84,7 @@ export function ReservarPage() {
     let cancelado = false;
     setComplejoResolviendo(true);
 
-    const slug = slugParam ?? activoSlug;
+    const slug = slugParam ?? (esStaffActivo ? activoSlug : null);
     if (!slug) {
       setComplejoNombre(null);
       setComplejoResolviendo(false);
