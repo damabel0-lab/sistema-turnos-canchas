@@ -187,8 +187,8 @@ body {
 }
 
 .panel-con-altura {
-  min-height: 22rem;
-  max-height: 28rem;
+  min-height: 18rem;
+  max-height: 23rem;
   overflow: hidden;
 }
 
