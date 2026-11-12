@@ -76,7 +76,8 @@ export function ReservarPage() {
       })
       .catch(() => {
         if (cancelado) return;
-        // Si falla (complejo suspendido/inexistente), tratamos como sin selección
+        // Si falla (complejo suspendido/inexistente), limpiar la selección persistida
+        seleccionar(null);
         setComplejoNombre(null);
         setComplejoResolviendo(false);
       });
