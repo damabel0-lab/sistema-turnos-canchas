@@ -390,26 +390,27 @@ export function ReservarPage() {
                   </p>
                 )}
 
-                <Button
-                  variant="primary"
-                  disabled={!session || creando || !canchaId || !horaSel || !cotizacion}
-                  onClick={confirmar}
-                  className="boton-block"
-                  style={{ marginTop: '0.75rem' }}
-                >
-                  {creando ? (
-                    <><Loader2 size={16} /> Creando…</>
-                  ) : !session ? (
-                    'Iniciá sesión para reservar'
-                  ) : cotizacion && cotizacion.monto_seña > 0 ? (
-                    `Reservar y señar $${cotizacion.monto_seña}`
-                  ) : (
-                    'Confirmar reserva'
-                  )}
-                </Button>
-                <p className="texto-debil" style={{ textAlign: 'center', marginTop: '0.5rem' }}>
-                  Cancelación sin cargo hasta 2 h antes del turno
-                </p>
+                <div className="resumen-cta">
+                  <Button
+                    variant="primary"
+                    disabled={!session || creando || !canchaId || !horaSel || !cotizacion}
+                    onClick={confirmar}
+                    className="boton-block"
+                  >
+                    {creando ? (
+                      <><Loader2 size={16} /> Creando…</>
+                    ) : !session ? (
+                      'Iniciá sesión para reservar'
+                    ) : cotizacion && cotizacion.monto_seña > 0 ? (
+                      `Reservar y señar $${cotizacion.monto_seña}`
+                    ) : (
+                      'Confirmar reserva'
+                    )}
+                  </Button>
+                  <p className="texto-debil" style={{ textAlign: 'center', margin: 0 }}>
+                    Cancelación sin cargo hasta 2 h antes del turno
+                  </p>
+                </div>
               </Card>
             </aside>
         </div>

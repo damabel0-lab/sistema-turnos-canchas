@@ -353,7 +353,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 17rem;
-  max-height: 22rem;
+  max-height: 17rem;
   overflow: hidden;
 }
 
@@ -362,6 +362,8 @@ body {
   align-content: flex-start;
   overflow-y: auto;
   max-height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .paso-card > .stack {
@@ -381,13 +383,20 @@ body {
 
 .paso-card-fecha {
   min-height: 17rem;
-  max-height: 22rem;
+  max-height: 17rem;
 }
 
 .resumen-card {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
+  height: 100%;
+  min-height: 17rem;
+}
+
+.resumen-cta {
+  margin-top: auto;
+  display: grid;
+  gap: 0.4rem;
 }
 
 .grilla-reserva {
@@ -396,6 +405,17 @@ body {
   gap: 0.9rem;
   align-items: stretch;
   min-height: 17rem;
+}
+
+.reserva-rail {
+  position: sticky;
+  top: 5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.reserva-rail .resumen-card {
+  flex: 1 1 auto;
 }
 
 @media (max-width: 1100px) {
@@ -2790,11 +2810,6 @@ body {
   gap: 1rem;
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr) minmax(300px, 4fr);
   align-items: start;
-}
-
-.reserva-rail {
-  position: sticky;
-  top: 5rem;
 }
 
 .slot {
