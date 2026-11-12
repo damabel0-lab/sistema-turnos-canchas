@@ -46,7 +46,9 @@ reservasRouter.post(
     // Un cliente siempre reserva a su nombre; el staff puede asignarle a otro
     // (carga manual por teléfono) pasando usuario_id en el body.
     const esStaff = req.rol === 'super_admin' || (req.rolComplejo != null && req.complejoId != null);
-    const usuario_id = esStaff ? (body.usuario_id ?? null) : req.userId;
+    // Si sos staff y no pasás usuario_id, se te atribuye a vos mismo (reservando desde la app).
+    // Si querés asignar a otro cliente (mostrador), pasá body.usuario_id explícito.
+    const usuario_id = esStaff ? (body.usuario_id ?? req.userId ?? null) : req.userId;
 
     res.status(201).json(await crearReserva({ ...body, usuario_id }));
   }),
