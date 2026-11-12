@@ -3668,3 +3668,12 @@ body {
   scrollbar-width: thin;
   padding-right: 0.2rem;
 }
+
+/* Reservar para otra persona (staff · mostrador) */
+.otra-persona {
+  border: 1px dashed color-mix(in srgb, var(--primario) 40%, var(--border-strong));
+  background: var(--primario-soft);
+  border-radius: var(--radio);
+  padding: 0.6rem 0.7rem;
+  margin: 0 0 0.55rem;
+}

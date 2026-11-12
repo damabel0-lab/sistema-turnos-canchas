@@ -43,9 +43,26 @@ reservasRouter.post(
   '/',
   h(async (req, res) => {
     const body = req.body ?? {};
-    // Un cliente siempre reserva a su nombre; el staff puede asignarle a otro
-    // (carga manual por teléfono) pasando usuario_id en el body.
     const esStaff = req.rol === 'super_admin' || (req.rolComplejo != null && req.complejoId != null);
+
+    // Staff con toggle "Para otra persona": usa el mismo flujo que la Carga rápida
+    // (busca el teléfono en el directorio o crea un cliente fantasma si no existe)
+    if (esStaff && body.cliente_telefono && String(body.cliente_telefono).trim()) {
+      res.status(201).json(await cargaManual({
+        cancha_id: Number(body.cancha_id),
+        fecha: body.fecha,
+        hora_inicio: body.hora_inicio,
+        hora_fin: body.hora_fin,
+        precio_total: body.precio_total,
+        monto_seña: body.monto_seña,
+        metodo_pago: body.metodo_pago ?? null,
+        estado: body.estado,
+        cliente_nombre: String(body.cliente_nombre ?? '').trim(),
+        cliente_telefono: String(body.cliente_telefono).trim(),
+      }));
+      return;
+    }
+
     // Si sos staff y no pasás usuario_id, se te atribuye a vos mismo (reservando desde la app).
     // Si querés asignar a otro cliente (mostrador), pasá body.usuario_id explícito.
     const usuario_id = esStaff ? (body.usuario_id ?? req.userId ?? null) : req.userId;

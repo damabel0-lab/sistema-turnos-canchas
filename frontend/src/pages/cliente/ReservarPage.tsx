@@ -78,7 +78,7 @@ function proximosDias(n: number) {
 export function ReservarPage() {
   const { session } = useAuth();
   const { toasts, mostrar, cerrar } = useToast();
-  const { activoId, seleccionar } = useComplejo();
+  const { activoId, seleccionar, esStaffActivo } = useComplejo();
   const [searchParams] = useSearchParams();
   const slugParam = searchParams.get('complejo');
   const navigate = useNavigate();
@@ -164,6 +164,9 @@ export function ReservarPage() {
   const [error, setError] = useState<string | null>(null);
   const [creando, setCreando] = useState(false);
   const [mostrarFecha, setMostrarFecha] = useState(false);
+  const [paraOtraPersona, setParaOtraPersona] = useState(false);
+  const [otraNombre, setOtraNombre] = useState('');
+  const [otraTelefono, setOtraTelefono] = useState('');
   const [confirmada, setConfirmada] = useState<{ id: number } | null>(null);
 
   const canchasDelDeporte = canchas.filter((c) => c.activa && c.deporte_id === deporteId);
@@ -255,6 +258,10 @@ export function ReservarPage() {
 
   async function confirmar() {
     if (!canchaId || !horaSel || !cotizacion) return;
+    if (paraOtraPersona && (!otraNombre.trim() || !otraTelefono.trim())) {
+      mostrar('Completá nombre y teléfono de la persona.', 'warning');
+      return;
+    }
     setCreando(true);
     setError(null);
     try {
@@ -263,7 +270,7 @@ export function ReservarPage() {
       base.setHours(h, m, 0, 0);
       const finDate = new Date(base.getTime() + 60 * 60 * 1000);
       const fin = `${String(finDate.getHours()).padStart(2, '0')}:${String(finDate.getMinutes()).padStart(2, '0')}`;
-      const reserva = await api<{ id: number }>('/reservas', {
+      const reserva = await api<{ id: number; usuario_id?: string | null }>('/reservas', {
         method: 'POST',
         body: JSON.stringify({
           cancha_id: canchaId,
@@ -274,6 +281,9 @@ export function ReservarPage() {
           monto_seña: cotizacion.monto_seña,
           metodo_pago: cotizacion.monto_seña > 0 ? null : 'efectivo',
           estado: cotizacion.monto_seña > 0 ? 'pendiente_seña' : 'confirmada',
+          ...(paraOtraPersona
+            ? { cliente_nombre: otraNombre.trim(), cliente_telefono: otraTelefono.trim() }
+            : {}),
         }),
       });
       setConfirmada(reserva);
@@ -283,6 +293,12 @@ export function ReservarPage() {
       mostrar('¡Reserva confirmada!', 'success');
       setHoraSel(null);
       setCotizacion(null);
+      // Limpiar el "otra persona" después de reservar como mostrador
+      if (paraOtraPersona) {
+        setOtraNombre('');
+        setOtraTelefono('');
+        setParaOtraPersona(false);
+      }
     } catch (e) {
       const mensaje = e instanceof Error ? e.message : 'No se pudo crear la reserva';
       const esOcupada = /reservado|ocupada|bloquead/i.test(mensaje);
@@ -634,6 +650,39 @@ export function ReservarPage() {
                   <p className="texto-debil" style={{ margin: '0.25rem 0 0.75rem' }}>
                     El total aparece cuando elegís un horario.
                   </p>
+                )}
+
+                {/* Staff: asignar a otra persona en mostrador (mismo flujo que Carga rápida) */}
+                {esStaffActivo && (
+                  <div className="otra-persona">
+                    <label className="fila" style={{ gap: '0.4rem', cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600 }}>
+                      <input
+                        type="checkbox"
+                        checked={paraOtraPersona}
+                        onChange={(e) => setParaOtraPersona(e.target.checked)}
+                      />
+                      Reservar para otra persona (mostrador)
+                    </label>
+                    {paraOtraPersona && (
+                      <div className="stack" style={{ gap: '0.45rem', marginTop: '0.35rem' }}>
+                        <Input
+                          name="otraNombre"
+                          value={otraNombre}
+                          onChange={(e) => setOtraNombre(e.target.value)}
+                          placeholder="Nombre y apellido"
+                          aria-label="Nombre y apellido de la persona"
+                        />
+                        <Input
+                          name="otraTelefono"
+                          value={otraTelefono}
+                          onChange={(e) => setOtraTelefono(e.target.value)}
+                          placeholder="+54 9 11 0000-0000"
+                          aria-label="Teléfono"
+                          inputMode="tel"
+                        />
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 <div className="resumen-cta">
