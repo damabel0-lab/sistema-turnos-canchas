@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
+import { refrescarNotificaciones } from '../../hooks/useNoLeidas';
 import { Card } from '../../components/ui';
 import { ToastContainer, useToast } from '../../components/ui/Toast';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
@@ -105,11 +106,14 @@ export function NotificacionesPage() {
   async function leer(id: string) {
     // Optimistic
     setNotificaciones((prev) => prev.map((n) => (n.id === id ? { ...n, leida: true } : n)));
+    refrescarNotificaciones();
     try {
       await api(`/notificaciones/${id}/leer`, { method: 'PATCH' });
+      refrescarNotificaciones();
     } catch {
       /* si falla, recargamos */
       await cargar();
+      refrescarNotificaciones();
     }
   }
 
@@ -117,6 +121,7 @@ export function NotificacionesPage() {
     try {
       await api(`/notificaciones/${id}`, { method: 'DELETE' });
       setNotificaciones((prev) => prev.filter((n) => n.id !== id));
+      refrescarNotificaciones();
       mostrar('Notificación eliminada.', 'success');
     } catch (e) {
       mostrar(e instanceof Error ? e.message : 'No se pudo borrar', 'danger');
@@ -127,6 +132,7 @@ export function NotificacionesPage() {
     try {
       await api('/notificaciones/leer-todas', { method: 'PATCH' });
       setNotificaciones((prev) => prev.map((n) => ({ ...n, leida: true })));
+      refrescarNotificaciones();
       mostrar('Todas marcadas como leídas.', 'success');
     } catch (e) {
       mostrar(e instanceof Error ? e.message : 'No se pudo marcar todo', 'danger');
@@ -138,6 +144,7 @@ export function NotificacionesPage() {
       await api('/notificaciones', { method: 'DELETE' });
       setNotificaciones([]);
       setArmarLimpiar(false);
+      refrescarNotificaciones();
       mostrar('Historial borrado.', 'success');
     } catch (e) {
       mostrar(e instanceof Error ? e.message : 'No se pudo borrar', 'danger');
