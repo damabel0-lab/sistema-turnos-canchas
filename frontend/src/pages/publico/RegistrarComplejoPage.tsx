@@ -56,7 +56,7 @@ export function RegistrarComplejoPage() {
       });
       await recargar();
       seleccionar(creado.id, creado.slug);
-      navigate('/admin/configuracion', { replace: true });
+      navigate('/admin/configurar', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo registrar el complejo');
       setCargando(false);

@@ -33,6 +33,24 @@ interface CanchaNueva {
   caracteristicas: string;
 }
 
+/** Clave para persistir el borrador del wizard entre recargas (sin backend) */
+const CLAVE_WIZARD_DRAFT = 'playcontrol.wizard_draft';
+
+interface DraftWizard {
+  paso: number;
+  tipo: 'fraccionado' | 'complejo_deportivo';
+  nombre: string;
+  horaApertura: string;
+  horaCierre: string;
+  cancelacionHoras: string;
+  descuentoTurnoFijo: string;
+  gym: boolean;
+  pileta: boolean;
+  socios: boolean;
+  cantidadCanchas: string;
+  canchasNuevas: CanchaNueva[];
+}
+
 const PASO_DEF: Array<{ label: string; subtitulo: string; icon: LucideIcon }> = [
   { label: 'Bienvenida', subtitulo: 'Tipo de complejo', icon: Goal },
   { label: 'Datos del complejo', subtitulo: 'Nombre y horario', icon: Building2 },
@@ -46,26 +64,132 @@ const PASO_DEF: Array<{ label: string; subtitulo: string; icon: LucideIcon }> = 
 
 export function ConfigurarPage() {
   const navigate = useNavigate();
-  const [paso, setPaso] = useState(0);
+  const [paso, setPaso] = useState<number>(() => {
+    try {
+      const raw = window.localStorage.getItem(CLAVE_WIZARD_DRAFT);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<DraftWizard>;
+        if (typeof parsed.paso === 'number') return parsed.paso;
+      }
+    } catch { /* ignore */ }
+    return 0;
+  });
   const [guardando, setGuardando] = useState(false);
   const [deportes, setDeportes] = useState<Deporte[]>([]);
   const { toasts, mostrar, cerrar } = useToast();
   const [error, setError] = useState<string | null>(null);
+  const [nuevoDeporte, setNuevoDeporte] = useState('');
+  const [nuevoDeporteTipo, setNuevoDeporteTipo] = useState<'cancha' | 'gimnasio' | 'pileta' | 'otro'>('cancha');
+  const [creandoDeporte, setCreandoDeporte] = useState(false);
 
-  const [tipo, setTipo] = useState<'fraccionado' | 'complejo_deportivo'>('fraccionado');
-  const [nombre, setNombre] = useState('');
-  const [horaApertura, setHoraApertura] = useState('08:00');
-  const [horaCierre, setHoraCierre] = useState('23:00');
-  const [cancelacionHoras, setCancelacionHoras] = useState('2');
-  const [descuentoTurnoFijo, setDescuentoTurnoFijo] = useState('10');
-  const [gym, setGym] = useState(false);
-  const [pileta, setPileta] = useState(false);
-  const [socios, setSocios] = useState(false);
+  const [tipo, setTipo] = useState<'fraccionado' | 'complejo_deportivo'>(() => {
+    try {
+      const raw = window.localStorage.getItem(CLAVE_WIZARD_DRAFT);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<DraftWizard>;
+        if (parsed.tipo === 'fraccionado' || parsed.tipo === 'complejo_deportivo') return parsed.tipo;
+      }
+    } catch { /* ignore */ }
+    return 'fraccionado';
+  });
+  const [nombre, setNombre] = useState(() => {
+    try {
+      const raw = window.localStorage.getItem(CLAVE_WIZARD_DRAFT);
+      if (raw) return (JSON.parse(raw) as Partial<DraftWizard>).nombre ?? '';
+    } catch { /* ignore */ }
+    return '';
+  });
+  const [horaApertura, setHoraApertura] = useState(() => {
+    try {
+      const raw = window.localStorage.getItem(CLAVE_WIZARD_DRAFT);
+      if (raw) return (JSON.parse(raw) as Partial<DraftWizard>).horaApertura ?? '08:00';
+    } catch { /* ignore */ }
+    return '08:00';
+  });
+  const [horaCierre, setHoraCierre] = useState(() => {
+    try {
+      const raw = window.localStorage.getItem(CLAVE_WIZARD_DRAFT);
+      if (raw) return (JSON.parse(raw) as Partial<DraftWizard>).horaCierre ?? '23:00';
+    } catch { /* ignore */ }
+    return '23:00';
+  });
+  const [cancelacionHoras, setCancelacionHoras] = useState(() => {
+    try {
+      const raw = window.localStorage.getItem(CLAVE_WIZARD_DRAFT);
+      if (raw) return (JSON.parse(raw) as Partial<DraftWizard>).cancelacionHoras ?? '2';
+    } catch { /* ignore */ }
+    return '2';
+  });
+  const [descuentoTurnoFijo, setDescuentoTurnoFijo] = useState(() => {
+    try {
+      const raw = window.localStorage.getItem(CLAVE_WIZARD_DRAFT);
+      if (raw) return (JSON.parse(raw) as Partial<DraftWizard>).descuentoTurnoFijo ?? '10';
+    } catch { /* ignore */ }
+    return '10';
+  });
+  const [gym, setGym] = useState(() => {
+    try {
+      const raw = window.localStorage.getItem(CLAVE_WIZARD_DRAFT);
+      if (raw) return !!(JSON.parse(raw) as Partial<DraftWizard>).gym;
+    } catch { /* ignore */ }
+    return false;
+  });
+  const [pileta, setPileta] = useState(() => {
+    try {
+      const raw = window.localStorage.getItem(CLAVE_WIZARD_DRAFT);
+      if (raw) return !!(JSON.parse(raw) as Partial<DraftWizard>).pileta;
+    } catch { /* ignore */ }
+    return false;
+  });
+  const [socios, setSocios] = useState(() => {
+    try {
+      const raw = window.localStorage.getItem(CLAVE_WIZARD_DRAFT);
+      if (raw) return !!(JSON.parse(raw) as Partial<DraftWizard>).socios;
+    } catch { /* ignore */ }
+    return false;
+  });
 
-  const [cantidadCanchas, setCantidadCanchas] = useState('1');
-  const [canchasNuevas, setCanchasNuevas] = useState<CanchaNueva[]>([
-    { nombre: '', deporte_id: '', precio_base: '', activa: true, caracteristicas: '' },
-  ]);
+  const [cantidadCanchas, setCantidadCanchas] = useState(() => {
+    try {
+      const raw = window.localStorage.getItem(CLAVE_WIZARD_DRAFT);
+      if (raw) return (JSON.parse(raw) as Partial<DraftWizard>).cantidadCanchas ?? '1';
+    } catch { /* ignore */ }
+    return '1';
+  });
+  const [canchasNuevas, setCanchasNuevas] = useState<CanchaNueva[]>(() => {
+    try {
+      const raw = window.localStorage.getItem(CLAVE_WIZARD_DRAFT);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<DraftWizard>;
+        if (Array.isArray(parsed.canchasNuevas) && parsed.canchasNuevas.length) return parsed.canchasNuevas;
+      }
+    } catch { /* ignore */ }
+    return [{ nombre: '', deporte_id: '', precio_base: '', activa: true, caracteristicas: '' }];
+  });
+
+  // Persistir el borrador en localStorage en cada cambio
+  useEffect(() => {
+    try {
+      const draft: DraftWizard = {
+        paso, tipo, nombre, horaApertura, horaCierre, cancelacionHoras, descuentoTurnoFijo, gym, pileta, socios, cantidadCanchas, canchasNuevas,
+      };
+      window.localStorage.setItem(CLAVE_WIZARD_DRAFT, JSON.stringify(draft));
+    } catch { /* no crítico */ }
+  }, [paso, tipo, nombre, horaApertura, horaCierre, cancelacionHoras, descuentoTurnoFijo, gym, pileta, socios, cantidadCanchas, canchasNuevas]);
+
+  function comenzarDeCero() {
+    try { window.localStorage.removeItem(CLAVE_WIZARD_DRAFT); } catch { /* ignore */ }
+    setPaso(0);
+    setTipo('fraccionado');
+    setNombre('');
+    setHoraApertura('08:00');
+    setHoraCierre('23:00');
+    setCancelacionHoras('2');
+    setDescuentoTurnoFijo('10');
+    setGym(false); setPileta(false); setSocios(false);
+    setCantidadCanchas('1');
+    setCanchasNuevas([{ nombre: '', deporte_id: '', precio_base: '', activa: true, caracteristicas: '' }]);
+  }
 
   useEffect(() => {
     api<Deporte[]>('/deportes')
@@ -118,6 +242,7 @@ export function ConfigurarPage() {
       }
 
       mostrar('Complejo configurado', 'success');
+      try { window.localStorage.removeItem(CLAVE_WIZARD_DRAFT); } catch { /* ignore */ }
       navigate('/admin/dashboard', { replace: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al guardar configuración');
@@ -277,6 +402,56 @@ export function ConfigurarPage() {
                     <option value="">Elegir…</option>
                     {deportes.map((d) => (<option key={d.id} value={d.id}>{d.nombre}</option>))}
                   </select>
+                  <div className="fila" style={{ gap: '0.35rem', marginTop: '0.3rem' }}>
+                    <input
+                      value={nuevoDeporte}
+                      onChange={(e) => setNuevoDeporte(e.target.value)}
+                      placeholder="Nuevo deporte (ej: Hockey)"
+                      className="input"
+                      style={{ flex: 1 }}
+                      aria-label="Nombre del nuevo deporte"
+                    />
+                    <select
+                      value={nuevoDeporteTipo}
+                      onChange={(e) => setNuevoDeporteTipo(e.target.value as typeof nuevoDeporteTipo)}
+                      className="input"
+                      style={{ width: '7rem' }}
+                      aria-label="Tipo"
+                    >
+                      <option value="cancha">Cancha</option>
+                      <option value="gimnasio">Gimnasio</option>
+                      <option value="pileta">Pileta</option>
+                      <option value="otro">Otro</option>
+                    </select>
+                    <button
+                      type="button"
+                      className="boton boton-outline"
+                      style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }}
+                      disabled={creandoDeporte || !nuevoDeporte.trim()}
+                      onClick={async () => {
+                        const nombreNuevo = nuevoDeporte.trim();
+                        if (!nombreNuevo) return;
+                        setCreandoDeporte(true);
+                        setError(null);
+                        try {
+                          const creado = await api<Deporte>('/deportes', {
+                            method: 'POST',
+                            body: JSON.stringify({ nombre: nombreNuevo, tipo: nuevoDeporteTipo }),
+                          });
+                          setDeportes((prev) => [...prev, creado]);
+                          setCanchasNuevas((prev) => prev.map((c, j) => (j === i ? { ...c, deporte_id: String(creado.id) } : c)));
+                          setNuevoDeporte('');
+                          mostrar(`Deporte "${creado.nombre}" agregado`, 'success');
+                        } catch (e) {
+                          setError(e instanceof Error ? e.message : 'No se pudo agregar el deporte');
+                        } finally {
+                          setCreandoDeporte(false);
+                        }
+                      }}
+                    >
+                      {creandoDeporte ? '…' : 'Agregar'}
+                    </button>
+                  </div>
                 </label>
                 <label className="label">Precio/h ($)
                   <input type="number" min={0} value={cancha.precio_base} onChange={(e) => setCanchasNuevas((prev) => prev.map((c, j) => (j === i ? { ...c, precio_base: e.target.value } : c)))} className="input" />
@@ -364,6 +539,14 @@ export function ConfigurarPage() {
               <div className="wizard-progresion-track">
                 <div className="wizard-progresion-fill" style={{ width: `${((paso + 1) / PASO_DEF.length) * 100}%` }} />
               </div>
+              <button
+                type="button"
+                className="boton boton-ghost"
+                style={{ fontSize: '0.75rem', marginTop: '0.55rem', alignSelf: 'flex-start' }}
+                onClick={comenzarDeCero}
+              >
+                Empezar de cero
+              </button>
             </div>
           </aside>
 

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { supabaseAdmin } from '../../config/supabase.js';
-import { requireSuperAdmin } from '../../middleware/auth.js';
+import { requireStaff, requireSuperAdmin } from '../../middleware/auth.js';
 import { HttpError } from '../../middleware/error.js';
 
 export const deportesRouter = Router();
@@ -52,13 +52,16 @@ deportesRouter.delete(
   }),
 );
 
-// POST /deportes -> deporte personalizado (predeterminados ya vienen de la DB)
+// POST /deportes -> deporte personalizado por staff del complejo activo (o super_admin plataforma)
 deportesRouter.post(
   '/',
-  requireSuperAdmin,
+  requireStaff,
   h(async (req, res) => {
     const { nombre, tipo = 'cancha', requiere_cancha = true } = req.body;
     if (!nombre?.trim()) throw new HttpError(400, 'El nombre es obligatorio');
+    if (!['cancha', 'gimnasio', 'pileta', 'otro'].includes(tipo)) {
+      throw new HttpError(400, 'tipo debe ser cancha, gimnasio, pileta u otro');
+    }
 
     const { data, error } = await supabaseAdmin
       .from('deportes')
