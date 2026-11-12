@@ -81,46 +81,66 @@ export function ReservarPage() {
   const { activoId, seleccionar } = useComplejo();
   const [searchParams] = useSearchParams();
   const slugParam = searchParams.get('complejo');
-
   const navigate = useNavigate();
   const [complejoNombre, setComplejoNombre] = useState<string | null>(null);
   const [complejoResolviendo, setComplejoResolviendo] = useState(true);
   const [picker, setPicker] = useState<ComplejoPicker[] | null>(null);
   const [pickerError, setPickerError] = useState<string | null>(null);
 
-  // Resolver el complejo a reservar: solo con el parámetro ?complejo=slug de la URL
+  // Resolver el nombre del complejo activo:
+  // 1) ?complejo=slug en la URL gana sobre todo
+  // 2) Staff con complejo activo persistido (Admin PlayControl → complejo #1) usa su nombre por defecto
+  // 3) Sin nada activo → picker (players: reset)
   useEffect(() => {
     let cancelado = false;
     setComplejoResolviendo(true);
 
     const slug = slugParam;
-    if (!slug) {
-      // Sin complejo en la URL → mostrar siempre el picker (y limpiar el contexto de reserva)
-      seleccionar(null);
-      setComplejoNombre(null);
-      setError(null);
-      setComplejoResolviendo(false);
-      return () => undefined;
+    if (slug) {
+      // URL con complejo: cargar detalle, fijar contexto y nombre
+      api<{ id: number; nombre: string; slug: string }>(`/complejos/${slug}`)
+        .then((d) => {
+          if (cancelado) return;
+          seleccionar(d.id, d.slug);
+          setComplejoNombre(d.nombre);
+          setComplejoResolviendo(false);
+        })
+        .catch(() => {
+          if (cancelado) return;
+          seleccionar(null);
+          setComplejoNombre(null);
+          setComplejoResolviendo(false);
+        });
+      return () => {
+        cancelado = true;
+      };
     }
-    api<{ id: number; nombre: string; slug: string }>(`/complejos/${slug}`)
-      .then((d) => {
-        if (cancelado) return;
-        seleccionar(d.id, d.slug);
-        setComplejoNombre(d.nombre);
-        setComplejoResolviendo(false);
-      })
-      .catch(() => {
-        if (cancelado) return;
-        // Si falla (complejo suspendido/inexistente), limpiar la selección persistida
-        seleccionar(null);
-        setComplejoNombre(null);
-        setComplejoResolviendo(false);
-      });
-    return () => {
-      cancelado = true;
-    };
+
+    // Sin slugParam: staff con complejo activo de localStorage mantiene su contexto; así nos aseguramos de que el caption nunca quede vacío
+    if (activoId != null) {
+      api<Array<{ complejo_id: number; rol: string; complejo: { id: number; nombre: string; slug: string } | null; vigente: boolean }>>('/complejos/mi')
+        .then((mis) => {
+          if (cancelado) return;
+          const m = mis.find((x) => x.complejo_id === activoId);
+          setComplejoNombre(m?.complejo?.nombre ?? null);
+          setComplejoResolviendo(false);
+        })
+        .catch(() => {
+          if (!cancelado) setComplejoResolviendo(false);
+        });
+      return () => {
+        cancelado = true;
+      };
+    }
+
+    // Nada persistido → mostrar picker
+    seleccionar(null);
+    setComplejoNombre(null);
+    setError(null);
+    setComplejoResolviendo(false);
+    return () => undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slugParam]);
+  }, [slugParam, activoId]);
 
   const [deportes, setDeportes] = useState<Deporte[]>([]);
   const [canchas, setCanchas] = useState<Cancha[]>([]);
