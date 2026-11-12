@@ -6,7 +6,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useComplejo } from '../../hooks/useComplejo';
 import { ToastContainer, useToast } from '../../components/ui/Toast';
 import { Card, Button, Input } from '../../components/ui';
-import { MapPin, Loader2, CheckCircle2, Building2, Dumbbell, Waves, Trophy, ArrowRight, Users } from 'lucide-react';
+import { MapPin, Loader2, CheckCircle2, Building2, Dumbbell, Waves, Trophy, ArrowRight, Users, Calendar } from 'lucide-react';
 
 interface Deporte {
   id: number;
@@ -59,6 +59,20 @@ function sumarUnaHora(hhmm: string): string {
   const [h, m] = hhmm.split(':').map(Number);
   const total = h * 60 + m + 60;
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+/** Próximos n días en formato útil para la tira rápida (iso local + etiqueta corta). */
+function proximosDias(n: number) {
+  const base = new Date();
+  const DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  const out: Array<{ iso: string; diaCorto: string; numero: number; esHoy: boolean }> = [];
+  for (let i = 0; i < n; i += 1) {
+    const d = new Date(base);
+    d.setDate(base.getDate() + i);
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    out.push({ iso, diaCorto: DIAS[d.getDay()], numero: d.getDate(), esHoy: i === 0 });
+  }
+  return out;
 }
 
 export function ReservarPage() {
@@ -129,6 +143,7 @@ export function ReservarPage() {
   const [cotizacion, setCotizacion] = useState<Cotizacion | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [creando, setCreando] = useState(false);
+  const [mostrarFecha, setMostrarFecha] = useState(false);
   const [confirmada, setConfirmada] = useState<{ id: number } | null>(null);
 
   const canchasDelDeporte = canchas.filter((c) => c.activa && c.deporte_id === deporteId);
@@ -156,6 +171,8 @@ export function ReservarPage() {
   }, [activoId, complejoResolviendo]);
 
   const irAReservar = (c: ComplejoPicker) => {
+    // Se persiste el nombre inmediatamente para que el hint refleje el complejo correcto desde el instante uno
+    setComplejoNombre(c.nombre);
     seleccionar(c.id, c.slug);
     navigate(`/reservar?complejo=${c.slug}`);
   };
@@ -354,7 +371,7 @@ export function ReservarPage() {
             <div className="fila-entre" style={{ marginBottom: '0.65rem' }}>
               <p className="texto-sec" style={{ margin: 0 }}>
                 <Building2 size={15} style={{ verticalAlign: '-3px', marginRight: '0.35rem' }} aria-hidden />
-                Reservando en <strong>{complejoNombre ?? 'el complejo seleccionado'}</strong>
+                Reservando en <strong>{complejoNombre ?? slugParam ?? 'seleccionado'}</strong>
               </p>
               <button
                 type="button"
@@ -389,16 +406,16 @@ export function ReservarPage() {
           </div>
         </Card>
       ) : (
-        <div className="grilla-reserva">
-          {/* ===== Columna de contenido: disciplina/cancha + fecha ===== */}
-          <div className="stack">
-            <div className="grilla-2-eq">
-              <Card className="paso-card">
-                <div className="paso-header">
-                  <span className="paso-num">1</span>
-                  <h2 className="titulo" style={{ fontSize: '1rem', margin: 0 }}>Disciplina</h2>
-                </div>
-                <div className="fila" style={{ gap: '0.45rem' }}>
+        <div className="reserva-layout-2col">
+          {/* ===== Columna izquierda: flujo apilado compacto ===== */}
+          <div className="stack" style={{ gap: '0.75rem' }}>
+            <Card className="paso-card-h">
+              <div className="paso-header">
+                <span className="paso-num">1</span>
+                <h2 className="titulo" style={{ fontSize: '0.95rem', margin: 0 }}>Disciplina</h2>
+                {deporteId != null && <span className="texto-debil" style={{ marginLeft: 'auto', fontSize: '0.82rem' }}>{deporteSel?.nombre}</span>}
+              </div>
+              <div className="disciplina-bar">
                   {deportes.length === 0 && <p className="texto-debil">Cargando disciplinas…</p>}
                   {deportes.map((d) => (
                     <button
@@ -413,14 +430,15 @@ export function ReservarPage() {
                       {d.nombre}
                     </button>
                   ))}
-                </div>
-              </Card>
+              </div>
+            </Card>
 
-              <Card className="paso-card">
-                <div className="paso-header">
-                  <span className="paso-num">2</span>
-                  <h2 className="titulo" style={{ fontSize: '1rem', margin: 0 }}>Cancha</h2>
-                </div>
+            <Card className="paso-card-h">
+              <div className="paso-header">
+                <span className="paso-num">2</span>
+                <h2 className="titulo" style={{ fontSize: '0.95rem', margin: 0 }}>Cancha</h2>
+                {canchaId != null && <span className="texto-debil" style={{ marginLeft: 'auto', fontSize: '0.82rem' }}>{canchaSel?.nombre}</span>}
+              </div>
                 {!deporteId ? (
                   <p className="texto-debil">Elegí una disciplina para ver sus canchas disponibles.</p>
                 ) : canchasDelDeporte.length === 0 ? (
@@ -449,32 +467,58 @@ export function ReservarPage() {
                   </div>
                 )}
               </Card>
-            </div>
 
-            {/* ===== Columna 2: Fecha y horario ===== */}
-            <Card className="paso-card paso-card-fecha">
+            <Card className="paso-card-h paso-card-fecha">
               <div className="paso-header">
                 <span className="paso-num">3</span>
-                <h2 className="titulo" style={{ fontSize: '1rem', margin: 0 }}>Fecha y horario</h2>
-                <span className="texto-debil" style={{ marginLeft: 'auto' }}>turnos de 1 h · :15 a :15</span>
+                <h2 className="titulo" style={{ fontSize: '0.95rem', margin: 0 }}>Fecha y horario</h2>
+                <span className="texto-debil" style={{ marginLeft: 'auto', fontSize: '0.78rem' }}>turnos de 1 h · :15 a :15</span>
               </div>
 
-              <div className="fila-entre" style={{ marginBottom: '0.75rem', gap: '0.75rem' }}>
-                <div style={{ flex: '1 1 180px' }}>
-                  <label className="label" htmlFor="fecha-reserva">Fecha</label>
+              {/* Tira horizontal de días + botón calendario */}
+              <div className="dias-strip" role="group" aria-label="Próximos días">
+                {proximosDias(7).map((d) => (
+                  <button
+                    key={d.iso}
+                    type="button"
+                    onClick={() => { setFecha(d.iso); setMostrarFecha(false); }}
+                    className={`dia-chip${fecha === d.iso ? ' activo' : ''}`}
+                    aria-pressed={fecha === d.iso}
+                  >
+                    <span className="dia-chip-dia">{d.esHoy ? 'Hoy' : d.diaCorto}</span>
+                    <span className="dia-chip-num">{d.numero}</span>
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className={`dia-chip dia-chip-calendario${mostrarFecha ? ' activo' : ''}`}
+                  onClick={() => setMostrarFecha((v) => !v)}
+                  aria-label="Elegir otra fecha"
+                  title="Elegir otra fecha"
+                >
+                  <Calendar size={17} />
+                </button>
+              </div>
+
+              {/* Campo de fecha (solo visible al tocar el calendario) */}
+              {mostrarFecha && (
+                <label className="label" style={{ marginTop: '0.55rem' }}>
+                  Otras fecha
                   <Input
                     id="fecha-reserva"
                     type="date"
                     value={fecha}
                     min={hoy()}
-                    onChange={(e) => setFecha(e.target.value)}
+                    onChange={(e) => { setFecha(e.target.value); setMostrarFecha(false); }}
+                    autoFocus
                   />
-                </div>
-                <div className="leyenda">
-                  <span className="leyenda-item"><span className="leyenda-punto libre" /> Libre</span>
-                  <span className="leyenda-item"><span className="leyenda-punto ocupado" /> Ocupada</span>
-                  <span className="leyenda-item"><span className="leyenda-punto pasado" /> Pasado</span>
-                </div>
+                </label>
+              )}
+
+              <div className="leyenda" style={{ margin: '0.55rem 0 0.5rem' }}>
+                <span className="leyenda-item"><span className="leyenda-punto libre" /> Libre</span>
+                <span className="leyenda-item"><span className="leyenda-punto ocupado" /> Ocupada</span>
+                <span className="leyenda-item"><span className="leyenda-punto pasado" /> Pasado</span>
               </div>
 
               {!canchaId ? (
@@ -522,9 +566,9 @@ export function ReservarPage() {
             </Card>
           </div>
 
-          {/* ===== Resumen (rail sticky) ===== */}
-          <aside className="reserva-rail">
-              <Card className="resumen-card">
+          {/* ===== Resumen (30% derecha · alto contenido · sticky) ===== */}
+          <aside className="reserva-resumen-wrap">
+            <Card className="resumen-card resumen-sticky">
                 <div className="paso-header" style={{ marginBottom: '0.85rem' }}>
                   <h2 className="titulo" style={{ fontSize: '1rem', margin: 0 }}>Resumen</h2>
                 </div>
@@ -593,8 +637,8 @@ export function ReservarPage() {
                     Cancelación sin cargo hasta 2 h antes del turno
                   </p>
                 </div>
-              </Card>
-            </aside>
+            </Card>
+          </aside>
         </div>
           )}
         </>
