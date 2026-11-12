@@ -3349,3 +3349,36 @@ body {
   justify-content: space-between;
   gap: 0.75rem;
 }
+
+/* Contexto de complejo en el sidebar admin */
+.admin-complejo {
+  padding: 0.55rem 0.75rem;
+  margin: 0.35rem 0.75rem 0.4rem;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radio);
+  min-width: 0;
+}
+
+.admin-complejo-nombre {
+  font-weight: 800;
+  font-size: 0.88rem;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.susc-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: var(--radio);
+  font-size: 0.83rem;
+  margin: 0.6rem 1rem 0;
+  border: 1px solid transparent;
+}
+.susc-banner strong { margin-right: 0.15rem; }
+.susc-banner.prueba { background: var(--primario-soft); border-color: color-mix(in srgb, var(--primario) 35%, transparent); color: var(--texto); }
+.susc-banner.vencida { background: color-mix(in srgb, var(--peligro) 10%, var(--bg-surface)); border-color: color-mix(in srgb, var(--peligro) 40%, transparent); color: var(--texto); }

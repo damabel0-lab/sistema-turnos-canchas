@@ -12,9 +12,11 @@ import {
   Settings,
   LogOut,
   Bell,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useComplejo } from '../hooks/useComplejo';
 import { useNoLeidas } from '../hooks/useNoLeidas';
 import { ThemeToggle } from './ThemeToggle';
 
@@ -22,8 +24,8 @@ interface ItemSide {
   to: string;
   label: string;
   icon: LucideIcon;
-  /** Si se define, solo visible para esos roles */
-  roles?: Array<'super_admin' | 'recepcionista'>;
+  /** Si se define, solo visible para dueños del complejo activo (finanzas y configuración) */
+  ownerOnly?: boolean;
 }
 
 interface GrupoSide {
@@ -52,8 +54,8 @@ const GRUPOS: GrupoSide[] = [
   {
     titulo: 'Finanzas',
     items: [
-      { to: '/admin/caja', label: 'Caja', icon: Wallet, roles: ['super_admin'] },
-      { to: '/admin/reportes', label: 'Reportes', icon: BarChart3, roles: ['super_admin'] },
+      { to: '/admin/caja', label: 'Caja', icon: Wallet, ownerOnly: true },
+      { to: '/admin/reportes', label: 'Reportes', icon: BarChart3, ownerOnly: true },
     ],
   },
   {
@@ -73,13 +75,27 @@ const SECCIONES: Record<string, string> = {
   caja: 'Caja',
   reportes: 'Reportes',
   configuracion: 'Configuración',
+  plataforma: 'Plataforma',
   configurar: 'Asistente de configuración',
 };
 
 export function AdminLayout() {
   const { perfil, salir } = useAuth();
+  const { esDuenoActivo, esSuperAdmin, membresias, membresiaActiva, vigenteActivo, activoId, seleccionar } = useComplejo();
   const location = useLocation();
   const noLeidas = useNoLeidas();
+
+  const nombreComplejo = membresiaActiva?.complejo?.nombre ?? 'Mi complejo';
+  const suscripcion = membresiaActiva?.suscripcion ?? null;
+  const badgeSusc = suscripcion
+    ? suscripcion.estado === 'prueba'
+      ? { cls: 'badge-info', texto: 'Trial' }
+      : suscripcion.estado === 'activa'
+        ? Number(suscripcion.monto) === 0
+          ? { cls: 'badge-exito', texto: 'Cortesía' }
+          : { cls: 'badge-exito', texto: 'Activa' }
+        : { cls: 'badge-peligro', texto: suscripcion.estado === 'vencida' ? 'Vencida' : 'Cancelada' }
+    : null;
 
   const nombreCompleto = perfil ? `${perfil.nombre} ${perfil.apellido}` : 'Usuario';
   const iniciales = nombreCompleto
@@ -88,11 +104,19 @@ export function AdminLayout() {
     .slice(0, 2)
     .map((p) => p[0]?.toUpperCase() ?? '')
     .join('');
-  const rol =
-    perfil?.rol === 'super_admin' ? 'Dueño / Super admin' : perfil?.rol === 'recepcionista' ? 'Recepcionista' : '';
+  const rol = esSuperAdmin
+    ? 'Super admin plataforma'
+    : membresiaActiva?.rol === 'dueno'
+      ? 'Dueño'
+      : membresiaActiva?.rol === 'recepcionista'
+        ? 'Recepcionista'
+        : 'Staff';
 
   const seccion = SECCIONES[location.pathname.split('/').pop() ?? ''] ?? 'Panel';
-  const puedeVer = (item: ItemSide) => !item.roles || (perfil ? item.roles.includes(perfil.rol as 'super_admin') : false);
+  const puedeVer = (item: ItemSide) => !item.ownerOnly || esDuenoActivo;
+  const grupos = esSuperAdmin
+    ? [...GRUPOS, { titulo: 'Plataforma', items: [{ to: '/admin/plataforma', label: 'Suscripciones y planes', icon: ShieldCheck }] }]
+    : GRUPOS;
 
   return (
     <div className="admin-layout">
@@ -108,8 +132,35 @@ export function AdminLayout() {
           </span>
         </Link>
 
+        {/* Contexto: qué complejo estás administrando */}
+        <div className="admin-complejo" aria-label="Complejo administrado">
+          <div className="admin-complejo-nombre" title={nombreComplejo}>{nombreComplejo}</div>
+          <div className="fila" style={{ gap: '0.35rem', marginTop: '0.35rem' }}>
+            {badgeSusc && <span className={`badge ${badgeSusc.cls}`}>{badgeSusc.texto}</span>}
+            {membresias.length > 1 && (
+              <select
+                className="input"
+                style={{ padding: '0.22rem 0.35rem', fontSize: '0.74rem', maxWidth: '11rem' }}
+                value={activoId ?? ''}
+                onChange={(e) => {
+                  const id = Number(e.target.value);
+                  const m = membresias.find((x) => x.complejo_id === id);
+                  seleccionar(id, m?.complejo?.slug);
+                }}
+                aria-label="Cambiar de complejo"
+              >
+                {membresias.map((m) => (
+                  <option key={m.complejo_id} value={m.complejo_id}>
+                    {m.complejo?.nombre ?? `Complejo #${m.complejo_id}`}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        </div>
+
         <nav className="admin-nav-scroll">
-          {GRUPOS.map((grupo) => {
+          {grupos.map((grupo) => {
             const visibles = grupo.items.filter(puedeVer);
             if (visibles.length === 0) return null;
             return (
@@ -175,6 +226,20 @@ export function AdminLayout() {
               )}
             </Link>
           </div>
+        </div>
+        <div className="admin-contenido-top">
+          {vigenteActivo === false && (
+            <div className="susc-banner vencida" role="alert">
+              <strong>Suscripción suspendida.</strong> Tu complejo no aparece en el catálogo y los jugadores no pueden reservar.
+              Contactá a PlayControl para regularizarla.
+            </div>
+          )}
+          {vigenteActivo === true && membresiaActiva?.suscripcion?.estado === 'prueba' && (
+            <div className="susc-banner prueba">
+              <strong>Período de prueba.</strong> Tu suscripción es de 14 días{membresiaActiva.suscripcion.fin ? ` y vence el ${membresiaActiva.suscripcion.fin}` : ''}.
+              Después tu complejo solo se desactiva del catálogo hasta que regularices el pago.
+            </div>
+          )}
         </div>
         <Outlet />
       </section>

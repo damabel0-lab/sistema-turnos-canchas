@@ -117,10 +117,10 @@ function LandingPublica() {
             Jugadores reservan gratis en cualquier complejo adherido; los dueños gestionan turnos, caja, abonos y torneos desde su panel.
           </p>
           <div className="fila" style={{ justifyContent: 'center', gap: '0.75rem' }}>
-            <Link to="/login" className="boton boton-primario" style={{ padding: '0.75rem 1.5rem', fontSize: '0.95rem' }}>
+            <Link to="/login" state={{ desde: '/complejos' }} className="boton boton-primario" style={{ padding: '0.75rem 1.5rem', fontSize: '0.95rem' }}>
               Crear cuenta gratis <ArrowRight size={17} />
             </Link>
-            <Link to="/login" className="boton boton-outline" style={{ padding: '0.75rem 1.5rem', fontSize: '0.95rem' }}>
+            <Link to="/login" state={{ desde: '/complejos' }} className="boton boton-outline" style={{ padding: '0.75rem 1.5rem', fontSize: '0.95rem' }}>
               Explorar complejos
             </Link>
           </div>
@@ -131,7 +131,7 @@ function LandingPublica() {
           </div>
           <p className="texto-sec" style={{ marginTop: '0.75rem', fontSize: '0.9rem' }}>
             ¿Sos dueño de un complejo?{' '}
-            <Link to="/login" style={{ color: 'var(--primario-2)', fontWeight: 700 }}>
+            <Link to="/login" state={{ desde: '/registra-tu-complejo' }} style={{ color: 'var(--primario-2)', fontWeight: 700 }}>
               Registrate y publicalo en PlayControl →
             </Link>
           </p>

@@ -4,21 +4,23 @@ import { RutaProtegida } from './components/RutaProtegida';
 import { BarraSesion } from './components/BarraSesion';
 import { api } from './lib/api';
 import { useAuth } from './hooks/useAuth';
+import { useComplejo } from './hooks/useComplejo';
 
 // Páginas públicas / cliente autenticado
 import { HomePage } from './pages/cliente/HomePage';
 import { ReservarPage } from './pages/cliente/ReservarPage';
-import { ComplejosPage } from './pages/publico/ComplejosPage';
-import { ComplejoDetallePage } from './pages/publico/ComplejoDetallePage';
 import { MisReservasPage } from './pages/cliente/MisReservasPage';
 import { MisAbonosPage } from './pages/cliente/MisAbonosPage';
 import { TorneosClientePage } from './pages/cliente/TorneosClientePage';
 import { NotificacionesPage } from './pages/cliente/NotificacionesPage';
+import { ComplejosPage } from './pages/publico/ComplejosPage';
+import { ComplejoDetallePage } from './pages/publico/ComplejoDetallePage';
+import { RegistrarComplejoPage } from './pages/publico/RegistrarComplejoPage';
 
 // Auth
 import { LoginPage } from './pages/auth/LoginPage';
 
-// Páginas admin (protegidas por membresía/rol)
+// Páginas admin (staff del complejo activo / dueño / plataforma)
 import { AdminLayout } from './components/AdminLayout';
 import { CierreCajaPage } from './pages/admin/CierreCajaPage';
 import { GrillaPage } from './pages/admin/GrillaPage';
@@ -32,22 +34,23 @@ import { ConfigurarPage } from './pages/admin/ConfigurarPage';
 import { CajaPage } from './pages/admin/CajaPage';
 import { ReportesPage } from './pages/admin/ReportesPage';
 import { TorneosPage } from './pages/admin/TorneosPage';
+import { PlataformaPage } from './pages/admin/PlataformaPage';
 
 export function App() {
   const { perfil } = useAuth();
+  const { esStaffActivo } = useComplejo();
   const location = useLocation();
 
   useEffect(() => {
     if (!perfil) return;
-    const esStaff = perfil.rol === 'super_admin' || perfil.rol === 'recepcionista';
-    if (!esStaff) return;
+    if (!esStaffActivo) return;
 
     // No redirigir si ya estamos en el wizard o en login
     if (location.pathname.startsWith('/admin/configurar') || location.pathname.startsWith('/login')) {
       return;
     }
 
-    // Verificar si el setup está completo
+    // Verificar si el setup del complejo activo está completo
     api<{ setup_completado: boolean }>('/admin/setup')
       .then((data) => {
         if (!data.setup_completado && !location.pathname.startsWith('/admin/configurar')) {
@@ -57,13 +60,13 @@ export function App() {
       .catch(() => {
         // si falla, no bloqueamos al usuario
       });
-  }, [perfil, location.pathname]);
+  }, [perfil, esStaffActivo, location.pathname]);
 
   return (
     <>
       <BarraSesion />
       <Routes>
-        {/* Cliente */}
+        {/* Cliente / público */}
         <Route path="/" element={<HomePage />} />
         <Route path="/complejo" element={<Navigate to="/complejos" replace />} />
         <Route
@@ -79,6 +82,14 @@ export function App() {
           element={
             <RutaProtegida>
               <ComplejoDetallePage />
+            </RutaProtegida>
+          }
+        />
+        <Route
+          path="/registra-tu-complejo"
+          element={
+            <RutaProtegida>
+              <RegistrarComplejoPage />
             </RutaProtegida>
           }
         />
@@ -100,105 +111,37 @@ export function App() {
         <Route
           path="/admin/configurar"
           element={
-            <RutaProtegida roles={['super_admin', 'recepcionista']}>
+            <RutaProtegida>
               <ConfigurarPage />
             </RutaProtegida>
           }
         />
 
-        {/* Cierre de caja imprimible (PDF) — fuera del layout admin, solo super_admin */}
+        {/* Cierre de caja imprimible (PDF) — fuera del layout admin, solo dueño */}
         <Route
           path="/admin/caja/cierre"
           element={
-            <RutaProtegida roles={['super_admin']}>
+            <RutaProtegida requireOwner>
               <CierreCajaPage />
             </RutaProtegida>
           }
         />
 
-        {/* Admin — layout con sidebar. Requiere sesión + rol staff (super_admin o recepcionista).
-            Caja además es solo super_admin (verificar dentro de la página). */}
+        {/* Admin — layout con sidebar. Staff del complejo activo (membresía).
+            Caja y Reportes: solo dueño del complejo activo.
+            Plataforma: la página misma bloquea a quien no sea super_admin. */}
         <Route element={<AdminLayout />}>
-        <Route
-          path="/admin/configuracion"
-          element={
-            <RutaProtegida roles={['super_admin', 'recepcionista']}>
-              <ConfiguracionPage />
-            </RutaProtegida>
-          }
-        />
-        <Route
-          path="/admin/dashboard"
-          element={
-            <RutaProtegida roles={['super_admin', 'recepcionista']}>
-              <DashboardPage />
-            </RutaProtegida>
-          }
-        />
-        <Route
-          path="/admin/grilla"
-          element={
-            <RutaProtegida roles={['super_admin', 'recepcionista']}>
-              <GrillaPage />
-            </RutaProtegida>
-          }
-        />
-        <Route
-          path="/admin/canchas"
-          element={
-            <RutaProtegida roles={['super_admin', 'recepcionista']}>
-              <CanchasPage />
-            </RutaProtegida>
-          }
-        />
-        <Route
-          path="/admin/socios"
-          element={
-            <RutaProtegida roles={['super_admin', 'recepcionista']}>
-              <SociosPage />
-            </RutaProtegida>
-          }
-        />
-        <Route
-          path="/admin/beneficios"
-          element={
-            <RutaProtegida roles={['super_admin', 'recepcionista']}>
-              <BeneficiosPage />
-            </RutaProtegida>
-          }
-        />
-        <Route
-          path="/admin/vender-abono"
-          element={
-            <RutaProtegida roles={['super_admin', 'recepcionista']}>
-              <VenderAbonoPage />
-            </RutaProtegida>
-          }
-        />
-        <Route
-          path="/admin/caja"
-          element={
-            <RutaProtegida roles={['super_admin']}>
-              <CajaPage />
-            </RutaProtegida>
-          }
-        />
-        <Route
-          path="/admin/reportes"
-          element={
-            <RutaProtegida roles={['super_admin']}>
-              <ReportesPage />
-            </RutaProtegida>
-          }
-        />
-        <Route
-          path="/admin/torneos"
-          element={
-            <RutaProtegida roles={['super_admin', 'recepcionista']}>
-              <TorneosPage />
-            </RutaProtegida>
-          }
-        />
+        <Route path="/admin/plataforma" element={<RutaProtegida><PlataformaPage /></RutaProtegida>} />
+        <Route path="/admin/configuracion" element={<RutaProtegida><ConfiguracionPage /></RutaProtegida>} />
+        <Route path="/admin/dashboard" element={<RutaProtegida><DashboardPage /></RutaProtegida>} />
+        <Route path="/admin/grilla" element={<RutaProtegida><GrillaPage /></RutaProtegida>} />
+        <Route path="/admin/canchas" element={<RutaProtegida><CanchasPage /></RutaProtegida>} />
+        <Route path="/admin/socios" element={<RutaProtegida><SociosPage /></RutaProtegida>} />
+        <Route path="/admin/beneficios" element={<RutaProtegida><BeneficiosPage /></RutaProtegida>} />
+        <Route path="/admin/vender-abono" element={<RutaProtegida><VenderAbonoPage /></RutaProtegida>} />
+        <Route path="/admin/caja" element={<RutaProtegida requireOwner><CajaPage /></RutaProtegida>} />
+        <Route path="/admin/reportes" element={<RutaProtegida requireOwner><ReportesPage /></RutaProtegida>} />
+        <Route path="/admin/torneos" element={<RutaProtegida><TorneosPage /></RutaProtegida>} />
         </Route>
       </Routes>
     </>
