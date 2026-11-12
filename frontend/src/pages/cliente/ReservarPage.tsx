@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { hoyISOLocal } from '../../lib/fecha';
 import { useAuth } from '../../hooks/useAuth';
 import { useComplejo } from '../../hooks/useComplejo';
 import { ToastContainer, useToast } from '../../components/ui/Toast';
 import { Card, Button, Input } from '../../components/ui';
-import { MapPin, Loader2, CheckCircle2, Building2, Compass } from 'lucide-react';
+import { MapPin, Loader2, CheckCircle2, Building2, Dumbbell, Waves, Trophy, ArrowRight } from 'lucide-react';
 
 interface Deporte {
   id: number;
@@ -37,6 +37,26 @@ interface Cotizacion {
   descuento_turno_fijo: number;
 }
 
+interface ComplejoPicker {
+  id: number;
+  nombre: string;
+  slug: string;
+  tipo: string;
+  ciudad: string | null;
+  direccion: string | null;
+  gym: boolean;
+  pileta: boolean;
+  ofrece_torneos: boolean;
+  amenidades: string[];
+  canchas: Array<{
+    id: number;
+    nombre: string;
+    precio_base: number;
+    caracteristicas: string | null;
+    deporte: { nombre: string } | null;
+  }>;
+}
+
 const hoy = () => hoyISOLocal();
 
 /** '20:15' + 1h -> '21:15' */
@@ -53,8 +73,11 @@ export function ReservarPage() {
   const [searchParams] = useSearchParams();
   const slugParam = searchParams.get('complejo');
 
+  const navigate = useNavigate();
   const [complejoNombre, setComplejoNombre] = useState<string | null>(null);
   const [complejoResolviendo, setComplejoResolviendo] = useState(true);
+  const [picker, setPicker] = useState<ComplejoPicker[] | null>(null);
+  const [pickerError, setPickerError] = useState<string | null>(null);
 
   // Resolver el complejo a reservar: ?complejo=slug > complejo activo persistido (por slug, mejor esfuerzo) > nada
   useEffect(() => {
@@ -115,6 +138,39 @@ export function ReservarPage() {
   useEffect(() => {
     api<Deporte[]>('/deportes').then(setDeportes).catch((e) => setError(e.message));
   }, []);
+
+  // Catálogo de complejos + sus canchas (para el picker cuando no hay complejo elegido)
+  useEffect(() => {
+    if (activoId || complejoResolviendo) return;
+    let cancelado = false;
+    setPickerError(null);
+    api<Array<Omit<ComplejoPicker, 'canchas'>>>('/complejos')
+      .then(async (list) => {
+        const detallados = await Promise.all(
+          list.map(async (c) => {
+            try {
+              const det = await api<{ canchas: ComplejoPicker['canchas'] }>(`/complejos/${c.slug}`);
+              return { ...c, canchas: Array.isArray(det.canchas) ? det.canchas : [] };
+            } catch {
+              return { ...c, canchas: [] };
+            }
+          }),
+        );
+        if (!cancelado) setPicker(detallados);
+      })
+      .catch((e) => {
+        if (!cancelado) setPickerError(e instanceof Error ? e.message : 'No se pudo cargar el catálogo');
+      });
+    return () => {
+      cancelado = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activoId, complejoResolviendo]);
+
+  const irAReservar = (c: ComplejoPicker | (ComplejoPicker & { canchaId?: number }), canchaId?: number) => {
+    seleccionar(c.id, c.slug);
+    navigate(`/reservar?complejo=${c.slug}${canchaId != null ? `&cancha=${canchaId}` : ''}`);
+  };
 
   useEffect(() => {
     if (!activoId) {
@@ -246,16 +302,95 @@ export function ReservarPage() {
       {error && <div className="alerta-error" role="alert">{error}</div>}
 
       {!complejoResolviendo && !activoId ? (
-        <div className="card" style={{ textAlign: 'center', padding: '2.5rem 1rem', maxWidth: '30rem', margin: '0 auto' }}>
-          <Compass size={42} strokeWidth={1.6} style={{ margin: '0 auto 0.6rem', color: 'var(--primario)' }} />
-          <h2 className="titulo" style={{ marginBottom: '0.35rem' }}>Elegí un complejo primero</h2>
-          <p className="subtitulo" style={{ margin: 0 }}>
-            Para reservar un turno tenés que elegir dónde vas a jugar — hay canchas, gym y pileta en cada complejo.
-          </p>
-          <Link to="/complejos" className="boton boton-primario" style={{ marginTop: '0.9rem' }}>
-            <Building2 size={17} /> Ver complejos disponibles
-          </Link>
-        </div>
+        <section aria-label="Elegí dónde jugar">
+          <div className="fila-entre" style={{ marginBottom: '0.65rem' }}>
+            <div>
+              <span className="pagina-eyebrow">Elegí tu complejo</span>
+              <h2 className="titulo" style={{ margin: 0, fontSize: '1.15rem' }}>¿Dónde vas a jugar?</h2>
+            </div>
+            <Link to="/complejos" className="fila" style={{ gap: '0.35rem', color: 'var(--texto-2)', fontSize: '0.85rem' }}>
+              Ver catálogo <ArrowRight size={15} />
+            </Link>
+          </div>
+
+          {pickerError && <div className="alerta-error" role="alert">{pickerError}</div>}
+
+          {picker === null ? (
+            <div className="stack" style={{ gap: '0.9rem' }}>
+              {[0, 1].map((i) => <div key={i} className="skeleton" style={{ height: '9rem' }} />)}
+            </div>
+          ) : picker.length === 0 ? (
+            <div className="empty-state">
+              <Building2 size={34} strokeWidth={1.6} style={{ color: 'var(--texto-3)' }} />
+              <h3 className="titulo" style={{ margin: 0 }}>No hay complejos disponibles</h3>
+              <p className="texto-sec" style={{ margin: 0 }}>Por ahora no hay complejos vigentes. Volvé pronto.</p>
+            </div>
+          ) : (
+            <div className="picker-grupos">
+              {picker.map((c) => (
+                <section key={c.id} className="picker-grupo" aria-label={`Complejo ${c.nombre}`}>
+                  {/* Cabecera del complejo: elegís el complejo → flujo de reserva */}
+                  <div className="picker-grupo-head">
+                    <div style={{ minWidth: 0 }}>
+                      <div className="fila" style={{ gap: '0.4rem' }}>
+                        <span className={`badge ${c.tipo === 'fraccionado' ? 'badge-info' : 'badge-neutro'}`}>
+                          {c.tipo === 'fraccionado' ? 'Fraccionado' : 'Complejo deportivo'}
+                        </span>
+                        {c.ofrece_torneos && <span className="badge badge-exito"><Trophy size={11} /> Torneos</span>}
+                      </div>
+                      <h3 className="picker-grupo-nombre">{c.nombre}</h3>
+                      <p className="texto-debil" style={{ margin: 0, fontSize: '0.82rem' }}>
+                        <MapPin size={12} style={{ verticalAlign: '-0.1em' }} /> {c.direccion ?? 'Sin dirección'}{c.ciudad ? ` · ${c.ciudad}` : ''}
+                      </p>
+                    </div>
+                    <div className="stack" style={{ gap: '0.35rem', justifyItems: 'end' }}>
+                      <div className="fila" style={{ gap: '0.3rem' }}>
+                        {c.gym && <span className="amenity-chip destacada"><Dumbbell size={12} /> Gym</span>}
+                        {c.pileta && <span className="amenity-chip destacada"><Waves size={12} /> Pileta</span>}
+                        {c.amenidades.slice(0, 2).map((a) => <span key={a} className="amenity-chip">{a}</span>)}
+                      </div>
+                      <button
+                        type="button"
+                        className="boton boton-primario"
+                        style={{ fontSize: '0.82rem', padding: '0.4rem 0.85rem' }}
+                        onClick={() => irAReservar(c)}
+                      >
+                        Reservar aquí <ArrowRight size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Canchas del complejo: elegís la cancha → reserva con esa cancha preseleccionada */}
+                  <div className="picker-canchas">
+                    {c.canchas.length === 0 ? (
+                      <p className="texto-debil" style={{ margin: 0 }}>Sin canchas publicadas todavía.</p>
+                    ) : (
+                      c.canchas.map((cn) => (
+                        <div key={cn.id} className="cancha-tile">
+                          <span className="cancha-tile-precio">${cn.precio_base.toLocaleString('es-AR')}</span>
+                          <div className="cancha-tile-info">
+                            <strong>{cn.nombre}</strong>
+                            <span className="texto-debil" style={{ fontSize: '0.75rem' }}>
+                              {cn.deporte?.nombre ?? 'Cancha'}{cn.caracteristicas ? ` · ${cn.caracteristicas}` : ''}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            className="boton boton-outline"
+                            style={{ fontSize: '0.78rem', padding: '0.32rem 0.7rem', whiteSpace: 'nowrap' }}
+                            onClick={() => irAReservar(c, cn.id)}
+                          >
+                            Reservar
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
+        </section>
       ) : (
         <>
           {activoId && (
