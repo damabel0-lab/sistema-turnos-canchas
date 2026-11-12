@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../lib/api';
+import { hoyISOLocal } from '../../lib/fecha';
 import { Calendar, DollarSign, RefreshCw, ChevronDown } from 'lucide-react';
 
 interface IngresoPorDisciplina {
@@ -16,7 +17,7 @@ interface Reporte {
 }
 
 export function ReportesPage() {
-  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
+  const [fecha, setFecha] = useState(hoyISOLocal());
   const [reporte, setReporte] = useState<Reporte | null>(null);
   const [error, setError] = useState<string | null>(null);
 

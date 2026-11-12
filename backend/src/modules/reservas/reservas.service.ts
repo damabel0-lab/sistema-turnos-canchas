@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '../../config/supabase.js';
+import { hoyLocal, isoMinLocal } from '../../lib/fecha.js';
 import { HttpError } from '../../middleware/error.js';
 import { cotizar, aMinutos } from '../../services/tarifas/cotizador.js';
 import { leerHorasComplejo, minutosCierreAjustado } from '../../config/complejoHoras.js';
@@ -53,7 +54,7 @@ export function proximasNFechasDiaSemana(diaSemana: number, cantidad: number, de
 export async function reservasDelUsuario(usuarioId: string) {
   if (!usuarioId) throw new HttpError(400, 'usuario_id es obligatorio');
 
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyLocal();
 
   const { data, error } = await supabaseAdmin
     .from('reservas')
@@ -717,7 +718,7 @@ export async function proyectarTurnosFijos(entrada: TurnoFijoEntrada) {
   const errores: Array<{ fecha: string; error: string }> = [];
 
   for (const fecha of fechas) {
-    const fechaStr = fecha.toISOString().slice(0, 10);
+    const fechaStr = isoMinLocal(fecha);
     try {
       const reserva = await crearReserva({
         usuario_id,

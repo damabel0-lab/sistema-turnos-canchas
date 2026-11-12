@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { api } from '../../lib/api';
+import { hoyISOLocal } from '../../lib/fecha';
 import { ToastContainer, useToast } from '../../components/ui/Toast';
 import { Badge } from '../../components/ui';
 import {
@@ -44,7 +45,7 @@ interface ConfigComplejo {
   descuento_turno_fijo_porcentaje: number;
 }
 
-const hoy = () => new Date().toISOString().slice(0, 10);
+const hoy = () => hoyISOLocal();
 
 const estadosReserva: Record<string, 'neutral' | 'success' | 'warning' | 'danger'> = {
   pendiente_seña: 'warning',

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api } from '../../lib/api';
+import { isoLocal } from '../../lib/fecha';
 import { ToastContainer, useToast } from '../../components/ui/Toast';
 import { Card } from '../../components/ui';
 import { CreditCard, Plus, Check, X, RefreshCw, Dumbbell, Waves } from 'lucide-react';
@@ -34,7 +35,7 @@ const precio = (n: number) => `$${n.toLocaleString('es-AR')}`;
 const unMesDesdeHoy = () => {
   const d = new Date();
   d.setMonth(d.getMonth() + 1);
-  return d.toISOString().slice(0, 10);
+  return isoLocal(d);
 };
 
 export function VenderAbonoPage() {

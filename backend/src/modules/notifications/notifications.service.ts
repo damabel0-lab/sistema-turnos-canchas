@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '../../config/supabase.js';
+import { hoyLocal, mananaLocal } from '../../lib/fecha.js';
 import { HttpError } from '../../middleware/error.js';
 
 export interface Notificacion {
@@ -94,8 +95,8 @@ export async function recordatorioTurno(usuarioId: string, turno: {
 
 /** Detectar reservas próximas (hoy/mañana) y crear recordatorios automáticos si no existen */
 export async function procesarRecordatoriosProximos() {
-  const hoy = new Date().toISOString().slice(0, 10);
-  const mañana = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const hoy = hoyLocal();
+  const mañana = mananaLocal();
 
   const { data: reservas, error } = await supabaseAdmin
     .from('reservas')

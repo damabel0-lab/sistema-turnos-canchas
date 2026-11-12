@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
+import { hoyISOLocal } from '../../lib/fecha';
 import { useAuth } from '../../hooks/useAuth';
 import { ToastContainer, useToast } from '../../components/ui/Toast';
 import { Card, Button, Input } from '../../components/ui';
@@ -35,7 +36,7 @@ interface Cotizacion {
   descuento_turno_fijo: number;
 }
 
-const hoy = () => new Date().toISOString().slice(0, 10);
+const hoy = () => hoyISOLocal();
 
 /** '20:15' + 1h -> '21:15' */
 function sumarUnaHora(hhmm: string): string {

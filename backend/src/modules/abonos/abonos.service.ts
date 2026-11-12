@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '../../config/supabase.js';
+import { hoyLocal, isoMinLocal } from '../../lib/fecha.js';
 import { HttpError } from '../../middleware/error.js';
 import { crearNotificacion } from '../notifications/notifications.service.js';
 
@@ -53,7 +54,7 @@ async function configMensualidades(): Promise<Record<string, unknown>> {
 function unMesDesdeHoy(): string {
   const d = new Date();
   d.setMonth(d.getMonth() + 1);
-  return d.toISOString().slice(0, 10);
+  return isoMinLocal(d);
 }
 
 function precioDe(servicio: ServicioAbono, config: Record<string, unknown>): number | null {
@@ -185,7 +186,7 @@ export async function venderAbono(datos: VenderAbono) {
       servicio,
       clases_totales: 1,
       clases_disponibles: 1,
-      fecha_inicio: new Date().toISOString().slice(0, 10),
+      fecha_inicio: hoyLocal(),
       fecha_vencimiento: vencimiento,
       monto_pagado: monto,
       activo: true,
@@ -252,7 +253,7 @@ export async function solicitarAbono(usuarioId: string, servicioRaw: unknown) {
       servicio,
       clases_totales: 1,
       clases_disponibles: 1,
-      fecha_inicio: new Date().toISOString().slice(0, 10),
+      fecha_inicio: hoyLocal(),
       fecha_vencimiento: vencimiento,
       monto_pagado: monto,
       activo: false,
@@ -287,7 +288,7 @@ export async function aprobarSolicitud(id: number, datos: AprobarSolicitud) {
       estado: 'activo',
       activo: true,
       monto_pagado: monto,
-      fecha_inicio: new Date().toISOString().slice(0, 10),
+      fecha_inicio: hoyLocal(),
       fecha_vencimiento: vencimiento,
     })
     .eq('id', id)
@@ -374,7 +375,7 @@ export async function consumirClase(usuarioId: string, disciplinaId?: number | n
 }
 
 export async function listarAbonosVencidos() {
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyLocal();
   const { data, error } = await supabaseAdmin
     .from('abonos')
     .select('*')
@@ -386,7 +387,7 @@ export async function listarAbonosVencidos() {
 
 /** Marcar como vencido (fin de período) los abonos vencidos */
 export async function cerrarAbonosVencidos() {
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyLocal();
   const { error } = await supabaseAdmin
     .from('abonos')
     .update({ activo: false, estado: 'cancelado' })

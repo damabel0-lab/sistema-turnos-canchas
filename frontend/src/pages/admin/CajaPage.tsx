@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
+import { hoyISOLocal } from '../../lib/fecha';
 import { ToastContainer, useToast } from '../../components/ui/Toast';
 import {
   DollarSign,
@@ -32,7 +33,7 @@ interface Resumen {
 
 type PeriodoExport = 'dia' | 'semana' | 'mes' | 'anio' | 'historico';
 
-const hoy = () => new Date().toISOString().slice(0, 10);
+const hoy = () => hoyISOLocal();
 const etiquetasPeriodo: Record<string, string> = {
   dia: 'Día operativo',
   semana: 'Esta semana',

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { hoyLocal, isoMinLocal } from '../../lib/fecha.js';
 import type { Request, Response, NextFunction } from 'express';
 import { supabaseAdmin } from '../../config/supabase.js';
 
@@ -11,7 +12,7 @@ const h = (fn: (req: Request, res: Response) => Promise<void>) =>
 dashboardRouter.get(
   '/resumen',
   h(async (_req, res) => {
-    const hoy = new Date().toISOString().slice(0, 10);
+    const hoy = hoyLocal();
 
     const [reservas, movimientos, abonosPorVencer] = await Promise.all([
       supabaseAdmin
@@ -28,7 +29,7 @@ dashboardRouter.get(
         .from('abonos')
         .select('id, usuario_id, disciplina_id, clases_disponibles, fecha_vencimiento')
         .eq('activo', true)
-        .lt('fecha_vencimiento', new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10))
+        .lt('fecha_vencimiento', isoMinLocal(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)))
         .gt('fecha_vencimiento', hoy),
     ]);
 
