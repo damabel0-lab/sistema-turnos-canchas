@@ -1,7 +1,7 @@
 import { supabaseAdmin } from '../../config/supabase.js';
 import { hoyLocal, isoMinLocal } from '../../lib/fecha.js';
 import { HttpError } from '../../middleware/error.js';
-import { crearNotificacion } from '../notifications/notifications.service.js';
+import { crearNotificacion, notificarStaff } from '../notifications/notifications.service.js';
 
 export type ServicioAbono = 'gym' | 'pileta';
 
@@ -204,12 +204,25 @@ export async function venderAbono(datos: VenderAbono) {
     monto,
     metodo_pago: metodoPago,
   });
+
+  const { data: clienteInfo } = await supabaseAdmin
+    .from('usuarios')
+    .select('nombre, apellido')
+    .eq('id', datos.usuario_id)
+    .single();
+  const nombreCliente = clienteInfo ? `${clienteInfo.nombre} ${clienteInfo.apellido}` : 'Un cliente';
+
   await crearNotificacion({
     usuario_id: datos.usuario_id,
     tipo: 'abono',
     titulo: `¡Tu mensualidad de ${nombreServicioLabel} está activa!`,
     cuerpo: `Ya podés usar el servicio. Tu mensualidad vence el ${vencimiento}. Si todavía no pagaste, abonala en recepción.`,
   });
+  await notificarStaff(
+    'abono',
+    'Mensualidad vendida en mostrador',
+    `${nombreCliente} activó mensualidad de ${nombreServicioLabel} · $${Number(monto).toLocaleString('es-AR')} · ${metodoPago}`,
+  );
 
   return data;
 }
@@ -263,6 +276,30 @@ export async function solicitarAbono(usuarioId: string, servicioRaw: unknown) {
     .select()
     .single();
   if (error) throw new HttpError(400, error.message);
+
+  // Notificaciones: cliente y staff
+  try {
+    const { data: clienteInfo } = await supabaseAdmin
+      .from('usuarios')
+      .select('nombre, apellido')
+      .eq('id', usuarioId)
+      .single();
+    const nombreCliente = clienteInfo ? `${clienteInfo.nombre} ${clienteInfo.apellido}` : 'Un cliente';
+    await crearNotificacion({
+      usuario_id: usuarioId,
+      tipo: 'abono',
+      titulo: 'Solicitud enviada',
+      cuerpo: `Pediste mensualidad de ${nombreServicio(servicio)} ($${Number(monto).toLocaleString('es-AR')}). Acercate al mostrador para activarla.`,
+    });
+    await notificarStaff(
+      'abono',
+      'Mensualidad por activar',
+      `${nombreCliente} quiere activar su mensualidad de ${nombreServicio(servicio)} · $${Number(monto).toLocaleString('es-AR')}`,
+    );
+  } catch (e) {
+    console.warn('No se pudo notificar la solicitud de abono', e);
+  }
+
   return data;
 }
 
@@ -303,12 +340,25 @@ export async function aprobarSolicitud(id: number, datos: AprobarSolicitud) {
     monto,
     metodo_pago: metodoPago,
   });
+
+  const { data: clienteInfo } = await supabaseAdmin
+    .from('usuarios')
+    .select('nombre, apellido')
+    .eq('id', actual.usuario_id)
+    .single();
+  const nombreCliente = clienteInfo ? `${clienteInfo.nombre} ${clienteInfo.apellido}` : 'Un cliente';
+
   await crearNotificacion({
     usuario_id: actual.usuario_id,
     tipo: 'abono',
     titulo: `¡Tu mensualidad de ${nombreServicioLabel} está activa!`,
     cuerpo: `Se activó en recepción. Podés usar el servicio hasta el ${vencimiento}.`,
   });
+  await notificarStaff(
+    'abono',
+    'Mensualidad aprobada',
+    `${nombreCliente} activó mensualidad de ${nombreServicioLabel} · $${Number(monto).toLocaleString('es-AR')} · ${metodoPago}`,
+  );
 
   return data;
 }

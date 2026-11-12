@@ -164,3 +164,34 @@ export async function avisoSuspension(usuarioIds: string[], motivo: string) {
   }
   return { ok: true, enviados: usuarioIds.length };
 }
+
+/** Notificación masiva a todo el staff del complejo (super_admin + recepcionista).
+ *  Pensado para avisar movimientos de caja/eventos relevantes del día. */
+export async function notificarStaff(tipo: string, titulo: string, cuerpo: string) {
+  const { data: staff, error } = await supabaseAdmin
+    .from('usuarios')
+    .select('id')
+    .in('rol', ['super_admin', 'recepcionista']);
+  if (error) {
+    console.warn('No se pudo leer staff para notificar:', error.message);
+    return { ok: false, enviados: 0 };
+  }
+  if (!staff || staff.length === 0) return { ok: true, enviados: 0 };
+
+  const rows = staff.map((s) => ({ usuario_id: s.id, tipo, titulo, cuerpo }));
+  const { error: eIns } = await supabaseAdmin.from('notificaciones').insert(rows);
+  if (eIns) {
+    if (esTablaNotificacionesFaltante(eIns)) {
+      console.warn('Tabla notificaciones no existe — aviso al staff omitido. Ejecutar docs/notificaciones.sql en Supabase.');
+      return { ok: true, enviados: 0 };
+    }
+    console.warn('No se pudo insertar notificación al staff:', eIns.message);
+    return { ok: false, enviados: 0 };
+  }
+  return { ok: true, enviados: staff.length };
+}
+
+/** Agrupar alias para que los callers no tengan que repetir nada */
+export async function notoCliente(usuarioId: string, tipo: string, titulo: string, cuerpo: string) {
+  return crearNotificacion({ usuario_id: usuarioId, tipo, titulo, cuerpo });
+}

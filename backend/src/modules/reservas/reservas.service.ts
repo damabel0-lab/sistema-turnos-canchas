@@ -3,6 +3,7 @@ import { hoyLocal, isoMinLocal } from '../../lib/fecha.js';
 import { HttpError } from '../../middleware/error.js';
 import { cotizar, aMinutos } from '../../services/tarifas/cotizador.js';
 import { leerHorasComplejo, minutosCierreAjustado } from '../../config/complejoHoras.js';
+import { crearNotificacion, notificarStaff } from '../notifications/notifications.service.js';
 
 /** Inicio o fin de un turno ajustado al día "deportivo" (que empieza a la apertura).
  *  Necesario para clubs que pasan medianoche (slot 00:15 -> 24:15). */
@@ -278,6 +279,50 @@ export async function cambiarEstadoReserva(
     if (eCaja) throw new HttpError(500, `Reserva actualizada pero falló el registro en caja: ${eCaja.message}`);
   }
 
+  // Notificar al cliente y al staff del complejo
+  try {
+    const fechaCorta = new Date(`${reserva.fecha}T00:00:00`).toLocaleDateString('es-AR', { day: '2-digit', month: 'long' });
+    const horaTrunc = String(reserva.hora_inicio).slice(0, 5);
+
+    if (nuevoEstado === 'confirmada') {
+      if (reserva.usuario_id) {
+        const nombreCancha = (reserva.canchas as unknown as { nombre: string } | null)?.nombre ?? 'cancha';
+        await crearNotificacion({
+          usuario_id: reserva.usuario_id,
+          tipo: 'pago',
+          titulo: '¡Tu turno está confirmado!',
+          cuerpo: `Reserva #${id} · ${nombreCancha} · ${fechaCorta} a las ${horaTrunc}. Pagaste $${Number(monto).toLocaleString('es-AR')}.`,
+        });
+      }
+      await notificarStaff(
+        'pago',
+        'Cobro registrado',
+        `${cliente} · reserva #${id} · ${fechaCorta} ${horaTrunc} · $${Number(monto).toLocaleString('es-AR')}`,
+      );
+    } else if (nuevoEstado === 'completada') {
+      if (reserva.usuario_id) {
+        await crearNotificacion({
+          usuario_id: reserva.usuario_id,
+          tipo: 'pago',
+          titulo: '¡Turno completado!',
+          cuerpo: `Gracias por jugar. Reserva #${id} finalizada.`,
+        });
+      }
+    } else if (nuevoEstado === 'cancelada') {
+      if (reserva.usuario_id) {
+        const nombreCancha = (reserva.canchas as unknown as { nombre: string } | null)?.nombre ?? 'cancha';
+        await crearNotificacion({
+          usuario_id: reserva.usuario_id,
+          tipo: 'cancelacion',
+          titulo: 'Turno cancelado',
+          cuerpo: `Tu reserva #${id} (${nombreCancha} · ${fechaCorta} a las ${horaTrunc}) quedó cancelada.`,
+        });
+      }
+    }
+  } catch (e) {
+    console.warn('No se pudieron crear las notificaciones del cambio de estado', e);
+  }
+
   return { reserva: actualizada, caja_registrada: monto > 0 ? monto : 0 };
 }
 
@@ -543,6 +588,36 @@ export async function crearReserva(entrada: NuevaReserva) {
     .select()
     .single();
   if (error) throw new HttpError(400, error.message);
+
+  // Notificar al cliente y al staff del complejo
+  try {
+    const { data: canchaInfo } = await supabaseAdmin
+      .from('canchas')
+      .select('nombre')
+      .eq('id', cancha_id)
+      .single();
+    const nombreCancha = canchaInfo?.nombre ?? `cancha #${cancha_id}`;
+    const fechaCorta = new Date(`${fecha}T00:00:00`).toLocaleDateString('es-AR', { weekday: 'long', day: '2-digit', month: 'long' });
+    const horaTrunc = String(hora_inicio).slice(0, 5);
+
+    if (entrada.usuario_id) {
+      await crearNotificacion({
+        usuario_id: entrada.usuario_id,
+        tipo: 'reserva',
+        titulo: `Reservaste ${nombreCancha}`,
+        cuerpo: `Tu turno es el ${fechaCorta} a las ${horaTrunc}. Monto: $${Number(precio_total).toLocaleString('es-AR')}${(monto_seña ?? 0) > 0 ? ` (seña $${monto_seña})` : ''}.`,
+      });
+    }
+
+    const { data: clienteInfo } = entrada.usuario_id
+      ? await supabaseAdmin.from('usuarios').select('nombre, apellido').eq('id', entrada.usuario_id).single()
+      : { data: null };
+    const nombreCliente = clienteInfo ? `${clienteInfo.nombre} ${clienteInfo.apellido}` : 'Un cliente';
+    await notificarStaff('reserva', 'Nuevo turno creado', `${nombreCliente} reservó ${nombreCancha} · ${fecha} ${horaTrunc} · $${Number(precio_total).toLocaleString('es-AR')}`);
+  } catch (e) {
+    console.warn('No se pudieron crear las notificaciones de la reserva', e);
+  }
+
   return data;
 }
 

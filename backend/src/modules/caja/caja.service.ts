@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '../../config/supabase.js';
 import { HttpError } from '../../middleware/error.js';
 import { leerHorasComplejo } from '../../config/complejoHoras.js';
+import { notificarStaff } from '../notifications/notifications.service.js';
 
 /**
  * Caja: movimientos y cortes por día / semana / mes.
@@ -163,5 +164,17 @@ export async function registrarEgreso(entrada: {
     .select()
     .single();
   if (error) throw new HttpError(400, error.message);
+
+  // Avisar al staff
+  try {
+    await notificarStaff(
+      'caja',
+      'Egreso registrado',
+      `Gasto: ${entrada.descripcion.trim()} · $${Number(entrada.monto).toLocaleString('es-AR')} · ${entrada.metodo_pago}`,
+    );
+  } catch (e) {
+    console.warn('No se pudo notificar el egreso al staff', e);
+  }
+
   return data;
 }
