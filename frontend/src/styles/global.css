@@ -1493,6 +1493,183 @@ body {
   box-shadow: var(--sombra-md), var(--glow);
 }
 
+/* ===== CIERRE DE CAJA (imprimible) ===== */
+.cierre-page {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: Georgia, 'Times New Roman', serif;
+  background: #fff;
+  color: #1a1a1a;
+}
+
+.cierre-page * {
+  box-sizing: border-box;
+}
+
+.cierre-print-btn {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10;
+  padding: 0.5rem 1.25rem;
+  background: var(--primario);
+  color: var(--primario-contrast);
+  border: none;
+  border-radius: var(--radio);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--sombra-md);
+}
+
+.cierre-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 1rem;
+  border-bottom: 3px double #1a1a1a;
+  margin-bottom: 1.5rem;
+}
+
+.cierre-brand {
+  font-size: 1.6rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  font-family: inherit;
+}
+
+.cierre-complej {
+  font-size: 0.9rem;
+  color: #444;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  margin-top: 0.15rem;
+}
+
+.cierre-header-right {
+  text-align: right;
+}
+
+.cierre-tag {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-weight: 700;
+  color: #444;
+}
+
+.cierre-fecha {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0.25rem 0;
+}
+
+.cierre-horario {
+  font-size: 0.82rem;
+  color: #444;
+}
+
+.cierre-titulo {
+  font-size: 1.55rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 1.5rem 0 0.5rem;
+  text-align: center;
+  padding: 0.5rem;
+  border-top: 1px solid #1a1a1a;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+.cierre-page h2 {
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 800;
+  margin: 1.5rem 0 0.5rem;
+  padding: 0.3rem 0.5rem;
+  background: #f0f0f0;
+  border-left: 4px solid #1a1a1a;
+}
+
+.cierre-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin: 0.5rem 0;
+}
+
+.cierre-tabla th,
+.cierre-tabla td {
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid #e0e0e0;
+  text-align: left;
+}
+
+.cierre-tabla thead th {
+  background: #f0f0f0;
+  font-size: 0.7rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  font-weight: 700;
+  border-bottom: 2px solid #1a1a1a;
+}
+
+.monto-ingreso { color: #047857; font-weight: 700; }
+.monto-egreso  { color: #b91c1c; font-weight: 700; }
+
+.cierre-saldo th { background: #ededed; border-top: 2px solid #1a1a1a; }
+
+.cierre-empty {
+  padding: 1rem;
+  font-style: italic;
+  color: #555;
+  text-align: center;
+  border: 1px dashed #999;
+}
+
+.cierre-firma {
+  display: flex;
+  justify-content: space-between;
+  gap: 3rem;
+  margin: 3rem 0 1.5rem;
+}
+
+.cierre-firma > div { flex: 1; }
+
+.cierre-firma-linea {
+  border-top: 1px solid #1a1a1a;
+  padding-top: 0.3rem;
+  margin-bottom: 0.1rem;
+}
+
+.cierre-firma-etiqueta {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  color: #444;
+}
+
+.cierre-footer {
+  text-align: center;
+  border-top: 1px solid #bbb;
+  padding-top: 0.5rem;
+  color: #777;
+}
+
+@media print {
+  @page { margin: 1.5cm; size: A4; }
+  body { background: #fff !important; }
+  .cierre-page {
+    display: block !important;
+    max-width: 100%;
+    padding: 0 !important;
+  }
+  .no-print { display: none !important; }
+  .cierre-header, .cierre-footer { page-break-inside: avoid; }
+}
+
 /* ===== PANEL ENTRADAS ===== */
 .egreso-input-fila {
   display: flex;

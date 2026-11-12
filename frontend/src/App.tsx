@@ -18,6 +18,7 @@ import { LoginPage } from './pages/auth/LoginPage';
 
 // Páginas admin (protegidas por rol)
 import { AdminLayout } from './components/AdminLayout';
+import { CierreCajaPage } from './pages/admin/CierreCajaPage';
 import { GrillaPage } from './pages/admin/GrillaPage';
 import { CanchasPage } from './pages/admin/CanchasPage';
 import { SociosPage } from './pages/admin/SociosPage';
@@ -84,6 +85,16 @@ export function App() {
           element={
             <RutaProtegida roles={['super_admin', 'recepcionista']}>
               <ConfigurarPage />
+            </RutaProtegida>
+          }
+        />
+
+        {/* Cierre de caja imprimible (PDF) — fuera del layout admin, solo super_admin */}
+        <Route
+          path="/admin/caja/cierre"
+          element={
+            <RutaProtegida roles={['super_admin']}>
+              <CierreCajaPage />
             </RutaProtegida>
           }
         />
