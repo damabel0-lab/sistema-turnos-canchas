@@ -349,21 +349,80 @@ body {
   }
 }
 
-/* Reservar: 2 zonas (contenido + rail resumen sticky) */
+.paso-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 17rem;
+  max-height: 22rem;
+  overflow: hidden;
+}
+
+.paso-card > .fila {
+  flex-wrap: wrap;
+  align-content: flex-start;
+  overflow-y: auto;
+  max-height: 100%;
+}
+
+.paso-card > .stack {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.paso-card .slots-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  max-height: 100%;
+  padding-right: 0.2rem;
+}
+
+.paso-card-fecha {
+  min-height: 17rem;
+  max-height: 22rem;
+}
+
+.resumen-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
 .grilla-reserva {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 370px;
   gap: 0.9rem;
-  align-items: start;
+  align-items: stretch;
+  min-height: 17rem;
 }
 
 @media (max-width: 1100px) {
   .grilla-reserva {
     grid-template-columns: 1fr;
   }
-  .grilla-reserva .reserva-rail {
-    position: static;
+  .paso-card {
+    min-height: auto;
+    max-height: none;
   }
+  .paso-card > .stack,
+  .paso-card .slots-grid {
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+/* Scrollbars hermosos en cards */
+.paso-card > .stack::-webkit-scrollbar,
+.paso-card .slots-grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.paso-card > .stack::-webkit-scrollbar-thumb,
+.paso-card .slots-grid::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 9999px;
 }
 
 /* ===== TARJETA ===== */

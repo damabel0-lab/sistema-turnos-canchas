@@ -211,7 +211,7 @@ export function ReservarPage() {
           {/* ===== Columna de contenido: disciplina/cancha + fecha ===== */}
           <div className="stack">
             <div className="grilla-2-eq">
-              <Card>
+              <Card className="paso-card">
                 <div className="paso-header">
                   <span className="paso-num">1</span>
                   <h2 className="titulo" style={{ fontSize: '1rem', margin: 0 }}>Disciplina</h2>
@@ -234,7 +234,7 @@ export function ReservarPage() {
                 </div>
               </Card>
 
-              <Card>
+              <Card className="paso-card">
                 <div className="paso-header">
                   <span className="paso-num">2</span>
                   <h2 className="titulo" style={{ fontSize: '1rem', margin: 0 }}>Cancha</h2>
@@ -270,7 +270,7 @@ export function ReservarPage() {
             </div>
 
             {/* ===== Columna 2: Fecha y horario ===== */}
-            <Card>
+            <Card className="paso-card paso-card-fecha">
               <div className="paso-header">
                 <span className="paso-num">3</span>
                 <h2 className="titulo" style={{ fontSize: '1rem', margin: 0 }}>Fecha y horario</h2>
