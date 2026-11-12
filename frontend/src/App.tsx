@@ -111,7 +111,7 @@ export function App() {
         <Route
           path="/admin/configurar"
           element={
-            <RutaProtegida>
+            <RutaProtegida requireStaff>
               <ConfigurarPage />
             </RutaProtegida>
           }
@@ -131,17 +131,17 @@ export function App() {
             Caja y Reportes: solo dueño del complejo activo.
             Plataforma: la página misma bloquea a quien no sea super_admin. */}
         <Route element={<AdminLayout />}>
-        <Route path="/admin/plataforma" element={<RutaProtegida><PlataformaPage /></RutaProtegida>} />
-        <Route path="/admin/configuracion" element={<RutaProtegida><ConfiguracionPage /></RutaProtegida>} />
-        <Route path="/admin/dashboard" element={<RutaProtegida><DashboardPage /></RutaProtegida>} />
-        <Route path="/admin/grilla" element={<RutaProtegida><GrillaPage /></RutaProtegida>} />
-        <Route path="/admin/canchas" element={<RutaProtegida><CanchasPage /></RutaProtegida>} />
-        <Route path="/admin/socios" element={<RutaProtegida><SociosPage /></RutaProtegida>} />
-        <Route path="/admin/beneficios" element={<RutaProtegida><BeneficiosPage /></RutaProtegida>} />
-        <Route path="/admin/vender-abono" element={<RutaProtegida><VenderAbonoPage /></RutaProtegida>} />
+        <Route path="/admin/plataforma" element={<RutaProtegida requireStaff><PlataformaPage /></RutaProtegida>} />
+        <Route path="/admin/configuracion" element={<RutaProtegida requireStaff><ConfiguracionPage /></RutaProtegida>} />
+        <Route path="/admin/dashboard" element={<RutaProtegida requireStaff><DashboardPage /></RutaProtegida>} />
+        <Route path="/admin/grilla" element={<RutaProtegida requireStaff><GrillaPage /></RutaProtegida>} />
+        <Route path="/admin/canchas" element={<RutaProtegida requireStaff><CanchasPage /></RutaProtegida>} />
+        <Route path="/admin/socios" element={<RutaProtegida requireStaff><SociosPage /></RutaProtegida>} />
+        <Route path="/admin/beneficios" element={<RutaProtegida requireStaff><BeneficiosPage /></RutaProtegida>} />
+        <Route path="/admin/vender-abono" element={<RutaProtegida requireStaff><VenderAbonoPage /></RutaProtegida>} />
         <Route path="/admin/caja" element={<RutaProtegida requireOwner><CajaPage /></RutaProtegida>} />
         <Route path="/admin/reportes" element={<RutaProtegida requireOwner><ReportesPage /></RutaProtegida>} />
-        <Route path="/admin/torneos" element={<RutaProtegida><TorneosPage /></RutaProtegida>} />
+        <Route path="/admin/torneos" element={<RutaProtegida requireStaff><TorneosPage /></RutaProtegida>} />
         </Route>
       </Routes>
     </>
