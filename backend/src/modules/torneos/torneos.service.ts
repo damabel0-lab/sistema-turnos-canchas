@@ -91,7 +91,7 @@ export async function listarTorneosActivos() {
 
   const { data, error } = await supabaseAdmin
     .from('torneos')
-    .select('*, deportes(nombre)')
+    .select('*, deportes(nombre), complejos(nombre, slug, ciudad)')
     .eq('activo', true)
     .in('complejo_id', vigentIds)
     .order('fecha_inicio', { ascending: true });

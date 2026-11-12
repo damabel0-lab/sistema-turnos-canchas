@@ -16,9 +16,23 @@ configRouter.get(
   '/',
   h(async (req, res) => {
     const slug = typeof req.query.complejo === 'string' ? req.query.complejo.trim() : '';
+    const headerCid = req.headers['x-complejo-id'] ? Number(req.headers['x-complejo-id']) : null;
 
     let complejoId: number | null = null;
-    if (slug) {
+    if (headerCid && Number.isInteger(headerCid) && headerCid > 0) {
+      // Staff/jugador con complejo activo en la sesión → su config, sin ambigüedad
+      const { data } = await supabaseAdmin
+        .from('complejos')
+        .select('id')
+        .eq('id', headerCid)
+        .eq('activo', true)
+        .maybeSingle();
+      if (!data) return res.status(404).json({ error: 'Complejo no encontrado' });
+      if (!(await suscripcionVigente(headerCid))) {
+        return res.status(404).json({ error: 'Complejo no disponible por el momento' });
+      }
+      complejoId = headerCid;
+    } else if (slug) {
       const { data } = await supabaseAdmin
         .from('complejos')
         .select('id')
