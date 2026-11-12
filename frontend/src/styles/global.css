@@ -385,15 +385,14 @@ body {
 }
 
 .paso-card-fecha {
-  min-height: 17rem;
-  max-height: 17rem;
+  min-height: 0;
 }
 
 .resumen-card {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: 17rem;
+  height: fit-content;
+  min-height: 0;
 }
 
 .resumen-cta {
