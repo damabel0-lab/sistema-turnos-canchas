@@ -32,12 +32,15 @@ export function useNoLeidas(): number {
     void cargar();
     const intervalo = setInterval(cargar, 30000);
     const onChange = () => void cargar();
+    const onVisible = () => { if (document.visibilityState === 'visible') void cargar(); };
     document.addEventListener(EVENTO_NOTIFICACIONES, onChange);
+    document.addEventListener('visibilitychange', onVisible);
 
     return () => {
       cancelado = true;
       clearInterval(intervalo);
       document.removeEventListener(EVENTO_NOTIFICACIONES, onChange);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, [session]);
 

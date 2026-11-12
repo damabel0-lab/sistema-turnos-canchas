@@ -1,13 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Building2, Dumbbell, MapPin, Search, Trophy, Users, Waves, Goal } from 'lucide-react';
+import { Building2, Dumbbell, MapPin, Search, Trophy, Users, Waves, ArrowRight } from 'lucide-react';
 import { api } from '../../lib/api';
-
-interface Deporte {
-  id: number;
-  nombre: string;
-  tipo: string;
-}
 
 interface ComplejoCatalogo {
   id: number;
@@ -16,34 +10,19 @@ interface ComplejoCatalogo {
   tipo: string;
   ciudad: string | null;
   direccion: string | null;
-  telefono: string | null;
-  email_contacto: string | null;
-  descripcion: string | null;
   gym: boolean;
   pileta: boolean;
-  precio_mensual_gym: number | null;
-  precio_mensual_pileta: number | null;
   ofrece_torneos: boolean;
   ofrece_socios: boolean;
   amenidades: string[];
-  deportes: Array<{ id: number; nombre: string }>;
   canchas: number;
-  precio_desde: number | null;
 }
 
 export function ComplejosPage() {
   const [complejos, setComplejos] = useState<ComplejoCatalogo[]>([]);
-  const [deportes, setDeportes] = useState<Deporte[]>([]);
   const [q, setQ] = useState('');
-  const [deporteId, setDeporteId] = useState<number | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    api<Deporte[]>('/deportes')
-      .then(setDeportes)
-      .catch(() => setDeportes([]));
-  }, []);
 
   useEffect(() => {
     let cancelado = false;
@@ -52,7 +31,6 @@ export function ComplejosPage() {
 
     const params = new URLSearchParams();
     if (q.trim()) params.set('q', q.trim());
-    if (deporteId) params.set('deporteId', String(deporteId));
 
     const t = setTimeout(() => {
       api<ComplejoCatalogo[]>(`/complejos${params.size ? `?${params.toString()}` : ''}`)
@@ -71,79 +49,54 @@ export function ComplejosPage() {
       cancelado = true;
       clearTimeout(t);
     };
-  }, [q, deporteId]);
+  }, [q]);
 
   return (
-    <main className="contenedor" style={{ paddingTop: '1.5rem', paddingBottom: '3rem' }}>
+    <main className="contenedor" style={{ paddingTop: '1.5rem', paddingBottom: '3rem', maxWidth: '1120px' }}>
       {/* Encabezado */}
-      <div className="fila-entre" style={{ marginBottom: '1rem' }}>
+      <header className="pagina-encabezado" style={{ marginBottom: '0.9rem', alignItems: 'flex-end' }}>
         <div>
-          <h1 className="titulo" style={{ margin: 0 }}>Explorá complejos</h1>
-          <p className="subtitulo" style={{ margin: '0.25rem 0 0' }}>
-            Encontrá dónde jugar: canchas, gym, pileta y torneos en los mejores complejos de la zona.
-          </p>
+          <span className="pagina-eyebrow">Jugadores</span>
+          <h1 className="pagina-titulo" style={{ marginBottom: '0.15rem' }}>Elegí dónde jugar</h1>
+          <p className="pagina-sub">Todos los complejos de la zona en un solo lugar — elegí tu cancha y reservá.</p>
         </div>
-        <Goal size={34} strokeWidth={1.6} style={{ color: 'var(--primario)' }} aria-hidden />
-      </div>
+      </header>
 
-      {/* Buscador + filtros por deporte */}
-      <div className="stack" style={{ gap: '0.6rem', marginBottom: '1.1rem' }}>
-        <label className="label" style={{ margin: 0 }}>
-          <span style={{ position: 'relative', display: 'block' }}>
-            <Search size={17} aria-hidden style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--texto-3)' }} />
-            <input
-              className="input"
-              style={{ paddingLeft: '2.4rem' }}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Buscar por nombre, ciudad o dirección…"
-              aria-label="Buscar complejos"
-            />
-          </span>
-        </label>
-        <div className="fila" role="group" aria-label="Filtrar por disciplina">
-          <button
-            type="button"
-            className={`opcion-chip${deporteId === null ? ' activo' : ''}`}
-            onClick={() => setDeporteId(null)}
-          >
-            Todos
-          </button>
-          {deportes.map((d) => (
-            <button
-              key={d.id}
-              type="button"
-              className={`opcion-chip${deporteId === d.id ? ' activo' : ''}`}
-              onClick={() => setDeporteId(deporteId === d.id ? null : d.id)}
-            >
-              {d.nombre}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Buscador */}
+      <label className="label" style={{ margin: '0 0 1rem' }}>
+        <span className="sr-only">Buscar complejos</span>
+        <span style={{ position: 'relative', display: 'block' }}>
+          <Search size={17} aria-hidden style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--texto-3)' }} />
+          <input
+            className="input"
+            style={{ paddingLeft: '2.4rem' }}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar por nombre, ciudad o dirección…"
+            aria-label="Buscar complejos"
+          />
+        </span>
+      </label>
 
       {/* Resultados */}
       {error && <div className="alerta-error" role="alert">{error}</div>}
 
       {cargando ? (
-        <p className="texto-sec">Cargando complejos…</p>
+        <div className="complejos-grid" aria-busy="true">
+          {[0, 1, 2].map((i) => <div key={i} className="skeleton" style={{ height: '11rem' }} />)}
+        </div>
       ) : complejos.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '2.5rem 1rem' }}>
-          <Building2 size={40} strokeWidth={1.5} style={{ margin: '0 auto 0.6rem', color: 'var(--texto-3)' }} />
-          <h2 className="titulo" style={{ marginBottom: '0.35rem' }}>No encontramos complejos</h2>
-          <p className="subtitulo" style={{ margin: 0 }}>
-            {q || deporteId
-              ? 'Probá con otra búsqueda o quitá el filtro de disciplina.'
+        <div className="empty-state">
+          <Building2 size={36} strokeWidth={1.6} style={{ color: 'var(--texto-3)' }} />
+          <h2 className="titulo" style={{ margin: 0 }}>Nada por acá</h2>
+          <p className="texto-sec" style={{ margin: 0 }}>
+            {q
+              ? `Ningún complejo coincide con “${q}”.`
               : 'Por ahora no hay complejos disponibles. Volvé pronto.'}
           </p>
-          {(q || deporteId) && (
-            <button
-              type="button"
-              className="boton boton-outline"
-              style={{ marginTop: '0.85rem' }}
-              onClick={() => { setQ(''); setDeporteId(null); }}
-            >
-              Quitar filtros
+          {q && (
+            <button type="button" className="boton boton-outline" onClick={() => setQ('')} style={{ marginTop: '0.3rem' }}>
+              Quitar búsqueda
             </button>
           )}
         </div>
@@ -151,35 +104,20 @@ export function ComplejosPage() {
         <div className="complejos-grid">
           {complejos.map((c) => (
             <Link key={c.id} to={`/complejos/${c.slug}`} className="complejo-card" aria-label={`Ver complejo ${c.nombre}`}>
-              <div className="fila-entre" style={{ gap: '0.5rem' }}>
+              <div className="fila-entre" style={{ gap: '0.4rem' }}>
                 <span className={`badge ${c.tipo === 'fraccionado' ? 'badge-info' : 'badge-neutro'}`}>
-                  {c.tipo === 'fraccionado' ? 'Fraccionado' : 'Complejo deportivo'}
+                  {c.tipo === 'fraccionado' ? 'Fraccionado' : 'Complejo'}
                 </span>
-                {c.ofrece_torneos && (
-                  <span className="badge badge-exito"><Trophy size={12} /> Torneos</span>
-                )}
+                {c.ofrece_torneos && <span className="badge badge-exito"><Trophy size={11} /> Torneos</span>}
               </div>
 
               <h2 className="complejo-card-nombre">{c.nombre}</h2>
 
-              <div className="stack" style={{ gap: '0.25rem' }}>
-                {c.direccion && (
-                  <span className="complejo-card-meta"><MapPin size={13} /> {c.direccion}{c.ciudad ? ` · ${c.ciudad}` : ''}</span>
-                )}
-                {!c.direccion && c.ciudad && (
-                  <span className="complejo-card-meta"><MapPin size={13} /> {c.ciudad}</span>
-                )}
-              </div>
+              <p className="complejo-card-meta" style={{ margin: 0 }}>
+                <MapPin size={13} aria-hidden />
+                {c.direccion ?? 'Sin dirección publicada'}{c.ciudad ? ` · ${c.ciudad}` : ''}
+              </p>
 
-              {/* Deportes disponibles */}
-              <div className="amenity-row">
-                {c.deportes.slice(0, 4).map((d) => (
-                  <span key={d.id} className="amenity-chip">{d.nombre}</span>
-                ))}
-                {c.deportes.length > 4 && <span className="amenity-chip">+{c.deportes.length - 4}</span>}
-              </div>
-
-              {/* Amenities */}
               <div className="amenity-row">
                 {c.gym && <span className="amenity-chip destacada"><Dumbbell size={13} /> Gym</span>}
                 {c.pileta && <span className="amenity-chip destacada"><Waves size={13} /> Pileta</span>}
@@ -189,20 +127,10 @@ export function ComplejosPage() {
                 ))}
               </div>
 
-              <div className="complejo-foot">
-                <div className="complejo-precio">
-                  {c.precio_desde != null ? (
-                    <>
-                      <small>desde</small>
-                      <strong>${c.precio_desde.toLocaleString('es-AR')}</strong>
-                      <small> /h</small>
-                    </>
-                  ) : (
-                    <small>{c.canchas} canchas</small>
-                  )}
-                </div>
-                <span className="boton boton-primario" style={{ fontSize: '0.82rem', padding: '0.4rem 0.85rem' }}>
-                  Ver complejo
+              <div className="complejo-card-foot">
+                <span className="texto-debil" style={{ fontSize: '0.8rem' }}>{c.canchas} cancha{c.canchas === 1 ? '' : 's'}</span>
+                <span className="fila" style={{ gap: '0.3rem', color: 'var(--primario-2)', fontWeight: 700, fontSize: '0.83rem' }}>
+                  Ver complejo <ArrowRight size={14} aria-hidden />
                 </span>
               </div>
             </Link>
