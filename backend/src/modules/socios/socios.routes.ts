@@ -6,12 +6,32 @@ import {
   darDeAltaSocio,
   bajaSocio,
   buscarSocio,
+  asociarme,
+  desasociarme,
 } from './socios.service.js';
 
 export const sociosRouter = Router();
 
 const h = (fn: (req: AuthedRequest, res: Response) => Promise<void>) =>
   (req: Request, res: Response, next: NextFunction) => fn(req as AuthedRequest, res).catch(next);
+
+// POST /socios/asociarme -> el jugador SE suma como socio (self-service, si el complejo lo ofrece)
+sociosRouter.post(
+  '/asociarme',
+  h(async (req, res) => {
+    complejoIdRequerido(req);
+    res.json(await asociarme(req.userId!));
+  }),
+);
+
+// DELETE /socios/asociarme -> el jugador se da de baja como socio
+sociosRouter.delete(
+  '/asociarme',
+  h(async (req, res) => {
+    complejoIdRequerido(req);
+    res.json(await desasociarme(req.userId!));
+  }),
+);
 
 // GET /socios -> directorio de socios CON ACTIVIDAD en tu complejo (staff)
 sociosRouter.get(

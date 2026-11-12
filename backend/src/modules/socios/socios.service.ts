@@ -58,6 +58,26 @@ export async function listarSocios(complejoId: number) {
   }));
 }
 
+/** El propio usuario se asocia como socio (self-service, ofrece_socios activo en el complejo) */
+export async function asociarme(usuarioId: string) {
+  const { error } = await supabaseAdmin
+    .from('usuarios')
+    .update({ es_socio: true })
+    .eq('id', usuarioId);
+  if (error) throw new HttpError(500, error.message);
+  return { es_socio: true };
+}
+
+/** El propio usuario se desasocia (baja voluntaria) */
+export async function desasociarme(usuarioId: string) {
+  const { error } = await supabaseAdmin
+    .from('usuarios')
+    .update({ es_socio: false })
+    .eq('id', usuarioId);
+  if (error) throw new HttpError(500, error.message);
+  return { es_socio: false };
+}
+
 export async function buscarSocio(telefono: string) {
   const { data, error } = await supabaseAdmin
     .from('usuarios')
