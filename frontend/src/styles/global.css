@@ -3658,3 +3658,13 @@ body {
   border-color: var(--primario);
   box-shadow: 0 0 0 2px var(--primario-soft);
 }
+
+/* Lista de canchas: 4 visibles, scroll interno si hay más; altura fija para no saltar al elegir */
+.canchas-lista {
+  height: 15.5rem;
+  min-height: 15.5rem;
+  max-height: 15.5rem;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding-right: 0.2rem;
+}

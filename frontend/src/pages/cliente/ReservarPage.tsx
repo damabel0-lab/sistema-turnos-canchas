@@ -464,7 +464,7 @@ export function ReservarPage() {
                 ) : canchasDelDeporte.length === 0 ? (
                   <p className="texto-sec">No hay canchas activas para esta disciplina.</p>
                 ) : (
-                  <div className="stack" style={{ gap: '0.5rem' }}>
+                  <div className="stack canchas-lista" style={{ gap: '0.5rem' }}>
                     {canchasDelDeporte.map((c) => (
                       <button
                         key={c.id}
