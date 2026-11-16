@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useComplejo } from '../../hooks/useComplejo';
 import { api } from '../../lib/api';
@@ -96,6 +96,26 @@ export function HomePage() {
    PÚBLICO — landing compacta: cómo funciona + CTAs
    ============================================================ */
 function LandingPublica() {
+  const navigate = useNavigate();
+  const [deportes, setDeportes] = useState<Array<{ id: number; nombre: string }>>([]);
+  const [deporteId, setDeporteId] = useState('');
+  const [ciudad, setCiudad] = useState('');
+
+  useEffect(() => {
+    api<{ id: number; nombre: string }[]>('/deportes')
+      .then((d) => setDeportes(d ?? []))
+      .catch(() => setDeportes([]));
+  }, []);
+
+  const buscar = () => {
+    const params = new URLSearchParams();
+    const q = ciudad.trim();
+    if (q) params.set('q', q);
+    if (deporteId) params.set('deporteId', deporteId);
+    const destino = params.size > 0 ? `/complejos?${params.toString()}` : '/complejos';
+    navigate('/login', { state: { desde: destino } });
+  };
+
   const pasos = [
     { n: 1, titulo: 'Elegí tu complejo', texto: 'Canchas, gym, pileta y torneos de la zona en un solo lugar.' },
     { n: 2, titulo: 'Elegí deporte y horario', texto: 'Turno de 1 h, garantizado en el complejo que prefieras.' },
@@ -104,44 +124,57 @@ function LandingPublica() {
 
   return (
     <main className="pantalla" style={{ paddingTop: '1rem' }}>
-      <header className="hero" style={{ gridTemplateColumns: '1fr', textAlign: 'center', justifyItems: 'center', paddingBottom: '1.25rem' }}>
-        <div className="hero-texto" style={{ maxWidth: '44rem' }}>
+      <header className="hero" style={{ gridTemplateColumns: '1fr', textAlign: 'center', justifyItems: 'center', paddingBottom: '0.5rem' }}>
+        <div className="hero-texto" style={{ maxWidth: '56rem', width: '100%' }}>
           <span className="hero-badge">
-            <Goal size={14} /> La plataforma de complejos
+            <Goal size={14} /> Bienvenido a PlayControl
           </span>
           <h1 className="hero-titulo">
-            Todos los complejos,<br />
-            <span className="hero-gradiente">una sola plataforma.</span>
+            Reservá tu cancha,<br />
+            <span className="hero-gradiente">al instante.</span>
           </h1>
           <p className="hero-sub" style={{ marginLeft: 'auto', marginRight: 'auto' }}>
-            Jugadores reservan gratis en cualquier complejo adherido; los dueños gestionan turnos, caja, abonos y torneos desde su panel.
+            Encontrá complejos disponibles en tu zona, elegí horario y confirmá tu turno gratis en segundos.
           </p>
-          <div className="fila" style={{ justifyContent: 'center', gap: '0.75rem' }}>
-            <Link to="/login" state={{ desde: '/complejos' }} className="boton boton-primario" style={{ padding: '0.75rem 1.5rem', fontSize: '0.95rem' }}>
-              Crear cuenta gratis <ArrowRight size={17} />
-            </Link>
-            <Link to="/login" state={{ desde: '/complejos' }} className="boton boton-outline" style={{ padding: '0.75rem 1.5rem', fontSize: '0.95rem' }}>
-              Explorar complejos
-            </Link>
+
+          {/* Buscador estilo e-commerce */}
+          <form className="hero-buscador" onSubmit={(e) => { e.preventDefault(); buscar(); }} aria-label="Buscar complejos">
+            <label className="hero-buscador-campo hero-buscador-campo--deporte">
+              <span className="hero-buscador-label">Deporte</span>
+              <select value={deporteId} onChange={(e) => setDeporteId(e.target.value)} aria-label="Elegí un deporte">
+                <option value="">Todos los deportes</option>
+                {deportes.map((d) => (
+                  <option key={d.id} value={d.id}>{d.nombre}</option>
+                ))}
+              </select>
+            </label>
+            <label className="hero-buscador-campo hero-buscador-campo--ciudad">
+              <span className="hero-buscador-label">Ciudad / Zona</span>
+              <input
+                value={ciudad}
+                onChange={(e) => setCiudad(e.target.value)}
+                placeholder="La Plata, Berisso, Ensenada…"
+                aria-label="Buscar por ciudad o zona"
+              />
+            </label>
+            <button type="submit" className="boton boton-primario" style={{ alignSelf: 'stretch', padding: '0.65rem 1.1rem', fontSize: '0.95rem' }}>
+              Explorar complejos <ArrowRight size={17} />
+            </button>
+          </form>
+
+          {/* Indicadores de confianza para el jugador */}
+          <div className="hero-confianza">
+            <span><CheckCircle2 size={14} /> Reserva 100% gratuita</span>
+            <span><CheckCircle2 size={14} /> Confirmación inmediata</span>
+            <span><CheckCircle2 size={14} /> Sin llamadas ni esperas</span>
           </div>
-          <div className="hero-puntos" style={{ justifyContent: 'center' }}>
-            <span><CheckCircle2 size={14} /> Gratis para jugadores</span>
-            <span><CheckCircle2 size={14} /> Turnos de 1 h</span>
-            <span><CheckCircle2 size={14} /> 14 días de prueba para dueños</span>
-          </div>
-          <p className="texto-sec" style={{ marginTop: '0.75rem', fontSize: '0.9rem' }}>
-            ¿Sos dueño de un complejo?{' '}
-            <Link to="/login" state={{ desde: '/registra-tu-complejo' }} style={{ color: 'var(--primario-2)', fontWeight: 700 }}>
-              Registrate y publicalo en PlayControl →
-            </Link>
-          </p>
         </div>
       </header>
 
       {/* Cómo funciona */}
-      <section>
+      <section style={{ maxWidth: '72rem', margin: '0 auto' }}>
         <h2 className="titulo" style={{ fontSize: '1.1rem', margin: '0.25rem 0 0.85rem' }}>Cómo funciona</h2>
-        <div className="metricas" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))' }}>
+        <div className="metricas" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '1.5rem' }}>
           {pasos.map((p) => {
             return (
               <Link key={p.n} to="/reservar" className="acceso-rapido" style={{ textDecoration: 'none' }}>
@@ -155,6 +188,18 @@ function LandingPublica() {
             );
           })}
         </div>
+      </section>
+
+      {/* Banner sutil para dueños */}
+      <section className="dueno-cta-banner">
+        <div className="dueno-cta-banner-texto">
+          <span className="dueno-cta-banner-badge">Para dueños</span>
+          <h3>¿Administrás canchas o un complejo deportivo?</h3>
+          <p>Digitalizá tus reservas, controlá la caja y gestioná torneos con 14 días de prueba gratis.</p>
+        </div>
+        <Link to="/login" state={{ desde: '/registra-tu-complejo' }} className="boton boton-outline" style={{ whiteSpace: 'nowrap', padding: '0.65rem 1.1rem' }}>
+          Registrar mi complejo →
+        </Link>
       </section>
     </main>
   );

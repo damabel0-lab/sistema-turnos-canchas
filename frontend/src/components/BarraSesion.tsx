@@ -44,6 +44,9 @@ export function BarraSesion() {
         {brand}
         <Link to="/complejos">Complejos</Link>
         <div className="nav-derecha">
+          <Link to="/registra-tu-complejo" state={{ desde: '/registra-tu-complejo' }} className="nav-dueno-link">
+            ¿Tenés un complejo?
+          </Link>
           <ThemeToggle />
           <Link to="/login" className="boton boton-primario" style={{ fontSize: '0.82rem', padding: '0.45rem 1rem' }}>
             Iniciar sesión
