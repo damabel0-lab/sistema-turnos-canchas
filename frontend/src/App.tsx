@@ -19,6 +19,7 @@ import { RegistrarComplejoPage } from './pages/publico/RegistrarComplejoPage';
 
 // Auth
 import { LoginPage } from './pages/auth/LoginPage';
+import { RecuperarClavePage } from './pages/auth/RecuperarClavePage';
 
 // Páginas admin (staff del complejo activo / dueño / plataforma)
 import { AdminLayout } from './components/AdminLayout';
@@ -105,6 +106,7 @@ export function App() {
           }
         />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/auth/recuperar" element={<RecuperarClavePage />} />
         <Route
           path="/reservar"
           element={

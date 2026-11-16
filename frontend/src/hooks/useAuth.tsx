@@ -25,6 +25,8 @@ interface AuthContextValue {
     apellido: string;
     telefono?: string;
   }) => Promise<void>;
+  olvidéContraseña: (email: string) => Promise<void>;
+  resetPasswordFromHash: (nuevo: string) => Promise<void>;
   salir: () => Promise<void>;
 }
 
@@ -99,8 +101,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   }
 
+  /** Email con link de recuperación (Supabase manda el mail si está configurado SMTP). */
+  async function olvidéContraseña(email: string) {
+    // Redirect a la URL del frontend
+    const redirectTo = `${window.location.origin}/auth/recuperar`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+    if (error) throw new Error(error.message === 'Invalid email' ? 'Email no encontrado' : error.message);
+  }
+
+  /** Cambia la contraseña actual leyendo el hash de sesión de recovery. */
+  async function resetPasswordFromHash(nuevo: string) {
+    const { error } = await supabase.auth.updateUser({ password: nuevo });
+    if (error) throw new Error(error.message);
+  }
+
   return (
-    <AuthContext.Provider value={{ session, perfil, cargando, entrar, registrarse, salir }}>
+    <AuthContext.Provider value={{ session, perfil, cargando, entrar, registrarse, olvidéContraseña, resetPasswordFromHash, salir }}>
       {children}
     </AuthContext.Provider>
   );
