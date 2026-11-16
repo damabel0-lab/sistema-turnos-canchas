@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { RutaProtegida } from './components/RutaProtegida';
 import { BarraSesion } from './components/BarraSesion';
@@ -36,6 +36,14 @@ import { ReportesPage } from './pages/admin/ReportesPage';
 import { TorneosPage } from './pages/admin/TorneosPage';
 import { PlataformaPage } from './pages/admin/PlataformaPage';
 
+function SoloComplejoEspecifico({ children }: { children: ReactNode }) {
+  const { perfil } = useAuth();
+  if (perfil?.rol === 'super_admin') {
+    return <Navigate to="/admin/plataforma" replace />;
+  }
+  return <>{children}</>;
+}
+
 export function App() {
   const { perfil } = useAuth();
   const { esStaffActivo } = useComplejo();
@@ -43,6 +51,9 @@ export function App() {
 
   useEffect(() => {
     if (!perfil) return;
+    // El super_admin plataforma no es dueño ni staff de ningún complejo;
+    // tiene su propia vista (/admin/plataforma) y no debe pasar por el wizard.
+    if (perfil.rol === 'super_admin') return;
     if (!esStaffActivo) return;
 
     // No redirigir si ya estamos en el wizard o en login
@@ -107,12 +118,15 @@ export function App() {
         <Route path="/torneos" element={<TorneosClientePage />} />
         <Route path="/notificaciones" element={<NotificacionesPage />} />
 
-        {/* Asistente de configuración inicial (a pantalla completa, sin sidebar) */}
+        {/* Asistente de configuración inicial (a pantalla completa, sin sidebar).
+            Solo staff de un complejo: el super_admin plataforma se queda en /admin/plataforma. */}
         <Route
           path="/admin/configurar"
           element={
             <RutaProtegida requireStaff>
-              <ConfigurarPage />
+              <SoloComplejoEspecifico>
+                <ConfigurarPage />
+              </SoloComplejoEspecifico>
             </RutaProtegida>
           }
         />
