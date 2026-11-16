@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { Input } from '../../components/ui';
 import {
@@ -16,11 +16,24 @@ export function LoginPage() {
   // Adonde quería ir el usuario antes de loguearse (ej: /reservar). Solo rutas internas.
   const estadoDesde = (location.state as { desde?: string } | null)?.desde;
   const destino = estadoDesde && estadoDesde.startsWith('/') ? estadoDesde : '/';
-  // Si la URL es /login?modo=dueño, abre en registro y preselecciona rol dueño
-  const params = new URLSearchParams(location.search);
-  const modoInicial = (params.get('modo') as Modo | null) ?? 'entrar';
-  const [modo, setModo] = useState<Modo>(modoInicial);
-  const [tipoRegistro, setTipoRegistro] = useState<'jugador' | 'dueno'>(params.get('tipo') === 'dueno' ? 'dueno' : 'jugador');
+  // Estado compartido via query string: ?modo=entrar|registrarse|olvidar&tipo=jugador|dueno
+  const [searchParams, setSearchParams] = useSearchParams();
+  const modo = ((searchParams.get('modo') as Modo | null) ?? 'entrar');
+  const tipoRegistro = (searchParams.get('tipo') === 'dueno' ? 'dueno' : 'jugador');
+
+  const setModo = (m: Modo, tipo?: 'jugador' | 'dueno') => {
+    const params = new URLSearchParams(searchParams);
+    params.set('modo', m);
+    if (m === 'registrarse') params.set('tipo', tipo ?? tipoRegistro);
+    else params.delete('tipo');
+    setSearchParams(params, { replace: true });
+  };
+  const setTipoRegistro = (t: 'jugador' | 'dueno') => {
+    const params = new URLSearchParams(searchParams);
+    params.set('modo', 'registrarse');
+    params.set('tipo', t);
+    setSearchParams(params, { replace: true });
+  };
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [olvidarPaso, setOlvidarPaso] = useState<1 | 2 | 3>(1);
@@ -93,7 +106,7 @@ export function LoginPage() {
 
   return (
     <main className="auth-pantalla">
-      {/* Panel lateral de marca (en mobile se oculta) */}
+      {/* Panel lateral de marca, copy según rol: jugador (default) | complejo */}
       <aside className="auth-aside" aria-hidden>
         <div className="auth-aside-inner">
           <div className="auth-brand">
@@ -102,19 +115,38 @@ export function LoginPage() {
             </span>
             <span className="auth-brand-nombre">PlayControl</span>
           </div>
-          <h2 className="auth-aside-titulo">
-            El complejo,
-            <br />
-            bajo control.
-          </h2>
-          <p className="auth-aside-sub">
-            Reservas, caja, socios, abonos y torneos — todo el club en un solo lugar.
-          </p>
-          <ul className="auth-bullets">
-            <li><CalendarCheck2 size={17} /> Grilla en tiempo real, turnos fijos de 1 h</li>
-            <li><Wallet size={17} /> Caja, seña y recaudación del día</li>
-            <li><Trophy size={17} /> Torneos y abonos para socios</li>
-          </ul>
+          {modo === 'registrarse' && tipoRegistro === 'dueno' ? (
+            <>
+              <h2 className="auth-aside-titulo">
+                El complejo,
+                <br />
+                bajo control.
+              </h2>
+              <p className="auth-aside-sub">
+                Reservas, caja, socios, abonos y torneos — todo el club en un solo lugar.
+              </p>
+              <ul className="auth-bullets">
+                <li><CalendarCheck2 size={17} /> Grilla en tiempo real, turnos fijos de 1 h</li>
+                <li><Wallet size={17} /> Caja, seña y recaudación del día</li>
+                <li><Trophy size={17} /> Torneos y abonos para socios</li>
+              </ul>
+            </>
+          ) : (
+            <>
+              <h2 className="auth-aside-titulo">
+                Tu próximo partido<br />
+                empieza acá.
+              </h2>
+              <p className="auth-aside-sub">
+                Encontrá canchas disponibles en tu zona, reservá en segundos y organizá tus partidos sin vueltas.
+              </p>
+              <ul className="auth-bullets">
+                <li><CalendarCheck2 size={17} /> Reserva gratuita y confirmación al instante</li>
+                <li><Wallet size={17} /> Disponibilidad real por deporte y horario</li>
+                <li><Trophy size={17} /> Gestiona tus turnos y favoritos desde un solo lugar</li>
+              </ul>
+            </>
+          )}
         </div>
       </aside>
 

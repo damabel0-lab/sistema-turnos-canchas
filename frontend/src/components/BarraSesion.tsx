@@ -11,7 +11,7 @@ import { api } from '../lib/api';
 export function BarraSesion() {
   const { session, perfil, salir } = useAuth();
   const { esStaffActivo } = useComplejo();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const noLeidas = useNoLeidas();
   const [ofreceTorneos, setOfreceTorneos] = useState(true);
 
@@ -26,6 +26,14 @@ export function BarraSesion() {
 
   // Las pantallas de administración usan el AdminLayout (sidebar)
   if (pathname.startsWith('/admin')) return null;
+
+  // Detectar si estamos en flujo dueño (/login?modo=registrarse&tipo=dueno) o jugador
+  const params = new URLSearchParams(search);
+  const flowDueno = params.get('tipo') === 'dueno';
+  const destinoFlow = flowDueno
+    ? '/login?modo=registrarse&tipo=jugador'
+    : '/login?modo=registrarse&tipo=dueno';
+  const labelFlow = flowDueno ? '¿Sos jugador?' : '¿Tenés un complejo?';
 
   const esStaff = perfil && (perfil.rol === 'super_admin' || esStaffActivo);
 
@@ -44,8 +52,8 @@ export function BarraSesion() {
         {brand}
         <Link to="/complejos">Complejos</Link>
         <div className="nav-derecha">
-          <Link to="/registra-tu-complejo" state={{ desde: '/registra-tu-complejo' }} className="nav-dueno-link">
-            ¿Tenés un complejo?
+          <Link to={destinoFlow} className="nav-dueno-link">
+            {labelFlow}
           </Link>
           <ThemeToggle />
           <Link to="/login" className="boton boton-primario" style={{ fontSize: '0.82rem', padding: '0.45rem 1rem' }}>
