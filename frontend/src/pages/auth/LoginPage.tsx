@@ -4,13 +4,13 @@ import { useAuth } from '../../hooks/useAuth';
 import { Input } from '../../components/ui';
 import {
   Goal, CalendarCheck2, Wallet, Trophy, Eye, EyeOff,
-  Users, ShieldCheck, Mail, CheckCircle2,
+  Users, ShieldCheck, Mail,
 } from 'lucide-react';
 
 type Modo = 'entrar' | 'registrarse' | 'olvidar';
 
 export function LoginPage() {
-  const { entrar, registrarse, olvidéContraseña } = useAuth();
+  const { entrar, registrarse, olvidéContraseña, resetPasswordFromHash } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   // Adonde quería ir el usuario antes de loguearse (ej: /reservar). Solo rutas internas.
@@ -23,7 +23,9 @@ export function LoginPage() {
   const [tipoRegistro, setTipoRegistro] = useState<'jugador' | 'dueno'>(params.get('tipo') === 'dueno' ? 'dueno' : 'jugador');
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [enviadoRecovery, setEnviadoRecovery] = useState(false);
+  const [olvidarPaso, setOlvidarPaso] = useState<1 | 2 | 3>(1);
+  const [olvidarEmail, setOlvidarEmail] = useState('');
+  const [olvidarCodigo, setOlvidarCodigo] = useState('');
   const [verPassword, setVerPassword] = useState(false);
   const vieneDeReservar = destino === '/reservar';
 
@@ -52,10 +54,6 @@ export function LoginPage() {
           navigate('/registra-tu-complejo', { replace: true });
           return;
         }
-      } else if (modo === 'olvidar') {
-        await olvidéContraseña(email);
-        setEnviadoRecovery(true);
-        return;
       }
       navigate(destino, { replace: true });
     } catch (err) {
@@ -78,7 +76,19 @@ export function LoginPage() {
     registrarse: tipoRegistro === 'dueno'
       ? 'Publicá tu complejo y administrás turnos, caja y torneos desde tu panel.'
       : 'Registrate gratis y reservá tu primer turno en minutos.',
-    olvidar: 'Te mandamos un link al email con el que te registraste.',
+    olvidar: 'Te enviamos un código de 6 dígitos a tu email para restablecer tu contraseña.',
+  };
+
+  const pasoOlvidarTitulos: Record<1 | 2 | 3, string> = {
+    1: '¿Olvidaste tu contraseña?',
+    2: 'Revisá tu email',
+    3: 'Elegí tu nueva contraseña',
+  };
+
+  const pasoOlvidarSubs: Record<1 | 2 | 3, string> = {
+    1: 'Ingresá tu email y te mandamos un código de 6 dígitos.',
+    2: `Escribimos un código de 6 dígitos a ${olvidarEmail || 'tu email'}. Ingresalo abajo para continuar.`,
+    3: 'La contraseña debe tener al menos 6 caracteres.',
   };
 
   return (
@@ -112,43 +122,126 @@ export function LoginPage() {
       <section className="auth-form-panel">
         <div className="auth-form-card">
           <h1 className="titulo" style={{ fontSize: '1.5rem', marginBottom: '0.1rem' }}>
-            {titulos[modo]}
+            {modo === 'olvidar' ? pasoOlvidarTitulos[olvidarPaso] : titulos[modo]}
           </h1>
           <p className="subtitulo" style={{ marginBottom: '1.25rem' }}>
-            {subs[modo]}
+            {modo === 'olvidar' ? pasoOlvidarSubs[olvidarPaso] : subs[modo]}
           </p>
 
-          {/* ===== Modo olvidar ===== */}
-          {modo === 'olvidar' && enviadoRecovery ? (
-            <div className="card" style={{ textAlign: 'center', padding: '1.3rem 1rem' }}>
-              <CheckCircle2 size={36} style={{ color: 'var(--exito)', margin: '0 auto 0.5rem' }} />
-              <h3 className="titulo" style={{ margin: '0 0 0.3rem' }}>Revisá tu email</h3>
-              <p className="texto-sec" style={{ margin: '0 0 0.5rem' }}>
-                Si el email existe en PlayControl, vas a recibir un link para restablecer tu contraseña en unos minutos.
-              </p>
-              <button type="button" className="boton boton-ghost" onClick={() => { setModo('entrar'); setEnviadoRecovery(false); }}>
-                Volver a entrar
-              </button>
-            </div>
-          ) : modo === 'olvidar' ? (
-            <form onSubmit={enviar} className="stack">
-              <label className="label">Email
-                <Input name="email" type="email" required autoComplete="email" placeholder="vos@email.com" autoFocus />
-              </label>
-
-              {error && <div className="alerta-error" role="alert" style={{ marginBottom: 0 }}>{error}</div>}
-
-              <button type="submit" className="boton boton-primario boton-block" disabled={cargando}>
-                {cargando ? 'Enviando…' : <><Mail size={16} /> Enviar link de recuperación</>}
-              </button>
-
-              <button type="button" className="boton boton-ghost" onClick={() => { setModo('entrar'); setError(null); }}>
-                ← Volver a entrar
-              </button>
-            </form>
-          ) : (
+          {/* ===== Modo olvidar (mock visual — no hay SMTP, no se envía nada) ===== */}
+          {modo === 'olvidar' ? (
             <>
-              {/* ===== Selector de rol al registrarse ===== */}
+              {/* Indicador de progreso 3 pasos */}
+              <ol className="auth-pasos" aria-hidden>
+                {[1, 2, 3].map((n) => (
+                  <li
+                    key={n}
+                    className={`auth-paso${olvidarPaso === n ? ' activo' : ''}${olvidarPaso > n ? ' hecho' : ''}`}
+                  >
+                    <span className="auth-paso-num">{olvidarPaso > n ? '✓' : n}</span>
+                    <span className="auth-paso-label">{n === 1 ? 'Email' : n === 2 ? 'Código' : 'Nueva clave'}</span>
+                  </li>
+                ))}
+              </ol>
+
+              {/* Paso 1 — email */}
+              {olvidarPaso === 1 && (
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!olvidarEmail.trim()) { setError('Ingresá tu email.'); return; }
+                  setCargando(true);
+                  void olvidéContraseña(olvidarEmail)
+                    .then(() => { setOlvidarPaso(2); setError(null); })
+                    .catch(() => setError('No se pudo procesar el pedido.'))
+                    .finally(() => setCargando(false));
+                }} className="stack">
+                  <label className="label">Email
+                    <Input name="email" type="email" required autoComplete="email" placeholder="vos@email.com" value={olvidarEmail} onChange={(e) => setOlvidarEmail(e.target.value)} autoFocus />
+                  </label>
+
+                  {error && <div className="alerta-error" role="alert" style={{ marginBottom: 0 }}>{error}</div>}
+
+                  <button type="submit" className="boton boton-primario boton-block" disabled={cargando}>
+                    {cargando ? 'Enviando código…' : <><Mail size={16} /> Enviarme el código</>}
+                  </button>
+
+                  <button type="button" className="boton boton-ghost" onClick={() => { setModo('entrar'); setError(null); setOlvidarPaso(1); }}>
+                    ← Volver a entrar
+                  </button>
+                </form>
+              )}
+
+              {/* Paso 2 — código de 6 dígitos */}
+              {olvidarPaso === 2 && (
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  if (olvidarCodigo.length !== 6) { setError('Ingresá el código de 6 dígitos.'); return; }
+                  setCargando(true);
+                  window.setTimeout(() => { setOlvidarPaso(3); setError(null); setCargando(false); }, 450);
+                }} className="stack">
+                  <label className="label">Código de 6 dígitos
+                    <Input
+                      name="codigo"
+                      inputMode="numeric"
+                      maxLength={6}
+                      required
+                      autoComplete="one-time-code"
+                      placeholder="123 456"
+                      value={olvidarCodigo}
+                      onChange={(e) => setOlvidarCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      style={{ textAlign: 'center', letterSpacing: '0.4em', fontSize: '1.35rem', fontWeight: 800 }}
+                      autoFocus
+                    />
+                  </label>
+
+                  {error && <div className="alerta-error" role="alert" style={{ marginBottom: 0 }}>{error}</div>}
+
+                  <button type="submit" className="boton boton-primario boton-block" disabled={cargando}>
+                    {cargando ? 'Verificando…' : 'Verificar código'}
+                  </button>
+
+                  <button type="button" className="boton boton-ghost" onClick={() => { setOlvidarPaso(1); setError(null); }}>
+                    ← Volver
+                  </button>
+                </form>
+              )}
+
+              {/* Paso 3 — nueva contraseña */}
+              {olvidarPaso === 3 && (
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const form = new FormData(e.currentTarget);
+                  const pass = String(form.get('password') ?? '');
+                  const confirmacion = String(form.get('confirmar') ?? '');
+                  if (pass.length < 6) { setError('La clave debe tener al menos 6 caracteres.'); return; }
+                  if (pass !== confirmacion) { setError('Las claves no coinciden.'); return; }
+                  setCargando(true);
+                  void resetPasswordFromHash(pass)
+                    .then(() => { setOlvidarPaso(1); setOlvidarEmail(''); setOlvidarCodigo(''); setModo('entrar'); setError(null); })
+                    .catch(() => setError('No se pudo guardar la nueva contraseña.'))
+                    .finally(() => setCargando(false));
+                }} className="stack">
+                  <label className="label">Nueva contraseña
+                    <Input name="password" type="password" required minLength={6} autoComplete="new-password" placeholder="Mínimo 6 caracteres" autoFocus />
+                  </label>
+                  <label className="label">Confirmar contraseña
+                    <Input name="confirmar" type="password" required minLength={6} autoComplete="new-password" placeholder="Repetila" />
+                  </label>
+
+                  {error && <div className="alerta-error" role="alert" style={{ marginBottom: 0 }}>{error}</div>}
+
+                  <button type="submit" className="boton boton-primario boton-block" disabled={cargando}>
+                    {cargando ? 'Guardando…' : 'Restablecer contraseña'}
+                  </button>
+
+                  <button type="button" className="boton boton-ghost" onClick={() => { setOlvidarPaso(2); setError(null); }}>
+                    ← Volver
+                  </button>
+                </form>
+              )}
+            </>
+          ) : (
+            <>              {/* ===== Selector de rol al registrarse ===== */}
               {modo === 'registrarse' && (
                 <div className="stack" style={{ gap: '0.45rem', marginBottom: '0.85rem' }}>
                   <span className="label" style={{ margin: 0 }}>¿Cómo vas a usar PlayControl?</span>

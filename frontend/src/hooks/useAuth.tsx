@@ -101,18 +101,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   }
 
-  /** Email con link de recuperación (Supabase manda el mail si está configurado SMTP). */
-  async function olvidéContraseña(email: string) {
-    // Redirect a la URL del frontend
-    const redirectTo = `${window.location.origin}/auth/recuperar`;
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
-    if (error) throw new Error(error.message === 'Invalid email' ? 'Email no encontrado' : error.message);
+  /** Mock visual: simula el envío del código de recuperación (sin SMTP, no llega mail). */
+  async function olvidéContraseña(_email: string) {
+    // Simulacion obvia de red/mail: solo espera un momento y listo
+    await new Promise((r) => window.setTimeout(r, 700));
   }
 
-  /** Cambia la contraseña actual leyendo el hash de sesión de recovery. */
-  async function resetPasswordFromHash(nuevo: string) {
-    const { error } = await supabase.auth.updateUser({ password: nuevo });
-    if (error) throw new Error(error.message);
+  /** Mock visual: simula el cambio efectivo de contraseña (no se persiste nada). */
+  async function resetPasswordFromHash(_nuevo: string) {
+    await new Promise((r) => window.setTimeout(r, 700));
   }
 
   return (
