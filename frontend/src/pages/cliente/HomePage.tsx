@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useComplejo } from '../../hooks/useComplejo';
 import { api } from '../../lib/api';
@@ -96,26 +96,6 @@ export function HomePage() {
    PÚBLICO — landing compacta: cómo funciona + CTAs
    ============================================================ */
 function LandingPublica() {
-  const navigate = useNavigate();
-  const [deportes, setDeportes] = useState<Array<{ id: number; nombre: string }>>([]);
-  const [deporteId, setDeporteId] = useState('');
-  const [ciudad, setCiudad] = useState('');
-
-  useEffect(() => {
-    api<{ id: number; nombre: string }[]>('/deportes')
-      .then((d) => setDeportes(d ?? []))
-      .catch(() => setDeportes([]));
-  }, []);
-
-  const buscar = () => {
-    const params = new URLSearchParams();
-    const q = ciudad.trim();
-    if (q) params.set('q', q);
-    if (deporteId) params.set('deporteId', deporteId);
-    const destino = params.size > 0 ? `/complejos?${params.toString()}` : '/complejos';
-    navigate('/login', { state: { desde: destino } });
-  };
-
   const pasos = [
     { n: 1, titulo: 'Elegí tu complejo', texto: 'Canchas, gym, pileta y torneos de la zona en un solo lugar.' },
     { n: 2, titulo: 'Elegí deporte y horario', texto: 'Turno de 1 h, garantizado en el complejo que prefieras.' },
@@ -137,33 +117,17 @@ function LandingPublica() {
             Encontrá complejos disponibles en tu zona, elegí horario y confirmá tu turno gratis en segundos.
           </p>
 
-          {/* Buscador estilo e-commerce */}
-          <form className="hero-buscador" onSubmit={(e) => { e.preventDefault(); buscar(); }} aria-label="Buscar complejos">
-            <label className="hero-buscador-campo hero-buscador-campo--deporte">
-              <span className="hero-buscador-label">Deporte</span>
-              <select value={deporteId} onChange={(e) => setDeporteId(e.target.value)} aria-label="Elegí un deporte">
-                <option value="">Todos los deportes</option>
-                {deportes.map((d) => (
-                  <option key={d.id} value={d.id}>{d.nombre}</option>
-                ))}
-              </select>
-            </label>
-            <label className="hero-buscador-campo hero-buscador-campo--ciudad">
-              <span className="hero-buscador-label">Ciudad / Zona</span>
-              <input
-                value={ciudad}
-                onChange={(e) => setCiudad(e.target.value)}
-                placeholder="La Plata, Berisso, Ensenada…"
-                aria-label="Buscar por ciudad o zona"
-              />
-            </label>
-            <button type="submit" className="boton boton-primario" style={{ alignSelf: 'stretch', padding: '0.65rem 1.1rem', fontSize: '0.95rem' }}>
-              Explorar complejos <ArrowRight size={17} />
-            </button>
-          </form>
+          {/* CTA principal */}
+          <Link
+            to="/login"
+            state={{ desde: '/complejos' }}
+            className="boton boton-primario"
+            style={{ padding: '1.05rem 2.6rem', fontSize: '1.05rem', marginTop: '1.3rem', gap: '0.55rem' }}
+          >
+            Explorar complejos <ArrowRight size={19} />
+          </Link>
 
-          {/* Indicadores de confianza para el jugador */}
-          <div className="hero-confianza">
+          <div className="hero-confianza" style={{ marginTop: '1.15rem' }}>
             <span><CheckCircle2 size={14} /> Reserva 100% gratuita</span>
             <span><CheckCircle2 size={14} /> Confirmación inmediata</span>
             <span><CheckCircle2 size={14} /> Sin llamadas ni esperas</span>

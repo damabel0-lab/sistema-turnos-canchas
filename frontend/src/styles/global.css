@@ -3695,66 +3695,6 @@ body {
   border-color: color-mix(in srgb, var(--primario) 30%, transparent);
 }
 
-/* ===== HERO — buscador estilo e-commerce ===== */
-.hero-buscador {
-  display: flex;
-  gap: 0.5rem;
-  align-items: stretch;
-  width: 100%;
-  max-width: 52rem;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radio-lg, 16px);
-  padding: 0.5rem;
-  box-shadow: var(--sombra-lg), var(--glow);
-  margin: 1.2rem auto 0.9rem;
-}
-
-@media (max-width: 720px) {
-  .hero-buscador { flex-direction: column; }
-}
-
-.hero-buscador-campo {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  gap: 0.1rem;
-  padding: 0.35rem 0.6rem;
-  border-radius: var(--radio);
-  border: 1px solid transparent;
-  background: var(--bg-surface-2);
-  transition: border-color 0.18s ease, background 0.18s ease;
-}
-.hero-buscador-campo:focus-within {
-  border-color: var(--primario);
-  background: var(--bg-surface);
-}
-.hero-buscador-label {
-  font-size: 0.65rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--texto-3);
-}
-.hero-buscador-campo select,
-.hero-buscador-campo input {
-  border: none;
-  background: transparent;
-  outline: none;
-  color: var(--texto);
-  font-size: 0.95rem;
-  font-family: inherit;
-  width: 100%;
-}
-
-.hero-buscador-campo--ciudad {
-  flex: 1 1 45%;
-  min-width: 0;
-}
-.hero-buscador-campo--deporte {
-  flex: 1 1 55%;
-  min-width: 0;
-}
 
 .hero-confianza {
   display: flex;
