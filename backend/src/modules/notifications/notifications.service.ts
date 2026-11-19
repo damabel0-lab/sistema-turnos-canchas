@@ -226,12 +226,13 @@ export async function notificarStaff(tipo: string, titulo: string, cuerpo: strin
     }
     staffIds = (membresias ?? []).map((m) => m.usuario_id as string);
   } else {
+    // Sin complejoId no podemos saber a qué staff avisar. Como fallback enviamos al super_admin plataforma.
     const { data: staff, error } = await supabaseAdmin
       .from('usuarios')
       .select('id')
-      .in('rol', ['super_admin', 'recepcionista']);
+      .eq('rol', 'super_admin');
     if (error) {
-      console.warn('No se pudo leer staff para notificar:', error.message);
+      console.warn('No se pudo leer super_admin para notificar:', error.message);
       return { ok: false, enviados: 0 };
     }
     staffIds = (staff ?? []).map((s) => s.id as string);

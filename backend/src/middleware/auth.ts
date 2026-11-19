@@ -139,21 +139,17 @@ export function requireSuperAdmin(req: AuthedRequest, res: Response, next: NextF
   next();
 }
 
-/** Dueño del complejo activo (o super_admin de plataforma en contexto de ese complejo).
- *  Para finanzas, precios, configuración y suscripción. */
+/** Dueño estricto del complejo activo. Para finanzas, precios, configuración y suscripción. */
 export function requireOwner(req: AuthedRequest, res: Response, next: NextFunction) {
-  const esOwner = req.rol === 'super_admin' || req.rolComplejo === 'dueno';
-  if (!esOwner || !req.complejoId) {
+  if (req.rolComplejo !== 'dueno' || !req.complejoId) {
     return res.status(403).json({ error: 'Requiere ser dueño del complejo' });
   }
   next();
 }
 
-/** Staff del complejo activo (dueño o recepcionista, o super_admin de plataforma).
- *  Para grilla, reservas, cobros y operación diaria. */
+/** Staff estricto del complejo activo (dueño o recepcionista). Para grilla, reservas, cobros. */
 export function requireStaff(req: AuthedRequest, res: Response, next: NextFunction) {
   const esStaff =
-    req.rol === 'super_admin' ||
     req.rolComplejo === 'dueno' ||
     req.rolComplejo === 'recepcionista';
   if (!esStaff || !req.complejoId) {
