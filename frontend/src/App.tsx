@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { RutaProtegida } from './components/RutaProtegida';
 import { BarraSesion } from './components/BarraSesion';
 import { api } from './lib/api';
@@ -49,6 +49,7 @@ export function App() {
   const { perfil } = useAuth();
   const { esStaffActivo } = useComplejo();
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!perfil) return;
@@ -66,13 +67,13 @@ export function App() {
     api<{ setup_completado: boolean }>('/admin/setup')
       .then((data) => {
         if (!data.setup_completado && !location.pathname.startsWith('/admin/configurar')) {
-          window.location.href = '/admin/configurar';
+          navigate('/admin/configurar', { replace: true });
         }
       })
       .catch(() => {
         // si falla, no bloqueamos al usuario
       });
-  }, [perfil, esStaffActivo, location.pathname]);
+  }, [perfil, esStaffActivo, location.pathname, navigate]);
 
   return (
     <>
