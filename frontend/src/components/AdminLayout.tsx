@@ -13,6 +13,8 @@ import {
   LogOut,
   Bell,
   ShieldCheck,
+  ShieldAlert,
+  CircleCheck,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -231,17 +233,21 @@ export function AdminLayout() {
         </div>
         <div className="admin-contenido-top">
           {vigenteActivo === false && (
-            <div className="susc-banner vencida" role="alert">
-              <strong>Suscripción suspendida.</strong> Tu complejo no aparece en el catálogo y los jugadores no pueden reservar.
-              Contactá a PlayControl para regularizarla.
+            <div className="susc-banner-inline susc-banner-vencida" role="alert">
+              <ShieldAlert size={13} style={{ flexShrink: 0 }} />
+              <span><strong>Suscripción vencida.</strong> No aparece en el catálogo — regularizá si querés seguir operando.</span>
             </div>
           )}
-          {vigenteActivo === true && membresiaActiva?.suscripcion?.estado === 'prueba' && (
-            <div className="susc-banner prueba">
-              <strong>Período de prueba.</strong> Tu suscripción es de 14 días{membresiaActiva.suscripcion.fin ? ` y vence el ${membresiaActiva.suscripcion.fin}` : ''}.
-              Después tu complejo solo se desactiva del catálogo hasta que regularices el pago.
-            </div>
-          )}
+          {vigenteActivo === true && membresiaActiva?.suscripcion?.estado === 'prueba' && (() => {
+            const finMs = membresiaActiva.suscripcion.fin ? new Date(`${membresiaActiva.suscripcion.fin}T00:00:00`).getTime() - Date.now() : null;
+            const diasRestantes = finMs != null ? Math.max(0, Math.ceil(finMs / 86400000)) : null;
+            return (
+              <div className="susc-banner-inline susc-banner-prueba" title={membresiaActiva.suscripcion.fin ? `Vence el ${membresiaActiva.suscripcion.fin}` : undefined}>
+                <CircleCheck size={13} style={{ flexShrink: 0 }} />
+                <span><strong>Trial</strong>{diasRestantes != null && <> · {diasRestantes} {diasRestantes === 1 ? 'día' : 'días'} restantes</>}</span>
+              </div>
+            );
+          })()}
         </div>
         <Outlet />
       </section>

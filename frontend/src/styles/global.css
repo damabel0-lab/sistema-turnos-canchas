@@ -3843,3 +3843,19 @@ body {
 .auth-form-card .subtitulo { margin-bottom: 0.7rem; font-size: 0.9rem; line-height: 1.35; }
 .auth-form-card .grid-2 { gap: 0.45rem; }
 .auth-form-card .boton-block { padding-top: 0.7rem; padding-bottom: 0.7rem; }
+
+/* Compactado: pills inline arriba del contenido */
+.susc-banner-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.22rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  margin: 0.35rem 0 0;
+  width: fit-content;
+}
+.susc-banner-prueba { background: var(--primario-soft); color: var(--primario-2); border-color: color-mix(in srgb, var(--primario) 40%, transparent); }
+.susc-banner-vencida { background: color-mix(in srgb, var(--peligro) 12%, transparent); color: var(--peligro); border-color: color-mix(in srgb, var(--peligro) 40%, transparent); }
