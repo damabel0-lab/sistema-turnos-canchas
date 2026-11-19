@@ -11,6 +11,7 @@ import { api } from '../lib/api';
 export function BarraSesion() {
   const { session, perfil, salir } = useAuth();
   const { esStaffActivo } = useComplejo();
+  void esStaffActivo;
   const { pathname, search } = useLocation();
   const noLeidas = useNoLeidas();
   const [ofreceTorneos, setOfreceTorneos] = useState(true);
@@ -35,7 +36,6 @@ export function BarraSesion() {
     : '/login?modo=registrarse&tipo=dueno';
   const labelFlow = flowDueno ? '¿Sos jugador?' : '¿Tenés un complejo?';
 
-  const esStaff = perfil && (perfil.rol === 'super_admin' || esStaffActivo);
 
   const brand = (
     <Link to="/" className="nav-brand" aria-label="PlayControl — inicio">
@@ -73,11 +73,17 @@ export function BarraSesion() {
       <Link to="/mis-reservas">Mis reservas</Link>
       <Link to="/mis-abonos">Mis abonos</Link>
       {ofreceTorneos && <Link to="/torneos">Torneos</Link>}
-      {esStaff && (
+      {esStaffActivo && (
         <>
           <span className="nav-separador" aria-hidden />
           <Link to="/admin/dashboard" className="nav-link-staff">Panel</Link>
           <Link to="/admin/configuracion" className="nav-link-staff">Configuración</Link>
+        </>
+      )}
+      {perfil?.rol === 'super_admin' && (
+        <>
+          <span className="nav-separador" aria-hidden />
+          <Link to="/admin/plataforma" className="nav-link-staff">Plataforma</Link>
         </>
       )}
       <div className="nav-derecha">

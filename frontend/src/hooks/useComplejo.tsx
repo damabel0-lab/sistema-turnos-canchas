@@ -165,8 +165,10 @@ export function ComplejoProvider({ children }: { children: ReactNode }) {
   const membresiaActiva = membresias.find((m) => m.complejo_id === activoId) ?? null;
   const rolEnActivo = membresiaActiva?.rol ?? null;
   const esSuperAdmin = perfil?.rol === 'super_admin';
-  const esDuenoActivo = esSuperAdmin || rolEnActivo === 'dueno';
-  const esStaffActivo = esSuperAdmin || rolEnActivo != null;
+  // Dueno activo ESTRICTO del complejo ACTIVO. El super_admin plataforma NO entra aca.
+  const esDuenoActivo = rolEnActivo === 'dueno';
+  // Staff del complejo activo ESTRICTO (dueno o recepcionista). Sin super_admin de plataforma.
+  const esStaffActivo = rolEnActivo != null;
   const vigenteActivo = membresiaActiva ? membresiaActiva.vigente : null;
 
   return (
