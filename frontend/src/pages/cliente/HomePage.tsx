@@ -88,8 +88,8 @@ export function HomePage() {
   const { session, perfil } = useAuth();
   const { esStaffActivo } = useComplejo();
   if (!session) return <LandingPublica />;
-  const esStaff = perfil?.rol === 'super_admin' || esStaffActivo;
-  return esStaff ? <HomeStaff /> : <HomeCliente nombre={`${perfil?.nombre ?? ''} ${perfil?.apellido ?? ''}`.trim()} />;
+  if (perfil?.rol === 'super_admin' || esStaffActivo) return <HomeStaff />;
+  return <HomeCliente nombre={`${perfil?.nombre ?? ''} ${perfil?.apellido ?? ''}`.trim()} />;
 }
 
 /* ============================================================
@@ -359,11 +359,13 @@ function HomeCliente({ nombre }: { nombre: string }) {
    ============================================================ */
 function HomeStaff() {
   const { perfil } = useAuth();
+  const esSuperAdmin = perfil?.rol === 'super_admin';
   const [resumen, setResumen] = useState<ResumenStaff | null>(null);
-  const [cargando, setCargando] = useState(true);
+  const [cargando, setCargando] = useState(!esSuperAdmin);
   const [ofreceTorneos, setOfreceTorneos] = useState(true);
 
   useEffect(() => {
+    if (esSuperAdmin) return undefined;
     let cancelado = false;
     Promise.allSettled([
       api<ResumenStaff>('/dashboard/resumen'),
@@ -377,7 +379,7 @@ function HomeStaff() {
     return () => {
       cancelado = true;
     };
-  }, []);
+  }, [esSuperAdmin]);
 
   const esSuper = perfil?.rol === 'super_admin';
 
@@ -388,51 +390,74 @@ function HomeStaff() {
         <div className="fila-entre" style={{ marginBottom: '1.1rem' }}>
           <div>
             <h1 className="titulo" style={{ fontSize: '1.6rem', marginBottom: '0.1rem' }}>
-              {perfil?.nombre ? `¡Hola, ${perfil.nombre}!` : 'Panel del complejo'}
+              {perfil?.nombre ? `¡Hola, ${perfil.nombre}!` : (esSuperAdmin ? 'Plataforma PlayControl' : 'Panel del complejo')}
             </h1>
             <p className="subtitulo" style={{ margin: 0, textTransform: 'capitalize' }}>
               {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
           </div>
-          <Link to="/complejo" className="boton boton-outline">Ver sitio público</Link>
+          {!esSuperAdmin && (
+            <Link to="/complejo" className="boton boton-outline">Ver sitio público</Link>
+          )}
         </div>
 
-        {/* El complejo hoy */}
-        <h2 className="titulo" style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--texto-3)', marginBottom: '0.5rem' }}>
-          El complejo hoy
-        </h2>
-        {cargando ? (
-          <div className="metricas" style={{ marginBottom: '1.25rem' }}>
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="skeleton" style={{ height: '6rem' }} />
-            ))}
-          </div>
-        ) : resumen ? (
-          <div className="metricas" style={{ marginBottom: '1.25rem' }}>
-            <div className="metrica">
-              <div className="metrica-icono verde"><CalendarDays size={19} /></div>
-              <div className="metrica-label">Reservas hoy</div>
-              <div className="metrica-valor">{resumen.reservas_hoy}</div>
-            </div>
-            <div className="metrica">
-              <div className="metrica-icono verde"><BadgeDollarSign size={19} /></div>
-              <div className="metrica-label">Ingresos hoy</div>
-              <div className="metrica-valor">{precio(resumen.ingresos_dia)}</div>
-            </div>
-            <div className="metrica">
-              <div className="metrica-icono ambar"><ClipboardList size={19} /></div>
-              <div className="metrica-label">Pendientes de seña</div>
-              <div className="metrica-valor">{resumen.pendientes_seña}</div>
-            </div>
-            <div className="metrica">
-              <div className="metrica-icono rojo"><AlertTriangle size={19} /></div>
-              <div className="metrica-label">Abonos por vencer</div>
-              <div className="metrica-valor">{resumen.abonos_por_vencer}</div>
-            </div>
-          </div>
-        ) : null}
+        {/* Super admin plataforma: solo un atajo grande a /admin/plataforma */}
+        {esSuperAdmin && (
+          <section>
+            <h2 className="titulo" style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--texto-3)', marginBottom: '0.5rem' }}>
+              Plataforma
+            </h2>
+            <Link to="/admin/plataforma" className="boton boton-primario boton-block" style={{ fontSize: '1rem', padding: '1.1rem 1.5rem' }}>
+              Ir a la plataforma — gestioná suscripciones y complejos adheridos
+            </Link>
+            <p className="texto-debil" style={{ marginTop: '0.75rem', fontSize: '0.9rem' }}>
+              Sos el super_admin de PlayControl. No sos dueño ni recepcionista de ningún complejo; tu vista es la plataforma.
+            </p>
+          </section>
+        )}
+
+        {/* El complejo hoy (solo staff de complejo) */}
+        {!esSuperAdmin && (
+          <>
+            <h2 className="titulo" style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--texto-3)', marginBottom: '0.5rem' }}>
+              El complejo hoy
+            </h2>
+            {cargando ? (
+              <div className="metricas" style={{ marginBottom: '1.25rem' }}>
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="skeleton" style={{ height: '6rem' }} />
+                ))}
+              </div>
+            ) : resumen ? (
+              <div className="metricas" style={{ marginBottom: '1.25rem' }}>
+                <div className="metrica">
+                  <div className="metrica-icono verde"><CalendarDays size={19} /></div>
+                  <div className="metrica-label">Reservas hoy</div>
+                  <div className="metrica-valor">{resumen.reservas_hoy}</div>
+                </div>
+                <div className="metrica">
+                  <div className="metrica-icono verde"><BadgeDollarSign size={19} /></div>
+                  <div className="metrica-label">Ingresos hoy</div>
+                  <div className="metrica-valor">{precio(resumen.ingresos_dia)}</div>
+                </div>
+                <div className="metrica">
+                  <div className="metrica-icono ambar"><ClipboardList size={19} /></div>
+                  <div className="metrica-label">Pendientes de seña</div>
+                  <div className="metrica-valor">{resumen.pendientes_seña}</div>
+                </div>
+                <div className="metrica">
+                  <div className="metrica-icono rojo"><AlertTriangle size={19} /></div>
+                  <div className="metrica-label">Abonos por vencer</div>
+                  <div className="metrica-valor">{resumen.abonos_por_vencer}</div>
+                </div>
+              </div>
+            ) : null}
+          </>
+        )}
 
         {/* Accesos al panel */}
+        {!esSuperAdmin && (
+        <>
         <h2 className="titulo" style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--texto-3)', marginBottom: '0.5rem' }}>
           Tu panel
         </h2>
@@ -452,6 +477,8 @@ function HomeStaff() {
             <AccionRapida to="/admin/reportes" icon={BadgeDollarSign} titulo="Reportes" sub="Recaudación y estadísticas" />
           ) : null}
         </div>
+        </>
+        )}
       </div>
     </main>
   );
