@@ -147,7 +147,7 @@ export function App() {
             Caja y Reportes: solo dueño del complejo activo.
             Plataforma: la página misma bloquea a quien no sea super_admin. */}
         <Route element={<AdminLayout />}>
-        <Route path="/admin/plataforma" element={<RutaProtegida requireStaff><PlataformaPage /></RutaProtegida>} />
+        <Route path="/admin/plataforma" element={<RutaProtegida requireSuperAdmin><PlataformaPage /></RutaProtegida>} />
         <Route path="/admin/configuracion" element={<RutaProtegida requireStaff><ConfiguracionPage /></RutaProtegida>} />
         <Route path="/admin/dashboard" element={<RutaProtegida requireStaff><DashboardPage /></RutaProtegida>} />
         <Route path="/admin/grilla" element={<RutaProtegida requireStaff><GrillaPage /></RutaProtegida>} />
