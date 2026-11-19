@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Building2, CircleCheck, ShieldAlert, Wallet, Users, Trophy, BadgeDollarSign, Ban } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useComplejo } from '../../hooks/useComplejo';
+import { Input } from '../../components/ui';
 
 interface Suscripcion {
   id: number;
@@ -41,6 +42,22 @@ interface Resumen {
   mrr: number;
 }
 
+interface ConfigPlataforma {
+  id: number;
+  precio_plan_mensual: number;
+  trial_dias: number;
+  registro_habilitado: boolean;
+  nombre_plataforma: string;
+  email_soporte: string;
+  telefono_soporte: string | null;
+  emails_reales: boolean;
+  smtp_host: string | null;
+  smtp_puerto: number | null;
+  smtp_usuario: string | null;
+  smtp_password: string | null;
+  actualizado_en: string;
+}
+
 const fmtPesos = (n: number) =>
   n.toLocaleString('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 });
 
@@ -64,6 +81,17 @@ export function PlataformaPage() {
   const [data, setData] = useState<{ items: ItemPlataforma[]; resumen: Resumen } | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Ajustes globales de la plataforma (Plan y precio, contacto, registro)
+  const [config, setConfig] = useState<ConfigPlataforma | null>(null);
+  const [configPrecio, setConfigPrecio] = useState('50000');
+  const [configTrial, setConfigTrial] = useState('14');
+  const [configNombre, setConfigNombre] = useState('PlayControl');
+  const [configEmail, setConfigEmail] = useState('soporte@playcontrol.tech');
+  const [configTelefono, setConfigTelefono] = useState('');
+  const [configRegistro, setConfigRegistro] = useState(true);
+  const [configProcesando, setConfigProcesando] = useState(false);
+  const [configAviso, setConfigAviso] = useState<string | null>(null);
   const [procesando, setProcesando] = useState(false);
 
   // Inline activation form state
@@ -91,6 +119,51 @@ export function PlataformaPage() {
     if (esSuperAdmin) void cargar();
     else setCargando(false);
   }, [esSuperAdmin, cargar]);
+
+  const cargarConfig = useCallback(async () => {
+    try {
+      const cfg = await api<ConfigPlataforma>('/admin/configuracion-plataforma/actual');
+      setConfig(cfg);
+      setConfigPrecio(String(cfg.precio_plan_mensual));
+      setConfigTrial(String(cfg.trial_dias));
+      setConfigNombre(cfg.nombre_plataforma);
+      setConfigEmail(cfg.email_soporte);
+      setConfigTelefono(cfg.telefono_soporte ?? '');
+      setConfigRegistro(cfg.registro_habilitado);
+    } catch {
+      /* tabla no migrada todavía: el silent fail es preferible */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (esSuperAdmin) void cargarConfig();
+  }, [esSuperAdmin, cargarConfig]);
+
+  const guardarConfig = async () => {
+    if (!config) return;
+    setConfigProcesando(true);
+    setConfigAviso(null);
+    setError(null);
+    try {
+      const actualizado = await api<ConfigPlataforma>('/admin/configuracion-plataforma', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          precio_plan_mensual: Number(configPrecio) || 0,
+          trial_dias: Number(configTrial) || 0,
+          registro_habilitado: configRegistro,
+          nombre_plataforma: configNombre.trim() || 'PlayControl',
+          email_soporte: configEmail.trim() || 'soporte@playcontrol.tech',
+          telefono_soporte: configTelefono.trim() || null,
+        }),
+      });
+      setConfig(actualizado);
+      setConfigAviso('Ajustes guardados.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo guardar la configuración');
+    } finally {
+      setConfigProcesando(false);
+    }
+  };
 
   if (!esSuperAdmin) {
     return (
@@ -288,6 +361,84 @@ export function PlataformaPage() {
           </table>
           {items.length === 0 && <p className="texto-sec" style={{ padding: '1rem', textAlign: 'center' }}>Todavía no hay complejos registrados.</p>}
         </div>
+      )}
+
+      {/* Ajustes de la plataforma */}
+      {config && (
+        <section className="card" style={{ marginTop: '1.1rem', padding: '1rem 1.1rem' }} aria-labelledby="ajustes-plataforma">
+          <div className="fila-entre" style={{ marginBottom: '0.65rem' }}>
+            <div>
+              <h2 id="ajustes-plataforma" className="titulo" style={{ fontSize: '1.1rem', margin: 0 }}>Ajustes de la plataforma</h2>
+              <p className="texto-debil" style={{ margin: '0.15rem 0 0', fontSize: '0.82rem' }}>Plan, precio, modalidad de cobro y datos públicos de PlayControl.</p>
+            </div>
+            {configAviso && (
+              <span className="badge badge-exito">{configAviso}</span>
+            )}
+          </div>
+
+          <div className="grid-2" style={{ gap: '0.7rem' }}>
+            <label className="label">Precio mensual del plan ($)
+              <Input
+                type="number"
+                min={0}
+                value={configPrecio}
+                onChange={(e) => setConfigPrecio(e.target.value)}
+              />
+            </label>
+            <label className="label">Días de prueba gratis
+              <Input
+                type="number"
+                min={0}
+                max={365}
+                value={configTrial}
+                onChange={(e) => setConfigTrial(e.target.value)}
+              />
+            </label>
+
+            <label className="label" style={{ gridColumn: '1 / -1' }}>Nombre de la plataforma
+              <Input
+                value={configNombre}
+                onChange={(e) => setConfigNombre(e.target.value)}
+                placeholder="PlayControl"
+              />
+            </label>
+            <label className="label">Email de soporte
+              <Input
+                type="email"
+                value={configEmail}
+                onChange={(e) => setConfigEmail(e.target.value)}
+                placeholder="soporte@playcontrol.tech"
+              />
+            </label>
+            <label className="label">Teléfono de soporte
+              <Input
+                type="tel"
+                value={configTelefono}
+                onChange={(e) => setConfigTelefono(e.target.value)}
+                placeholder="221 555-1234"
+              />
+            </label>
+
+            <label className="fila" style={{ gridColumn: '1 / -1', gap: '0.5rem', cursor: 'pointer', fontWeight: 400 }}>
+              <input type="checkbox" checked={configRegistro} onChange={(e) => setConfigRegistro(e.target.checked)} />
+              <span>Permitir registro de nuevos complejos (encendido/apagado global)</span>
+            </label>
+          </div>
+
+          <div className="fila-entre" style={{ marginTop: '0.75rem' }}>
+            <span className="texto-debil" style={{ fontSize: '0.75rem' }}>
+              Último cambio: {new Date(config.actualizado_en).toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' })}
+            </span>
+            <button
+              type="button"
+              className="boton boton-primario"
+              disabled={configProcesando}
+              onClick={() => void guardarConfig()}
+            >
+              {configProcesando ? 'Guardando…' : 'Guardar cambios'}
+            </button>
+          </div>
+        </section>
       )}
 
       <p className="texto-debil" style={{ marginTop: '1rem', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
