@@ -19,6 +19,8 @@ import {
   BadgeDollarSign,
   ClipboardList,
   AlertTriangle,
+  Building2,
+  CircleCheck,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -401,19 +403,9 @@ function HomeStaff() {
           )}
         </div>
 
-        {/* Super admin plataforma: solo un atajo grande a /admin/plataforma */}
+        {/* Vista super_admin: métricas plataforma */}
         {esSuperAdmin && (
-          <section>
-            <h2 className="titulo" style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--texto-3)', marginBottom: '0.5rem' }}>
-              Plataforma
-            </h2>
-            <Link to="/admin/plataforma" className="boton boton-primario boton-block" style={{ fontSize: '1rem', padding: '1.1rem 1.5rem' }}>
-              Ir a la plataforma — gestioná suscripciones y complejos adheridos
-            </Link>
-            <p className="texto-debil" style={{ marginTop: '0.75rem', fontSize: '0.9rem' }}>
-              Sos el super_admin de PlayControl. No sos dueño ni recepcionista de ningún complejo; tu vista es la plataforma.
-            </p>
-          </section>
+          <SuperAdminPanel />
         )}
 
         {/* El complejo hoy (solo staff de complejo) */}
@@ -481,5 +473,94 @@ function HomeStaff() {
         )}
       </div>
     </main>
+  );
+}
+
+/* ============================================================
+   SUPER_ADMIN PLATAFORMA — home con resumen de suscripciones
+   ============================================================ */
+interface ResumenPlataforma {
+  total: number;
+  activos: number;
+  en_prueba: number;
+  en_activa: number;
+  suspendidos: number;
+  mrr: number;
+}
+
+function SuperAdminPanel() {
+  const [resumen, setResumen] = useState<ResumenPlataforma | null>(null);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelado = false;
+    api<ResumenPlataforma>('/admin/suscripciones')
+      .then((d) => { if (!cancelado) setResumen(d); })
+      .catch((e) => { if (!cancelado) setError(e instanceof Error ? e.message : 'No se pudo cargar la plataforma'); })
+      .finally(() => { if (!cancelado) setCargando(false); });
+    return () => { cancelado = true; };
+  }, []);
+
+  const fmtPesos = (n: number) =>
+    n.toLocaleString('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 });
+
+  return (
+    <section>
+      <div className="fila-entre" style={{ marginBottom: '0.5rem' }}>
+        <h2 className="titulo" style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--texto-3)', margin: 0 }}>
+          Estado de la plataforma
+        </h2>
+        {!cargando && resumen && (
+          <Link to="/admin/plataforma" className="boton boton-primario" style={{ fontSize: '0.82rem', padding: '0.4rem 0.9rem' }}>
+            Ir a Plataforma <ArrowRight size={15} />
+          </Link>
+        )}
+      </div>
+
+      {error && <div className="alerta-error" role="alert">{error}</div>}
+
+      {cargando ? (
+        <div className="metricas" style={{ marginBottom: '1.25rem' }}>
+          {[0, 1, 2, 3].map((i) => (<div key={i} className="skeleton" style={{ height: '6rem' }} />))}
+        </div>
+      ) : resumen ? (
+        <div className="metricas" style={{ marginBottom: '1.5rem' }}>
+          <div className="metrica">
+            <div className="metrica-icono verde"><Building2 size={19} /></div>
+            <div className="metrica-label">Complejos adheridos</div>
+            <div className="metrica-valor">{resumen.total}</div>
+          </div>
+          <div className="metrica">
+            <div className="metrica-icono verde"><CircleCheck size={19} /></div>
+            <div className="metrica-label">Activos (vigentes)</div>
+            <div className="metrica-valor">{resumen.activos}</div>
+            <div className="texto-debil" style={{ fontSize: '0.72rem' }}>{resumen.en_prueba} en prueba · {resumen.en_activa} con plan pago</div>
+          </div>
+          <div className="metrica">
+            <div className="metrica-icono rojo"><AlertTriangle size={19} /></div>
+            <div className="metrica-label">Suspendidos</div>
+            <div className="metrica-valor">{resumen.suspendidos}</div>
+          </div>
+          <div className="metrica">
+            <div className="metrica-icono ambar"><BadgeDollarSign size={19} /></div>
+            <div className="metrica-label">MRR estimado</div>
+            <div className="metrica-valor">{fmtPesos(resumen.mrr)}</div>
+            <div className="texto-debil" style={{ fontSize: '0.72rem' }}>Ingresos mensuales del plan único</div>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="hero-buscador" style={{ maxWidth: 'none', boxShadow: 'var(--sombra-md)' }}>
+        <div style={{ flex: 1 }}>
+          <div className="hero-buscador-label" style={{ marginBottom: '0.25rem' }}>Plataforma PlayControl</div>
+          <strong style={{ display: 'block', fontSize: '1rem', marginBottom: '0.15rem' }}>¿Sos dueño de un complejo o canchas?</strong>
+          <span className="texto-sec" style={{ fontSize: '0.85rem' }}>Registrate como dueño y empezá tu prueba de 14 días gratis. Sos el único que puede gestionar y administrar todo desde la plataforma.</span>
+        </div>
+        <Link to="/admin/plataforma" className="boton boton-primario" style={{ alignSelf: 'stretch', padding: '0.65rem 1.05rem', whiteSpace: 'nowrap' }}>
+          Ver plataforma <ArrowRight size={16} />
+        </Link>
+      </div>
+    </section>
   );
 }
