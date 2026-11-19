@@ -3859,3 +3859,33 @@ body {
 }
 .susc-banner-prueba { background: var(--primario-soft); color: var(--primario-2); border-color: color-mix(in srgb, var(--primario) 40%, transparent); }
 .susc-banner-vencida { background: color-mix(in srgb, var(--peligro) 12%, transparent); color: var(--peligro); border-color: color-mix(in srgb, var(--peligro) 40%, transparent); }
+
+/* ===== NAVBAR MOVIL (hamburguesa 900px) ===== */
+.nav-links-desktop { display: inline-flex; align-items: center; gap: 0.25rem; }
+.nav-burger { display: none; }
+.nav-movil { display: none; }
+.acceso-rapido { min-width: 0; }
+
+@media (max-width: 900px) {
+  .nav-links-desktop { display: none; }
+  .nav-derecha-nombre, .nav-derecha-salir, .nav-derecha-flow, .nav-derecha-login { display: none; }
+  .nav-barra { overflow: visible; }
+  .nav-burger { display: inline-flex; align-items: center; justify-content: center; width: 2.4rem; height: 2.4rem; border-radius: var(--radio-sm); border: 1px solid var(--border); background: transparent; color: var(--texto-2); cursor: pointer; }
+  .nav-burger:hover { color: var(--primario-2); background: var(--primario-soft); }
+  .nav-movil { display: flex; flex-direction: column; position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-surface); border-bottom: 1px solid var(--border); box-shadow: var(--sombra-lg); padding: 0.4rem 0.6rem 0.9rem; z-index: 99; }
+  .nav-movil a, .nav-movil-boton { display: block; width: 100%; text-align: left; text-decoration: none; background: transparent; border: 0; padding: 0.72rem 0.75rem; border-radius: var(--radio-sm); color: var(--texto); font-size: 0.92rem; font-weight: 550; cursor: pointer; font-family: inherit; }
+  .nav-movil a:hover, .nav-movil-boton:hover { background: var(--primario-soft); color: var(--primario-2); }
+  .nav-movil-acento { color: var(--primario-2) !important; font-weight: 700 !important; }
+  .nav-movil-boton.primario { background: var(--primario); color: #fff; text-align: center; font-weight: 700; margin-top: 0.15rem; }
+  .nav-movil-boton.primario:hover { background: var(--primario-2); color: #fff; }
+  .nav-movil-usuario { padding: 0.55rem 0.75rem 0.35rem; font-size: 0.8rem; color: var(--texto-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nav-movil .nav-separador { width: 100%; height: 1px; margin: 0.3rem 0; background: var(--border); }
+}
+
+/* Admin sidebar: marca en 2 lineas + footer visible en mobile */
+.admin-brand > span:last-child { display: grid; gap: 0.12rem; min-width: 0; }
+@media (max-width: 1023px) {
+  .admin-sidebar-footer { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.4rem 0.2rem 0; border-top: 1px solid var(--border); }
+  .admin-user-avatar { width: 1.9rem; height: 1.9rem; font-size: 0.68rem; flex-shrink: 0; }
+  .admin-sidebar-footer .boton-block { width: auto; padding: 0.4rem 0.65rem; font-size: 0.78rem; white-space: nowrap; }
+}

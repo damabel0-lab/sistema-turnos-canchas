@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { Bell, Goal } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Bell, Goal, Menu, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useComplejo } from '../hooks/useComplejo';
 import { useNoLeidas } from '../hooks/useNoLeidas';
@@ -15,6 +15,8 @@ export function BarraSesion() {
   const { pathname, search } = useLocation();
   const noLeidas = useNoLeidas();
   const [ofreceTorneos, setOfreceTorneos] = useState(true);
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  const navRef = useRef<HTMLElement | null>(null);
 
   // Config pública del complejo (hoy solo usamos si ofrece torneos)
   useEffect(() => {
@@ -24,6 +26,28 @@ export function BarraSesion() {
         /* si falla, mostramos torneos por defecto */
       });
   }, []);
+
+  // Cerrar el menú al navegar
+  useEffect(() => {
+    setMenuAbierto(false);
+  }, [pathname, search]);
+
+  // Escape y click afuera cierran el menú
+  useEffect(() => {
+    if (!menuAbierto) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuAbierto(false);
+    };
+    const onClick = (e: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(e.target as Node)) setMenuAbierto(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onClick);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onClick);
+    };
+  }, [menuAbierto]);
 
   // Las pantallas de administración usan el AdminLayout (sidebar)
   if (pathname.startsWith('/admin')) return null;
@@ -36,6 +60,27 @@ export function BarraSesion() {
     : '/login?modo=registrarse&tipo=dueno';
   const labelFlow = flowDueno ? '¿Sos jugador?' : '¿Tenés un complejo?';
 
+  const esStaff = esStaffActivo && !!session;
+  const esSuper = perfil?.rol === 'super_admin';
+
+  const enlacesPublicos = session
+    ? [
+        { to: '/complejos', label: 'Complejos' },
+        { to: '/reservar', label: 'Reservar' },
+        { to: '/mis-reservas', label: 'Mis reservas' },
+        { to: '/mis-abonos', label: 'Mis abonos' },
+        ...(ofreceTorneos ? [{ to: '/torneos', label: 'Torneos' }] : []),
+      ]
+    : [{ to: '/complejos', label: 'Complejos' }];
+
+  const enlacesStaff = esStaff
+    ? [
+        { to: '/admin/dashboard', label: 'Panel' },
+        { to: '/admin/configuracion', label: 'Configuración' },
+      ]
+    : [];
+
+  const enlacesSuper = esSuper ? [{ to: '/admin/plataforma', label: 'Plataforma' }] : [];
 
   const brand = (
     <Link to="/" className="nav-brand" aria-label="PlayControl — inicio">
@@ -46,64 +91,129 @@ export function BarraSesion() {
     </Link>
   );
 
-  if (!session) {
-    return (
-      <nav className="nav-barra" aria-label="Navegación principal">
-        {brand}
-        <Link to="/complejos">Complejos</Link>
-        <div className="nav-derecha">
-          <Link to={destinoFlow} className="nav-dueno-link">
-            {labelFlow}
-          </Link>
-          <ThemeToggle />
-          <Link to="/login" className="boton boton-primario" style={{ fontSize: '0.82rem', padding: '0.45rem 1rem' }}>
-            Iniciar sesión
-          </Link>
-        </div>
-      </nav>
-    );
-  }
+  const badgeNotif =
+    noLeidas > 0 ? <span className="nav-badge">{noLeidas > 99 ? '99+' : noLeidas}</span> : null;
 
   return (
-    <nav className="nav-barra" aria-label="Navegación principal">
+    <nav ref={navRef} className="nav-barra" aria-label="Navegación principal">
       {brand}
-      <Link to="/complejos">Complejos</Link>
-      <Link to="/reservar">Reservar</Link>
-      <span className="nav-separador" aria-hidden />
-      <Link to="/mis-reservas">Mis reservas</Link>
-      <Link to="/mis-abonos">Mis abonos</Link>
-      {ofreceTorneos && <Link to="/torneos">Torneos</Link>}
-      {esStaffActivo && (
-        <>
-          <span className="nav-separador" aria-hidden />
-          <Link to="/admin/dashboard" className="nav-link-staff">Panel</Link>
-          <Link to="/admin/configuracion" className="nav-link-staff">Configuración</Link>
-        </>
-      )}
-      {perfil?.rol === 'super_admin' && (
-        <>
-          <span className="nav-separador" aria-hidden />
-          <Link to="/admin/plataforma" className="nav-link-staff">Plataforma</Link>
-        </>
-      )}
+
+      {/* Links en escritorio */}
+      <div className="nav-links-desktop">
+        {enlacesPublicos.map((l) => (
+          <Link key={l.to} to={l.to}>
+            {l.label}
+          </Link>
+        ))}
+        {enlacesStaff.length > 0 && (
+          <>
+            <span className="nav-separador" aria-hidden />
+            {enlacesStaff.map((l) => (
+              <Link key={l.to} to={l.to} className="nav-link-staff">
+                {l.label}
+              </Link>
+            ))}
+          </>
+        )}
+        {enlacesSuper.length > 0 && (
+          <>
+            {enlacesStaff.length === 0 && <span className="nav-separador" aria-hidden />}
+            {enlacesSuper.map((l) => (
+              <Link key={l.to} to={l.to} className="nav-link-staff">
+                {l.label}
+              </Link>
+            ))}
+          </>
+        )}
+      </div>
+
+      {/* Derecha: tema, notif, usuario / flujo dueño, y burger en mobile */}
       <div className="nav-derecha">
         <ThemeToggle />
-        <Link
-          to="/notificaciones"
-          className="theme-toggle"
-          style={{ position: 'relative' }}
-          aria-label={`Notificaciones${noLeidas > 0 ? `, ${noLeidas} sin leer` : ''}`}
+        {session && (
+          <Link
+            to="/notificaciones"
+            className="theme-toggle"
+            style={{ position: 'relative' }}
+            aria-label={`Notificaciones${noLeidas > 0 ? `, ${noLeidas} sin leer` : ''}`}
+          >
+            <Bell size={17} />
+            {badgeNotif}
+          </Link>
+        )}
+        {session ? (
+          <>
+            <span className="texto-sec nav-derecha-nombre" style={{ fontSize: '0.85rem', maxWidth: '10rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {perfil ? `${perfil.nombre} ${perfil.apellido}` : session.user.email}
+            </span>
+            <button type="button" className="boton boton-ghost nav-derecha-salir" onClick={() => void salir()}>
+              Salir
+            </button>
+          </>
+        ) : (
+          <>
+            <Link to={destinoFlow} className="nav-dueno-link nav-derecha-flow">
+              {labelFlow}
+            </Link>
+            <Link to="/login" className="boton boton-primario nav-derecha-login" style={{ fontSize: '0.82rem', padding: '0.45rem 1rem' }}>
+              Iniciar sesión
+            </Link>
+          </>
+        )}
+        {/* Burger solo visible en mobile (CSS) */}
+        <button
+          type="button"
+          className="nav-burger"
+          aria-label={menuAbierto ? 'Cerrar menú' : 'Abrir menú'}
+          aria-expanded={menuAbierto}
+          aria-controls="nav-movil"
+          onClick={() => setMenuAbierto((v) => !v)}
         >
-          <Bell size={17} />
-          {noLeidas > 0 && <span className="nav-badge">{noLeidas > 99 ? '99+' : noLeidas}</span>}
-        </Link>
-        <span className="texto-sec" style={{ fontSize: '0.85rem', maxWidth: '10rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {perfil ? `${perfil.nombre} ${perfil.apellido}` : session.user.email}
-        </span>
-        <button type="button" className="boton boton-ghost" onClick={() => void salir()}>
-          Salir
+          {menuAbierto ? <X size={20} /> : <Menu size={20} />}
         </button>
       </div>
+
+      {/* Dropdown mobile */}
+      {menuAbierto && (
+        <div className="nav-movil" id="nav-movil">
+          {enlacesPublicos.map((l) => (
+            <Link key={l.to} to={l.to}>
+              {l.label}
+            </Link>
+          ))}
+          {(enlacesStaff.length > 0 || enlacesSuper.length > 0) && <div className="nav-separador" aria-hidden />}
+          {enlacesStaff.map((l) => (
+            <Link key={l.to} to={l.to} className="nav-movil-acento">
+              {l.label}
+            </Link>
+          ))}
+          {enlacesSuper.map((l) => (
+            <Link key={l.to} to={l.to} className="nav-movil-acento">
+              {l.label}
+            </Link>
+          ))}
+          <div className="nav-separador" aria-hidden />
+          {session ? (
+            <>
+              <div className="nav-movil-usuario">
+                {perfil ? `${perfil.nombre} ${perfil.apellido}` : session.user.email}
+              </div>
+              <button type="button" className="nav-movil-boton" onClick={() => void salir()}>
+                Salir
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to={destinoFlow} className="nav-movil-acento">
+                {labelFlow}
+              </Link>
+              <Link to="/login" className="nav-movil-boton primario">
+                Iniciar sesión
+              </Link>
+            </>
+          )}
+        </div>
+      )}
     </nav>
   );
 }

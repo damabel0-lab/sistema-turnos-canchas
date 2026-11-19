@@ -140,7 +140,7 @@ function LandingPublica() {
       {/* Cómo funciona */}
       <section style={{ maxWidth: '72rem', margin: '0 auto' }}>
         <h2 className="titulo" style={{ fontSize: '1.1rem', margin: '0.25rem 0 0.85rem' }}>Cómo funciona</h2>
-        <div className="metricas" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '1.5rem' }}>
+        <div className="metricas" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 230px), 1fr))', gap: '1rem' }}>
           {pasos.map((p) => {
             return (
               <Link key={p.n} to="/reservar" className="acceso-rapido" style={{ textDecoration: 'none' }}>
