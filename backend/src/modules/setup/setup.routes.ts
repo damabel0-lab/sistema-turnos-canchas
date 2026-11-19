@@ -2,7 +2,7 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { requireOwner, complejoIdRequerido, type AuthedRequest } from '../../middleware/auth.js';
 import { HttpError } from '../../middleware/error.js';
-import { leerConfigComplejo, invalidarConfigComplejo } from '../../config/complejoConfig.js';
+import { leerConfigComplejo, invalidarConfigComplejo, esComplejoCompleto } from '../../config/complejoConfig.js';
 import { supabaseAdmin } from '../../config/supabase.js';
 
 export const setupRouter = Router();
@@ -94,7 +94,9 @@ setupRouter.get(
     }
     const cfg = await leerConfigComplejo(req.complejoId);
     res.json({
-      setup_completado: true,
+      setup_completado: esComplejoCompleto(cfg),
+      ciudad: cfg.ciudad,
+      direccion: cfg.direccion,
       config_id: cfg.id,
       valores: {
         metadatos: {

@@ -5,6 +5,8 @@ export interface ConfigComplejo {
   nombre: string;
   slug: string;
   tipo: string;
+  ciudad: string | null;
+  direccion: string | null;
   hora_apertura: number;
   hora_cierre: number;
   cancelacion_minima_horas: number;
@@ -20,6 +22,16 @@ export interface ConfigComplejo {
 
 const CACHE_MS = 60_000;
 const cache = new Map<number, { valor: ConfigComplejo; ts: number }>();
+
+/** ¿Complejo real configurado? (nombre + ciudad no vacíos y nombre no sea el default 'Mi Complejo') */
+export function esComplejoCompleto(cfg: ConfigComplejo): boolean {
+  if (!cfg) return false;
+  const nombre = String(cfg.nombre ?? '').trim();
+  const ciudad = String(cfg.ciudad ?? '').trim();
+  if (!nombre || !ciudad) return false;
+  if (nombre === 'Mi Complejo') return false;
+  return true;
+}
 
 /** Invalida la caché (llamar tras editar el complejo) */
 export function invalidarConfigComplejo(complejoId: number) {
@@ -50,6 +62,8 @@ export async function leerConfigComplejo(complejoId: number): Promise<ConfigComp
     nombre: 'Mi Complejo',
     slug: '',
     tipo: 'complejo_deportivo',
+    ciudad: null,
+    direccion: null,
     hora_apertura: envNum('HORA_APERTURA_COMPLEJO', 8),
     hora_cierre: envNum('HORA_CIERRE_COMPLEJO', 23),
     cancelacion_minima_horas: envNum('POLITICA_CANCELACION_HORAS', 2),
@@ -66,7 +80,7 @@ export async function leerConfigComplejo(complejoId: number): Promise<ConfigComp
   try {
     const { data, error } = await supabaseAdmin
       .from('complejos')
-      .select('id, nombre, slug, tipo, hora_apertura, hora_cierre, cancelacion_minima_horas, descuento_turno_fijo_porcentaje, sena_obligatoria, gym, pileta, precio_mensual_gym, precio_mensual_pileta, ofrece_socios, ofrece_torneos')
+      .select('id, nombre, slug, tipo, ciudad, direccion, hora_apertura, hora_cierre, cancelacion_minima_horas, descuento_turno_fijo_porcentaje, sena_obligatoria, gym, pileta, precio_mensual_gym, precio_mensual_pileta, ofrece_socios, ofrece_torneos')
       .eq('id', complejoId)
       .maybeSingle();
     if (error) throw error;
@@ -77,6 +91,8 @@ export async function leerConfigComplejo(complejoId: number): Promise<ConfigComp
       nombre: data.nombre,
       slug: data.slug,
       tipo: data.tipo,
+      ciudad: data.ciudad ?? null,
+      direccion: data.direccion ?? null,
       hora_apertura: horaAEntero(data.hora_apertura, fallback.hora_apertura),
       hora_cierre: horaAEntero(data.hora_cierre, fallback.hora_cierre),
       cancelacion_minima_horas: Number(data.cancelacion_minima_horas ?? fallback.cancelacion_minima_horas),
