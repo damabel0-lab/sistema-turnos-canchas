@@ -19,6 +19,7 @@ import { socioBeneficiosRouter } from './modules/socio-beneficios/socio-benefici
 import { notificacionesRouter } from './modules/notifications/notifications.routes.js';
 import { complejosRouter } from './modules/complejos/complejos.routes.js';
 import { suscripcionesAdminRouter } from './modules/suscripciones/suscripciones.routes.js';
+import { configuracionPlataformaRouter } from './modules/configuracion-plataforma/configuracion-plataforma.routes.js';
 
 export const app = express();
 
@@ -41,6 +42,7 @@ app.use('/caja', authMiddleware, reporteRouter);
 app.use('/config', configRouter);
 app.use('/complejos', authMiddleware, complejosRouter);
 app.use('/admin/suscripciones', authMiddleware, suscripcionesAdminRouter);
+app.use('/admin/configuracion-plataforma', authMiddleware, configuracionPlataformaRouter);
 app.use('/dashboard', authMiddleware, dashboardRouter);
 app.use('/admin/setup', authMiddleware, setupRouter);
 app.use('/socios', authMiddleware, sociosRouter);
