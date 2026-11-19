@@ -106,44 +106,23 @@ Existen **dos capas** de rol:
 
 ## Cómo trabajamos
 
-De los commits reales reunidos en este repositorio (`git log`) se desprende una forma de trabajo muy específica — la documentamos para que un tercero entienda lo que ve:
+PlayControl lo hicimos Nahuel y Damián, de punta a punta. No hubo diseñador, no hubo oficina ni cliente: lo que se ve hoy es el resultado de sesiones de trabajo en las que armábamos un tema completo por vez y recién pasábamos al siguiente cuando el anterior andaba.
 
-### 1. Iteración vertical por módulo
-Cada bloque funcional llega de punta a punta antes de pasar al siguiente: schema SQL → migración idempotente en Supabase → backend (`modules/<modulo>/<modulo>.routes.ts` + `<modulo>.service.ts` + (o no) lógica de plataforma) → frontend (`hooks`, `pages`) → verificación `npm run typecheck && npm run build` en ambos workspaces. No hay "primera etapa con el backend hueco" ni "primero se diseña el frontend y después la base".
+Los dos trabajamos sobre la misma rama y nos repartimos los commits más o menos en partes iguales. Intentamos que cada uno tome los temas completos: por ejemplo, uno arma toda la parte de torneos (pantalla, lógica y base) y el otro se encarga de otra cosa, en vez de mezclar los dos las mismas pantallas. Cada commit lo firma el que hizo ese pedazo, y casi siempre los commits van chicos, con el mensaje en español y un prefijo que dice de qué se trata (`feat`, `fix`, `docs`, etc.).
 
-### 2. Modulares, no monolíticos
-Cada dominio de negocio (`reservas`, `abonos`, `torneos`, `caja`, `socios`, `beneficios`, `deportes`, `canchas`, `suscripciones`, `complejos`, `notifications`, `bloqueos`, `dashboard`, `config`, `setup`, `configuracion-plataforma`) tiene su propio directorio bajo `backend/src/modules/` con el par `routes` + `service`. Así:
-- Una contribución nueva cambia un solo módulo.
-- El código dice qué busca (`grep -ri "requireStaff" backend/src/modules/abonos/`).
-- La arquitectura es multi-tenant explícita (`complejo_id` en cada tabla vía migración).
+Algunos de los temas que fuimos resolviendo, en orden más o menos real:
 
-### 3. Alternancia entre Nahuel y Damián
-- Aproximadamente 50 / 50 de commits, con pequeños desvíos puntuales en favor de quien arranca una feature completa.
-- Cada commit se hace con la identidad de su autor (`-c user.name / user.email`).
-- Es un único repo, una sola rama (`main`); no hay ramas de feature.
+- El modelado de la base de datos (complejos, canchas, reservas, socios, abonos, torneos, caja) y los permisos de acceso.
+- El sistema de reservas, con disponibilidad en vivo y doble reserva imposible.
+- El panel del dueño del complejo: grilla del día, canchas, tarifas, socios, caja, abonos y reportes.
+- La app del jugador: explorar complejos, reservar, ver sus turnos, sus abonos y sus torneos.
+- El login y los roles, y las pantallas de recuperación de contraseña (simulada, sin envío real de mails).
+- Toda la parte de administración de la plataforma: suscripciones, planes mensuales, el cobro manual y el panel para activar/suspender complejos.
+- El asistente de configuración de 8 pasos para complejos nuevos y el rediseño de las páginas públicas.
 
-### 4. Ciclo de cada sesión
-1. **Levantamiento**: `npm run dev:backend` y `npm run dev:frontend` como procesos en segundo plano.
-2. **Reset de la base** cuando se quiere un seed nuevo: borrado explícito de complejos / usuarios / membresías / suscripciones y re-sembrado. Cada reset guarda un `dump` previo (timestamped) en disco por seguridad (`AppData/Local/Temp/playcontrol-reset-*.json`).
-3. **Verificación**: SQL ejecutado en Supabase SQL Editor con `BEGIN…COMMIT` y bloques de verificación `SELECT` después (`docs/*.sql`).
-4. **Build codiciado**: después de cada cambio funcional se corre `npm run typecheck && npm run build` en backend y frontend; solo se commitea con build verde.
-5. **Commits internos**: una feature se sienta internamente durante varias iteraciones; cada iteración es un commit pequeño (`fix`, `feat`, `style`, `docs`, `refactor`, `chore`) anotado en español.
-6. **Push a GitHub**: solo con autorización explícita del otro, normalmente tras terminar un bloque (multi-tenant v1, wizard persistente, plataforma admin). Antes de pushear: `git log origin/main..HEAD` muestra exactamente qué sube.
-7. **Pausas para análisis**: cuando algo se rompe en pantalla (ej. la home del super_admin estaba enganchado al wizard), se detiene el avance y la próxima sesión se dedica a análisis en frío: enumerar hipótesis, comprobar en vivo con Account en Supabase, proponer dos o tres soluciones, descartar una por una antes de tocar código.
+El flujo es siempre el mismo: probarlo en local, arreglar lo que falle, recién ahí hacer commit. Los cambios no se suben a GitHub hasta que un bloque queda terminado y verificado — mientras tanto el trabajo vive como commits internos. Y los datos de prueba los limpiamos más de una vez porque se desordenaban; antes de cada limpieza guardamos respaldos.
 
-### 5. Sistema de rastreo
-- **Correos como identidad**: `nahuelmartingauna366@gmail.com`, `damyabel0@gmail.com`.
-- **`.env` nunca en Git** (`.env.example` como referencia).
-- **Sin "TODO" sueltos en producción**: los pendientes van al final de este README o son abandonados — no se commitean comentarios `// TODO`.
-
-### 6. Diseño
-Paleta verde/emerald (sistema de variables CSS en `global.css`). Tema claro/oscuro. Sin Tailwind desde el principio; todo es CSS personalizado para tener control fino.
-
-### 7. Convenciones puntuales
-- Commits en español, formato convencional: `<tipo>(<modulo>): <razón corta>`. Tipos habituales: `feat`, `fix`, `style`, `refactor`, `chore`, `docs`.
-- Los commits internos se hacen en bloques pequeños aunque estén un poco "feos" (desmontes, comentarios); así nunca se pierde el hilo de lo que se hizo hoy.
-- Push a GitHub **solo bajo autorización explícita** del usuario: nada en `origin` cambia sin que él lo autorice.
-- Cada commit lleva la identidad del autor que correspondía al turno (`-c user.name / user.email`), no la del sistema.
+El diseño es propio: paleta verde, tema claro y oscuro, CSS hecho a mano. Preferimos tener el control del detalle antes que sumar un framework.
 
 ## Pendiente (fuera de alcance inicial)
 
