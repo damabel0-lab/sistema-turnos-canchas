@@ -114,9 +114,11 @@ export function AdminLayout() {
 
   const seccion = SECCIONES[location.pathname.split('/').pop() ?? ''] ?? 'Panel';
   const puedeVer = (item: ItemSide) => !item.ownerOnly || esDuenoActivo;
+  const NombreContext = esSuperAdmin ? 'PlayControl · Plataforma' : nombreComplejo;
   const grupos = esSuperAdmin
-    ? [...GRUPOS, { titulo: 'Plataforma', items: [{ to: '/admin/plataforma', label: 'Suscripciones y planes', icon: ShieldCheck }] }]
+    ? [{ titulo: 'Plataforma', items: [{ to: '/admin/plataforma', label: 'Suscripciones y planes', icon: ShieldCheck }] }]
     : GRUPOS;
+  const badgeCtx = esSuperAdmin ? null : badgeSusc;
 
   return (
     <div className="admin-layout">
@@ -132,11 +134,11 @@ export function AdminLayout() {
           </span>
         </Link>
 
-        {/* Contexto: qué complejo estás administrando */}
+        {/* Contexto: qué complejo estás administrando (o plataforma) */}
         <div className="admin-complejo" aria-label="Complejo administrado">
-          <div className="admin-complejo-nombre" title={nombreComplejo}>{nombreComplejo}</div>
+          <div className="admin-complejo-nombre" title={NombreContext}>{NombreContext}</div>
           <div className="fila" style={{ gap: '0.35rem', marginTop: '0.35rem' }}>
-            {badgeSusc && <span className={`badge ${badgeSusc.cls}`}>{badgeSusc.texto}</span>}
+            {badgeCtx && <span className={`badge ${badgeCtx.cls}`}>{badgeCtx.texto}</span>}
             {membresias.length > 1 && (
               <select
                 className="input"
