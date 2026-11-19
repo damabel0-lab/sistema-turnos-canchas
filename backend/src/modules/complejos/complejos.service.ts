@@ -46,7 +46,7 @@ const amenidadesSanitas = (v: unknown): string[] => {
 };
 
 const CAMPOS_PUBLICOS =
-  'id, nombre, slug, tipo, ciudad, direccion, telefono, email_contacto, descripcion, hora_apertura, hora_cierre, cancelacion_minima_horas, descuento_turno_fijo_porcentaje, sena_obligatoria, gym, pileta, precio_mensual_gym, precio_mensual_pileta, ofrece_socios, ofrece_torneos, amenidades, activo';
+  'id, nombre, slug, tipo, ciudad, direccion, telefono, email_contacto, descripcion, foto_portada, foto_perfil, hora_apertura, hora_cierre, cancelacion_minima_horas, descuento_turno_fijo_porcentaje, sena_obligatoria, gym, pileta, precio_mensual_gym, precio_mensual_pileta, ofrece_socios, ofrece_torneos, amenidades, activo';
 
 interface ComplejoRow {
   id: number;
@@ -208,6 +208,8 @@ export async function detallePorSlug(slug: string) {
 
   return {
     ...resumenPublico(complejo, canchas),
+    foto_portada: (complejo.foto_portada as string | null) ?? null,
+    foto_perfil: (complejo.foto_perfil as string | null) ?? null,
     hora_apertura: String(complejo.hora_apertura).slice(0, 5),
     hora_cierre: String(complejo.hora_cierre).slice(0, 5),
     cancelacion_minima_horas: Number(complejo.cancelacion_minima_horas ?? 2),

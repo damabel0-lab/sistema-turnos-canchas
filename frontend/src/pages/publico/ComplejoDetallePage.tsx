@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Building2,
   CalendarClock,
+  Camera,
   Clock,
   Dumbbell,
   MapPin,
@@ -14,9 +15,12 @@ import {
   Waves,
   CircleCheck,
   Swords,
+  X,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useComplejo } from '../../hooks/useComplejo';
+import { MuroComplejo } from '../../components/social/MuroComplejo';
+import { iniciales, leerImagen } from '../../components/social/Avatar';
 
 interface DeporteDetalle {
   id: number;
@@ -53,6 +57,8 @@ interface ComplejoDetalle {
   telefono: string | null;
   email_contacto: string | null;
   descripcion: string | null;
+  foto_portada: string | null;
+  foto_perfil: string | null;
   gym: boolean;
   pileta: boolean;
   precio_mensual_gym: number | null;
@@ -74,14 +80,23 @@ const fmtPesos = (n: number) =>
 
 const HORARIO = (t: string) => String(t).slice(0, 5);
 
+const MAX_FOTO_BYTES = 6 * 1024 * 1024;
+
 export function ComplejoDetallePage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const { seleccionar } = useComplejo();
+  const { seleccionar, membresias, esSuperAdmin } = useComplejo();
   const [detalle, setDetalle] = useState<ComplejoDetalle | null>(null);
   const [torneos, setTorneos] = useState<TorneoLocal[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
+
+  // Editor de fotos de perfil/portada (solo dueño)
+  const [editandoFotos, setEditandoFotos] = useState(false);
+  const [fotoPerfilSel, setFotoPerfilSel] = useState<string | null>(null);
+  const [fotoPortadaSel, setFotoPortadaSel] = useState<string | null>(null);
+  const [guardandoFotos, setGuardandoFotos] = useState(false);
+  const [errorFotos, setErrorFotos] = useState<string | null>(null);
 
   useEffect(() => {
     if (!slug) return;
@@ -139,6 +154,10 @@ export function ComplejoDetallePage() {
 
   const torneosLocales = torneos.filter((t) => t.complejo_id === detalle.id && t.estado !== 'cancelado');
 
+  const esDuenoDelComplejo = membresias.some((m) => m.complejo_id === detalle.id && m.rol === 'dueno');
+  const esStaffDelComplejo = membresias.some((m) => m.complejo_id === detalle.id);
+  const puedeModerar = esStaffDelComplejo || esSuperAdmin;
+
   const reservar = (canchaId?: number) => {
     seleccionar(detalle.id, detalle.slug);
     navigate(`/reservar?complejo=${detalle.slug}${canchaId != null ? `&cancha=${canchaId}` : ''}`);
@@ -149,50 +168,198 @@ export function ComplejoDetallePage() {
     navigate('/mis-abonos');
   };
 
+  const cerrarEditorFotos = () => {
+    setEditandoFotos(false);
+    setFotoPerfilSel(null);
+    setFotoPortadaSel(null);
+    setErrorFotos(null);
+  };
+
+  const elegirFoto = async (e: React.ChangeEvent<HTMLInputElement>, campo: 'perfil' | 'portada') => {
+    const file = e.target.files?.[0];
+    e.currentTarget.value = '';
+    if (!file) return;
+    if (file.size > MAX_FOTO_BYTES) {
+      setErrorFotos('La imagen supera los 6 MB');
+      return;
+    }
+    try {
+      const data = await leerImagen(file);
+      setErrorFotos(null);
+      if (campo === 'perfil') setFotoPerfilSel(data);
+      else setFotoPortadaSel(data);
+    } catch {
+      setErrorFotos('No se pudo leer la imagen');
+    }
+  };
+
+  const guardarFotos = async () => {
+    if ((!fotoPerfilSel && !fotoPortadaSel) || guardandoFotos) return;
+    setGuardandoFotos(true);
+    setErrorFotos(null);
+    try {
+      if (fotoPerfilSel) {
+        const r = await api<{ campo: string; url: string }>(
+          `/publicaciones/complejo/${detalle.slug}/imagenes`,
+          { method: 'POST', body: JSON.stringify({ campo: 'foto_perfil', imagen: { data: fotoPerfilSel } }) },
+        );
+        setDetalle((prev) => (prev ? { ...prev, foto_perfil: r.url } : prev));
+      }
+      if (fotoPortadaSel) {
+        const r = await api<{ campo: string; url: string }>(
+          `/publicaciones/complejo/${detalle.slug}/imagenes`,
+          { method: 'POST', body: JSON.stringify({ campo: 'foto_portada', imagen: { data: fotoPortadaSel } }) },
+        );
+        setDetalle((prev) => (prev ? { ...prev, foto_portada: r.url } : prev));
+      }
+      cerrarEditorFotos();
+    } catch (e) {
+      setErrorFotos(e instanceof Error ? e.message : 'No se pudieron guardar las fotos');
+    } finally {
+      setGuardandoFotos(false);
+    }
+  };
+
   return (
-    <main className="contenedor" style={{ paddingTop: '1.1rem', paddingBottom: '2.5rem', maxWidth: '1120px' }}>
+    <main className="contenedor perfil-social" style={{ paddingTop: '1.1rem', paddingBottom: '2.5rem', maxWidth: '1120px' }}>
       <Link to="/complejos" className="fila" style={{ gap: '0.4rem', marginBottom: '0.7rem', color: 'var(--texto-2)', width: 'fit-content' }}>
         <ArrowLeft size={16} /> Todos los complejos
       </Link>
 
-      {/* ===== Perfil del complejo ===== */}
-      <header className="perfil-complejo">
-        <div className="perfil-main">
-          <div className="fila-entre" style={{ gap: '0.5rem', marginBottom: '0.35rem' }}>
+      {/* ===== Portada ===== */}
+      <header className="perfil-portada">
+        {detalle.foto_portada ? (
+          <img className="perfil-portada-img" src={detalle.foto_portada} alt="" />
+        ) : (
+          <div className="perfil-portada-fallback" aria-hidden />
+        )}
+        {esDuenoDelComplejo && (
+          <button
+            type="button"
+            className="boton boton-ghost perfil-portada-btn"
+            onClick={() => (editandoFotos ? cerrarEditorFotos() : setEditandoFotos(true))}
+          >
+            <Camera size={15} /> {editandoFotos ? 'Cerrar' : 'Editar fotos'}
+          </button>
+        )}
+      </header>
+
+      {/* ===== Encabezado del perfil ===== */}
+      <div className="perfil-encabezado">
+        <div className="perfil-avatar">
+          {detalle.foto_perfil ? (
+            <img className="perfil-avatar-img" src={detalle.foto_perfil} alt="" />
+          ) : (
+            <span className="perfil-monogramo">{iniciales(detalle.nombre, '')}</span>
+          )}
+        </div>
+
+        <div className="perfil-datos">
+          <div className="fila" style={{ gap: '0.55rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <h1 className="perfil-nombre">{detalle.nombre}</h1>
             <span className={`badge ${detalle.tipo === 'fraccionado' ? 'badge-info' : 'badge-neutro'}`}>
               {detalle.tipo === 'fraccionado' ? 'Fraccionado' : 'Complejo deportivo'}
             </span>
-            <span className="fila" style={{ gap: '0.3rem', color: 'var(--texto-2)', fontSize: '0.83rem' }}>
-              <Clock size={13} /> {HORARIO(detalle.hora_apertura)} – {HORARIO(detalle.hora_cierre)}
-            </span>
+            {detalle.ofrece_torneos && <span className="badge badge-advertencia">Torneos</span>}
+            {detalle.ofrece_socios && <span className="badge badge-exito">Plan de socios</span>}
           </div>
-          <h1>{detalle.nombre}</h1>
-          <div className="stack" style={{ gap: '0.22rem', color: 'var(--texto-2)', fontSize: '0.9rem' }}>
+
+          <div className="perfil-chips">
+            <span className="perfil-chip"><Clock size={14} /> {HORARIO(detalle.hora_apertura)} – {HORARIO(detalle.hora_cierre)}</span>
             {(detalle.direccion || detalle.ciudad) && (
-              <span className="fila" style={{ gap: '0.4rem' }}>
+              <span className="perfil-chip">
                 <MapPin size={14} /> {[detalle.direccion, detalle.ciudad].filter(Boolean).join(' · ')}
               </span>
             )}
-            <span className="fila" style={{ gap: '0.7rem', flexWrap: 'wrap' }}>
-              {detalle.telefono && <span className="fila" style={{ gap: '0.3rem' }}><Phone size={13} /> {detalle.telefono}</span>}
-              {detalle.email_contacto && <span className="fila" style={{ gap: '0.3rem' }}><Mail size={13} /> {detalle.email_contacto}</span>}
-            </span>
+            {detalle.telefono && <span className="perfil-chip"><Phone size={14} /> {detalle.telefono}</span>}
+            {detalle.email_contacto && <span className="perfil-chip"><Mail size={14} /> {detalle.email_contacto}</span>}
           </div>
-          {detalle.descripcion && (
-            <p style={{ margin: '0.55rem 0 0', color: 'var(--texto-2)', fontSize: '0.9rem', maxWidth: '62ch' }}>
-              {detalle.descripcion}
-            </p>
+        </div>
+
+        <div className="perfil-acciones">
+          <button
+            type="button"
+            className="boton boton-primario"
+            style={{ fontSize: '1rem', padding: '0.9rem 1.5rem' }}
+            onClick={() => reservar()}
+          >
+            <CalendarClock size={18} /> Reservar
+          </button>
+          {(detalle.gym || detalle.pileta) && (
+            <button type="button" className="boton boton-outline" style={{ fontSize: '0.9rem', padding: '0.75rem 1.2rem' }} onClick={pedirMensualidad}>
+              Pedir mensualidad
+            </button>
           )}
         </div>
-        <button
-          type="button"
-          className="boton boton-primario"
-          style={{ fontSize: '1rem', padding: '0.9rem 1.5rem', alignSelf: 'center' }}
-          onClick={() => reservar()}
-        >
-          <CalendarClock size={18} /> Reservar
-        </button>
-      </header>
+      </div>
+
+      {detalle.descripcion && <p className="perfil-descripcion">{detalle.descripcion}</p>}
+
+      {/* ===== Editor de fotos (dueño) ===== */}
+      {esDuenoDelComplejo && editandoFotos && (
+        <section className="panel perfil-editor-fotos" aria-label="Editar fotos del complejo">
+          <div className="fila-entre" style={{ gap: '0.6rem' }}>
+            <span className="panel-titulo">Fotos del complejo</span>
+            <button type="button" className="muro-borrar" aria-label="Cerrar" onClick={cerrarEditorFotos}>
+              <X size={15} />
+            </button>
+          </div>
+          <div className="perfil-editor-fotos-campos">
+            <label className="perfil-editor-campo">
+              <span className="texto-debil" style={{ fontSize: '0.8rem' }}>Foto de perfil</span>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={(e) => void elegirFoto(e, 'perfil')}
+              />
+              <div className="perfil-editor-preview">
+                {fotoPerfilSel ? (
+                  <img src={fotoPerfilSel} alt="Vista previa foto de perfil" />
+                ) : detalle.foto_perfil ? (
+                  <img src={detalle.foto_perfil} alt="Foto de perfil actual" />
+                ) : (
+                  <span className="perfil-monogramo">{iniciales(detalle.nombre, '')}</span>
+                )}
+              </div>
+            </label>
+            <label className="perfil-editor-campo">
+              <span className="texto-debil" style={{ fontSize: '0.8rem' }}>Portada</span>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={(e) => void elegirFoto(e, 'portada')}
+              />
+              <div className="perfil-editor-preview perfil-editor-preview-portada">
+                {fotoPortadaSel ? (
+                  <img src={fotoPortadaSel} alt="Vista previa portada" />
+                ) : detalle.foto_portada ? (
+                  <img src={detalle.foto_portada} alt="Portada actual" />
+                ) : (
+                  <span className="texto-debil" style={{ fontSize: '0.8rem' }}>Sin portada</span>
+                )}
+              </div>
+            </label>
+          </div>
+          {errorFotos && <p className="muro-error">{errorFotos}</p>}
+          <div className="fila-entre" style={{ gap: '0.6rem', marginTop: '0.6rem' }}>
+            <span className="texto-debil" style={{ fontSize: '0.78rem' }}>PNG, JPEG o WebP · hasta 6 MB</span>
+            <div className="fila" style={{ gap: '0.5rem' }}>
+              <button type="button" className="boton boton-ghost" style={{ fontSize: '0.85rem' }} onClick={cerrarEditorFotos}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="boton boton-primario"
+                style={{ fontSize: '0.85rem' }}
+                disabled={guardandoFotos || (!fotoPerfilSel && !fotoPortadaSel)}
+                onClick={() => void guardarFotos()}
+              >
+                {guardandoFotos ? 'Guardando…' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Torneos en este complejo (si hay) */}
       {torneosLocales.length > 0 && (
@@ -218,6 +385,9 @@ export function ComplejoDetallePage() {
           </div>
         </section>
       )}
+
+      {/* ===== Muro social del complejo ===== */}
+      <MuroComplejo slug={detalle.slug} puedeModerar={puedeModerar} />
 
       {/* ===== Canchas + columna lateral ===== */}
       <div className="grid-det-detalle">

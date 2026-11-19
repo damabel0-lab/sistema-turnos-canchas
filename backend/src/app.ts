@@ -20,11 +20,13 @@ import { notificacionesRouter } from './modules/notifications/notifications.rout
 import { complejosRouter } from './modules/complejos/complejos.routes.js';
 import { suscripcionesAdminRouter } from './modules/suscripciones/suscripciones.routes.js';
 import { configuracionPlataformaRouter } from './modules/configuracion-plataforma/configuracion-plataforma.routes.js';
+import { publicacionesRouter } from './modules/publicaciones/publicaciones.routes.js';
 
 export const app = express();
 
 app.use(cors());
-app.use(express.json());
+// 36 MB: las publicaciones traen fotos en base64 (4 x 6 MB binario ≈ 8 MB base64 c/u)
+app.use(express.json({ limit: '36mb' }));
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'playcontrol-api' });
@@ -49,5 +51,6 @@ app.use('/socios', authMiddleware, sociosRouter);
 app.use('/beneficios', authMiddleware, beneficiosRouter);
 app.use('/socio-beneficios', authMiddleware, socioBeneficiosRouter);
 app.use('/notificaciones', authMiddleware, notificacionesRouter);
+app.use('/publicaciones', authMiddleware, publicacionesRouter);
 
 app.use(errorHandler);
