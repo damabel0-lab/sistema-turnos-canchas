@@ -488,6 +488,11 @@ interface ResumenPlataforma {
   mrr: number;
 }
 
+interface SuscripcionesPlataforma {
+  items: Array<unknown>;
+  resumen: ResumenPlataforma;
+}
+
 function SuperAdminPanel() {
   const [resumen, setResumen] = useState<ResumenPlataforma | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -495,8 +500,8 @@ function SuperAdminPanel() {
 
   useEffect(() => {
     let cancelado = false;
-    api<ResumenPlataforma>('/admin/suscripciones')
-      .then((d) => { if (!cancelado) setResumen(d); })
+    api<SuscripcionesPlataforma>('/admin/suscripciones')
+      .then((d) => { if (!cancelado) setResumen(d.resumen); })
       .catch((e) => { if (!cancelado) setError(e instanceof Error ? e.message : 'No se pudo cargar la plataforma'); })
       .finally(() => { if (!cancelado) setCargando(false); });
     return () => { cancelado = true; };
